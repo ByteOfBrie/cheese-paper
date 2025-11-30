@@ -31,6 +31,27 @@ fn file_id(s: &str) -> Rc<String> {
     Rc::new(s.to_string())
 }
 
+/// Call process_updates twice with more time than the WATCHER_MSEC_DURATION
+/// to make sure it actually gets woken up and runs
+#[cfg(test)]
+fn process_updates(project: &mut Project) {
+    for _ in 0..5 {
+        thread::sleep(time::Duration::from_millis(60));
+        project.process_updates();
+    }
+}
+
+/// Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
+/// to make sure it actually gets woken up and runs
+#[cfg(test)]
+fn save_and_process_updates(project: &mut Project) {
+    process_updates(project);
+
+    project.save().unwrap();
+
+    process_updates(project);
+}
+
 /// Helper to get the file id from a path
 fn get_id_from_file(filename: &Path) -> Option<FileID> {
     use toml_edit::DocumentMut;
@@ -2707,12 +2728,7 @@ fn test_tracker_creation_basic() {
     )
     .unwrap();
 
-    // Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
-    // to make sure it actually gets woken up and runs
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 4);
 }
@@ -2743,19 +2759,7 @@ fn test_tracker_creation_folder() {
     )
     .unwrap();
 
-    // Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
-    // to make sure it actually gets woken up and runs
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     let folder1_path_final = base_dir.path().join("test_project/text/000-folder1");
 
@@ -2795,12 +2799,8 @@ file_type = "place""#;
         place_file_text.as_bytes(),
     )
     .unwrap();
-    // Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
-    // to make sure it actually gets woken up and runs
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 4);
     assert!(project.objects.contains_key(&file_id("1")));
@@ -2825,10 +2825,7 @@ fn test_tracker_creation_by_movement() {
 
     write_with_temp_file(&other_dir.path().join("scene.md"), scene_text.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 3);
 
@@ -2838,12 +2835,7 @@ fn test_tracker_creation_by_movement() {
     )
     .unwrap();
 
-    // Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
-    // to make sure it actually gets woken up and runs
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 4);
     assert!(project.objects.contains_key(&file_id("1")));
@@ -2874,10 +2866,7 @@ fn test_tracker_creation_by_movement_folder() {
     )
     .unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 3);
 
@@ -2887,12 +2876,7 @@ fn test_tracker_creation_by_movement_folder() {
     )
     .unwrap();
 
-    // Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
-    // to make sure it actually gets woken up and runs
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 5);
     assert!(project.objects.contains_key(&file_id("1")));
@@ -2936,10 +2920,7 @@ fn test_tracker_delete_file() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert!(project.objects.contains_key(&folder1_id));
     assert!(project.objects.contains_key(&scene1_id));
@@ -2964,11 +2945,7 @@ fn test_tracker_delete_file() {
             .exists()
     );
 
-    // process the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert!(!project.objects.contains_key(&scene1_id));
     assert!(project.objects.contains_key(&folder1_id));
@@ -3030,10 +3007,7 @@ fn test_tracker_delete_folder() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert!(project.objects.contains_key(&folder1_id));
     assert!(project.objects.contains_key(&scene1_id));
@@ -3064,11 +3038,7 @@ fn test_tracker_delete_folder() {
     assert!(!scene2_path.exists());
     assert!(!folder1_path.exists());
 
-    // process the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert!(!project.objects.contains_key(&scene1_id));
     assert!(!project.objects.contains_key(&scene2_id));
@@ -3146,10 +3116,7 @@ fn test_tracker_rename_file() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -3184,11 +3151,7 @@ fn test_tracker_rename_file() {
             .exists()
     );
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene2_id));
@@ -3239,10 +3202,7 @@ fn test_tracker_rename_file() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 6);
 
@@ -3295,10 +3255,7 @@ fn test_tracker_rename_folder() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -3330,11 +3287,7 @@ fn test_tracker_rename_folder() {
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!folder1_path_orig.exists());
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene2_id));
@@ -3393,10 +3346,7 @@ fn test_tracker_rename_folder() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 6);
 
@@ -3423,10 +3373,7 @@ fn test_tracker_rename_folder() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // Checks for after deletion:
     assert_eq!(project.objects.len(), 5);
@@ -3481,10 +3428,7 @@ fn test_tracker_move_file() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -3525,11 +3469,7 @@ fn test_tracker_move_file() {
             .exists()
     );
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene2_id));
@@ -3570,10 +3510,7 @@ fn test_tracker_move_file() {
     // ensure that a save doesn't mess with things
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // This seems more fragile on a save, recheck everything
     // check 1: all of the files should still be in the project
@@ -3622,10 +3559,7 @@ fn test_tracker_move_file() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 6);
 
@@ -3691,10 +3625,7 @@ fn test_tracker_move_folder() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -3735,11 +3666,7 @@ fn test_tracker_move_folder() {
     assert!(!scene1_path_orig.exists());
     assert!(!folder1_path_orig.exists());
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene1_id));
@@ -3783,10 +3710,7 @@ fn test_tracker_move_folder() {
     // ensure that a save doesn't mess with things
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // This seems more fragile on a save, recheck everything
     // check 1: all of the files should still be in the project
@@ -3869,10 +3793,7 @@ fn test_tracker_move_file_reindex() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -3913,11 +3834,7 @@ fn test_tracker_move_file_reindex() {
             .exists()
     );
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene1_id));
@@ -3960,10 +3877,7 @@ fn test_tracker_move_file_reindex() {
     // ensure that a save doesn't mess with things
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // This seems more fragile on a save, recheck everything
     // check 1: all of the files should still be in the project
@@ -4013,10 +3927,7 @@ fn test_tracker_move_file_reindex() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 6);
 
@@ -4050,10 +3961,7 @@ fn test_tracker_modification() {
 
     write_with_temp_file(&scene1_path, scene_text.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         assert_eq!(project.objects.len(), 4);
@@ -4071,10 +3979,7 @@ asdfjkl123"#;
 
     std::fs::write(scene1_path, new_scene_text).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // Ensure that the file object still exists (and we don't have duplicates)
@@ -4130,10 +4035,7 @@ fn test_tracker_move_file_copy_delete() {
     project.add_object(scene2);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -4175,11 +4077,7 @@ fn test_tracker_move_file_copy_delete() {
             .exists()
     );
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene2_id));
@@ -4220,10 +4118,7 @@ fn test_tracker_move_file_copy_delete() {
     // ensure that a save doesn't mess with things
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // This seems more fragile on a save, recheck everything
     // check 1: all of the files should still be in the project
@@ -4262,10 +4157,7 @@ fn test_tracker_move_file_copy_delete() {
 
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 6);
 
@@ -4301,17 +4193,7 @@ fn test_tracker_move_modification() {
 
     write_with_temp_file(&scene1_path, scene_text.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     {
         assert_eq!(project.objects.len(), 5);
@@ -4336,10 +4218,7 @@ asdfjkl123"#;
 
     std::fs::write(new_scene1_path, new_scene_text).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // Ensure that the file object still exists (and we don't have duplicates)
@@ -4420,10 +4299,7 @@ fn test_tracker_move_reindex_folder() {
     project.add_object(scene3);
     project.save().unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     let scene1_path_orig = project.objects.get(&scene1_id).unwrap().borrow().get_path();
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
@@ -4461,11 +4337,7 @@ fn test_tracker_move_reindex_folder() {
     assert!(!scene2_path_orig.exists());
     assert!(!scene3_path_orig.exists());
 
-    // process in the tracker
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     // check 1: all of the files should still be in the project
     assert!(project.objects.contains_key(&scene1_id));
@@ -4569,17 +4441,7 @@ asdf"#;
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene2_path_orig, scene2_text_orig.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Starting assumptions
     {
@@ -4628,10 +4490,7 @@ asdfjkl123"#;
 scene4"#;
     std::fs::write(&scene4_path, scene4_text).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // The folder should still be populated by all four scenes
@@ -4672,17 +4531,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Do all the checks again after the save
     {
@@ -4756,17 +4605,7 @@ asdf"#;
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene2_path_orig, scene2_text_orig.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Starting assumptions
     {
@@ -4827,10 +4666,7 @@ asdfjkl123"#;
 scene4"#;
     std::fs::write(&scene4_path, scene4_text).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // The folder should still be populated by all four scenes
@@ -4871,17 +4707,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // check it again
     {
@@ -4970,17 +4796,7 @@ scene4"#;
     write_with_temp_file(&scene3_path_orig, scene3_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene4_path_orig, scene4_text_orig.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Starting assumptions
     {
@@ -5022,10 +4838,7 @@ scene4"#;
     let scene3_path_new = folder1_path_new.join("001-scene3.md");
     std::fs::rename(&scene3_path_orig, &scene3_path_new).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // folder1 should have three scenes (all except scene4)
@@ -5081,17 +4894,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 3);
     }
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 }
 
 /// Test the tracker by moving a file object from a folder that was first moved.
@@ -5121,17 +4924,7 @@ scene1"#;
     // Write all scenes before sleeping
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Starting assumptions
     {
@@ -5157,10 +4950,7 @@ scene1"#;
     let scene1_path_new = text_path.join("000-scene1.md");
     std::fs::rename(folder1_path_new.join("000-scene1.md"), &scene1_path_new).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // Check that we have all of the scenes we would expect
@@ -5209,17 +4999,7 @@ scene1"#;
     // Write all scenes before sleeping
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     // Starting assumptions
     {
@@ -5242,10 +5022,7 @@ scene1"#;
     // And remove scene3
     std::fs::remove_file(folder1_path_new.join("000-scene1.md")).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    process_updates(&mut project);
 
     {
         // Check that we have all of the scenes we would expect
@@ -5285,17 +5062,7 @@ fn test_tracker_metadata_population() {
 
     write_with_temp_file(&scene1_path, scene_text.as_bytes()).unwrap();
 
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
-
-    project.save().unwrap();
-
-    for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
-    }
+    save_and_process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 5);
     assert!(project.objects.contains_key(&file_id("1")));
@@ -5462,10 +5229,7 @@ fn test_tracker_reindex_timing() {
 
         write_with_temp_file(&scene1_path, scene1_text.as_bytes()).unwrap();
 
-        for _ in 0..5 {
-            thread::sleep(time::Duration::from_millis(60));
-            project.process_updates();
-        }
+        process_updates(&mut project);
 
         assert!(project.objects.contains_key(&file_id("1")));
         assert!(project.objects.contains_key(&file_id("2")));
