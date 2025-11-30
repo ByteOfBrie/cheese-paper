@@ -1,0 +1,40 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+            archive_name: cheese-paper
+          - os: windows-latest
+            name: windows.exe
+            archive_name: cheese-paper.exe
+          - os: macos-latest
+            name: macos
+            archive_name: cheese-paper
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --release
+    - name: Run tests
+      run: cargo test --release
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: cheese-paper-${{ matrix.name }}
+        path: target/release/${{ matrix.archive_name }}
