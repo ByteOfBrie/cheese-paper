@@ -5245,3 +5245,96 @@ fn test_tracker_reindex_timing() {
         assert_eq!(scene2_file_object.get_base().index, Some(1));
     }
 }
+
+#[test]
+fn test_tracker_new_file_index() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let scene_text = r#"id = "1"
+++++++++
+contents1
+"#;
+
+    let mut project =
+        Project::new(base_dir.path().to_path_buf(), "test project".to_string()).unwrap();
+
+    assert_eq!(project.objects.len(), 3);
+
+    write_with_temp_file(
+        &Path::join(base_dir.path(), "test_project/text/scene.md"),
+        scene_text.as_bytes(),
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 4);
+
+    assert!(project.objects.contains_key(&file_id("1")));
+
+    // Check the file contents (first)
+    let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+    let scene1 = match scene1_file_object.get_file_type() {
+        FileObjectTypeInterface::Scene(scene) => scene,
+        _ => {
+            panic!("Got a non-scene object");
+        }
+    };
+    assert_eq!(scene1.text.as_str(), "contents1");
+    assert_eq!(scene1.get_base().index, Some(0));
+
+    assert_eq!(
+        std::fs::read_dir(Path::join(base_dir.path(), "test_project/text/"))
+            .unwrap()
+            .count(),
+        2
+    );
+
+    assert!(scene1.get_file().exists());
+    assert_eq!(
+        scene1.get_file(),
+        Path::join(base_dir.path(), "test_project/text/000-scene.md")
+    );
+}
+
+/// Create a new folder and something in it, process updates then move the folder before saving
+#[test]
+fn test_tracker_creation_then_move_folder() {
+    let _ = env_logger::try_init();
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let scene_text = "123456";
+
+    let mut project =
+        Project::new(base_dir.path().to_path_buf(), "test project".to_string()).unwrap();
+
+    assert_eq!(project.objects.len(), 3);
+
+    let folder1_path = base_dir.path().join("test_project/text/folder1");
+    let folder1_path_moved = base_dir.path().join("test_project/text/000-folder1");
+    let folder1_path_new = base_dir.path().join("test_project/text/000-folder1-alt");
+
+    create_dir(&folder1_path).unwrap();
+
+    write_with_temp_file(
+        &Path::join(base_dir.path(), "test_project/text/folder1/scene.md"),
+        scene_text.as_bytes(),
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    std::fs::rename(&folder1_path_moved, &folder1_path_new).unwrap();
+
+    assert_eq!(project.objects.len(), 3);
+
+    process_updates(&mut project);
+
+    // There should be the metadata file and the scene file
+    assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 2);
+
+    // Ensure this doesn't panic
+    save_and_process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 3);
+}
