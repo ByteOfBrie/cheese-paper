@@ -5255,8 +5255,12 @@ fn test_tracker_new_file_index() {
 contents1
 "#;
 
-    let mut project =
-        Project::new(base_dir.path().to_path_buf(), "test project".to_string()).unwrap();
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
 
     assert_eq!(project.objects.len(), 3);
 
@@ -5273,14 +5277,9 @@ contents1
     assert!(project.objects.contains_key(&file_id("1")));
 
     // Check the file contents (first)
-    let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
-    let scene1 = match scene1_file_object.get_file_type() {
-        FileObjectTypeInterface::Scene(scene) => scene,
-        _ => {
-            panic!("Got a non-scene object");
-        }
-    };
-    assert_eq!(scene1.text.as_str(), "contents1");
+    let scene1 = project.objects.get(&file_id("1")).unwrap().borrow();
+    assert_eq!(scene1.get_type(), SCENE);
+    assert_eq!(scene1.get_body().trim(), "contents1");
     assert_eq!(scene1.get_base().index, Some(0));
 
     assert_eq!(
@@ -5305,8 +5304,12 @@ fn test_tracker_creation_then_move_folder() {
 
     let scene_text = "123456";
 
-    let mut project =
-        Project::new(base_dir.path().to_path_buf(), "test project".to_string()).unwrap();
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
 
     assert_eq!(project.objects.len(), 3);
 
