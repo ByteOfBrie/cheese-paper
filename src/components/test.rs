@@ -5299,7 +5299,6 @@ contents1
 /// Create a new folder and something in it, process updates then move the folder before saving
 #[test]
 fn test_tracker_creation_then_move_folder() {
-    let _ = env_logger::try_init();
     let base_dir = tempfile::TempDir::new().unwrap();
 
     let scene_text = "123456";
@@ -5327,17 +5326,20 @@ fn test_tracker_creation_then_move_folder() {
 
     process_updates(&mut project);
 
+    assert_eq!(project.objects.len(), 5);
     std::fs::rename(&folder1_path_moved, &folder1_path_new).unwrap();
 
-    assert_eq!(project.objects.len(), 3);
-
     process_updates(&mut project);
+    assert_eq!(project.objects.len(), 5);
 
-    // There should be the metadata file and the scene file
-    assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 2);
+    // There should just be the scene file, metadata hasn't been created by a save yet
+    assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 1);
 
     // Ensure this doesn't panic
     save_and_process_updates(&mut project);
 
-    assert_eq!(project.objects.len(), 3);
+    assert_eq!(project.objects.len(), 5);
+
+    // There should be the metadata file and the scene file
+    assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 2);
 }
