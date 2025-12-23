@@ -829,7 +829,7 @@ impl Project {
                             .first()
                             .expect("From rename should have a source");
 
-                        log::debug!("processing rename event as delete: {event:?}");
+                        log::debug!("processing rename(from) event as delete: {event:?}");
 
                         if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
                             file_objects_needing_rescan.insert(parent_id);
@@ -849,8 +849,6 @@ impl Project {
                         paths_to_load.insert(modify_path);
                     }
                     EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
-                        log::debug!("Processing actual rename event: {event:?}");
-
                         let source_path = event
                             .paths
                             .first()
