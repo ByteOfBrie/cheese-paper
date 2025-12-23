@@ -764,7 +764,9 @@ impl Project {
         }
     }
 
-    pub fn process_updates(&mut self) {
+    /// Get updates from the file watcher, can be called very frequently. Will only store
+    /// them until `process_updates` is called
+    pub fn receive_updates(&mut self) {
         // check for file system events and process them
         if let Ok(response) = self.file_event_rx.try_recv() {
             match response {
@@ -793,7 +795,10 @@ impl Project {
                 Err(err) => log::warn!("Error while trying to watch files: {err:?}"),
             }
         }
+    }
 
+    /// Counterpart to receive_updates, should only be called immediately before a save
+    pub fn process_updates(&mut self) {
         // Once we stop getting updates, we can process the list of events
         if let Some(last_event_time) = self.last_added_event
             && last_event_time.elapsed().as_millis() > (WATCHER_MSEC_DURATION * 2).into()

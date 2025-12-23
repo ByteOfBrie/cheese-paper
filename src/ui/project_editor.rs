@@ -577,7 +577,7 @@ impl ProjectEditor {
         // We can always optimize this later if needed
         self.editor_context.references.update(&self.project.objects);
 
-        self.project.process_updates();
+        self.project.receive_updates();
 
         // automatically track progress if we have a tracker
         if let Some(tracker) = &mut self.tracker
@@ -739,7 +739,9 @@ impl ProjectEditor {
             .collect()
     }
 
+    /// Process any queued events and then do the actual save
     pub fn save(&mut self) {
+        self.project.process_updates();
         if let Err(err) = self.project.save() {
             log::error!("encountered error while saving project: {err}");
         }

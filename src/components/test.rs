@@ -33,22 +33,19 @@ fn file_id(s: &str) -> Rc<String> {
 
 /// Call process_updates twice with more time than the WATCHER_MSEC_DURATION
 /// to make sure it actually gets woken up and runs
-#[cfg(test)]
 fn process_updates(project: &mut Project) {
     for _ in 0..5 {
         thread::sleep(time::Duration::from_millis(60));
-        project.process_updates();
+        project.receive_updates();
     }
+    project.process_updates();
+    project.save().unwrap();
 }
 
 /// Sleep and call process_updates twice with more time than the WATCHER_MSEC_DURATION
 /// to make sure it actually gets woken up and runs
-#[cfg(test)]
-fn save_and_process_updates(project: &mut Project) {
+fn process_updates_after_save(project: &mut Project) {
     process_updates(project);
-
-    project.save().unwrap();
-
     process_updates(project);
 }
 
@@ -2759,7 +2756,7 @@ fn test_tracker_creation_folder() {
     )
     .unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     let folder1_path_final = base_dir.path().join("test_project/text/000-folder1");
 
@@ -4193,7 +4190,7 @@ fn test_tracker_move_modification() {
 
     write_with_temp_file(&scene1_path, scene_text.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     {
         assert_eq!(project.objects.len(), 5);
@@ -4441,7 +4438,7 @@ asdf"#;
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene2_path_orig, scene2_text_orig.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Starting assumptions
     {
@@ -4531,7 +4528,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Do all the checks again after the save
     {
@@ -4605,7 +4602,7 @@ asdf"#;
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene2_path_orig, scene2_text_orig.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Starting assumptions
     {
@@ -4707,7 +4704,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // check it again
     {
@@ -4796,7 +4793,7 @@ scene4"#;
     write_with_temp_file(&scene3_path_orig, scene3_text_orig.as_bytes()).unwrap();
     write_with_temp_file(&scene4_path_orig, scene4_text_orig.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Starting assumptions
     {
@@ -4894,7 +4891,7 @@ scene4"#;
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 3);
     }
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 }
 
 /// Test the tracker by moving a file object from a folder that was first moved.
@@ -4924,7 +4921,7 @@ scene1"#;
     // Write all scenes before sleeping
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Starting assumptions
     {
@@ -4999,7 +4996,7 @@ scene1"#;
     // Write all scenes before sleeping
     write_with_temp_file(&scene1_path_orig, scene1_text_orig.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     // Starting assumptions
     {
@@ -5062,7 +5059,7 @@ fn test_tracker_metadata_population() {
 
     write_with_temp_file(&scene1_path, scene_text.as_bytes()).unwrap();
 
-    save_and_process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     assert_eq!(project.objects.len(), 5);
     assert!(project.objects.contains_key(&file_id("1")));
@@ -5224,7 +5221,7 @@ fn test_tracker_reindex_timing() {
 
         write_with_temp_file(&scene2_path, scene2_text.as_bytes()).unwrap();
 
-        project.process_updates();
+        project.receive_updates();
         thread::sleep(time::Duration::from_millis(20));
 
         write_with_temp_file(&scene1_path, scene1_text.as_bytes()).unwrap();
@@ -5353,15 +5350,7 @@ fn test_tracker_creation_then_move_folder() {
 
     std::fs::rename(&folder1_path_moved, &folder1_path_new).unwrap();
 
-    process_updates(&mut project);
-    assert_eq!(project.objects.len(), 5);
-
-    // There should just be the scene file, metadata hasn't been created by a save yet
-    assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 1);
-
-    // Ensure this doesn't panic
-    save_and_process_updates(&mut project);
-
+    process_updates_after_save(&mut project);
     assert_eq!(project.objects.len(), 5);
 
     // There should be the metadata file and the scene file
