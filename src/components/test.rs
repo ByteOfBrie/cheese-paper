@@ -5301,7 +5301,9 @@ contents1
 fn test_tracker_creation_then_move_folder() {
     let base_dir = tempfile::TempDir::new().unwrap();
 
-    let scene_text = "123456";
+    let scene1_text = r#"id = "1"
+++++++++
+123456"#;
 
     let mut project = Project::new(
         SCHEMA,
@@ -5320,13 +5322,35 @@ fn test_tracker_creation_then_move_folder() {
 
     write_with_temp_file(
         &Path::join(base_dir.path(), "test_project/text/folder1/scene.md"),
-        scene_text.as_bytes(),
+        scene1_text.as_bytes(),
     )
     .unwrap();
 
     process_updates(&mut project);
+    assert_eq!(project.objects.len(), 5);
+    assert!(folder1_path.exists() || folder1_path_moved.exists());
+
+    {
+        let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+        assert_eq!(scene1_file_object.get_type(), SCENE);
+        assert_eq!(scene1_file_object.get_body().trim(), "123456");
+        assert_eq!(scene1_file_object.get_base().index, Some(0));
+        assert!(scene1_file_object.get_file().exists());
+    }
+
+    process_updates(&mut project);
 
     assert_eq!(project.objects.len(), 5);
+    assert!(folder1_path.exists() || folder1_path_moved.exists());
+
+    {
+        let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+        assert_eq!(scene1_file_object.get_type(), SCENE);
+        assert_eq!(scene1_file_object.get_body().trim(), "123456");
+        assert_eq!(scene1_file_object.get_base().index, Some(0));
+        assert!(scene1_file_object.get_file().exists());
+    }
+
     std::fs::rename(&folder1_path_moved, &folder1_path_new).unwrap();
 
     process_updates(&mut project);
