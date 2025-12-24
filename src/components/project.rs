@@ -913,8 +913,10 @@ impl Project {
                     if path1 == path2 {
                         continue;
                     }
-
-                    if path1.starts_with(path2) {
+                    if *path2 == self.get_path() {
+                        // special case: if we get an event for the entire project, discard it
+                        paths_to_load.remove(path2);
+                    } else if path1.starts_with(path2) {
                         paths_to_load.remove(path1);
                     }
                 }
