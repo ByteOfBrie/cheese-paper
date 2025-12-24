@@ -3954,6 +3954,8 @@ fn test_tracker_modification() {
 ++++++++
 asdfjkl123"#;
 
+    thread::sleep(time::Duration::from_millis(50));
+
     std::fs::write(scene1_path, new_scene_text).unwrap();
 
     process_updates(&mut project);
@@ -4193,6 +4195,7 @@ asdfjkl123"#;
     assert!(scene1_path.exists());
     std::fs::rename(&scene1_path, &new_scene1_path).unwrap();
 
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(new_scene1_path, new_scene_text).unwrap();
 
     process_updates(&mut project);
@@ -4434,18 +4437,21 @@ asdf"#;
     // Before the move, update scene1 and scene3
     let mut scene1_raw = read_to_string(&scene1_path_orig).unwrap();
     scene1_raw.push_str("updated");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene1_path_orig, scene1_raw).unwrap();
 
     let scene3_path_orig = folder1_path_orig.join("002-scene3.md");
     let scene3_text = r#"id = "3"
 ++++++++
 scene3"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene3_path_orig, scene3_text).unwrap();
 
     // actually update the metadata for the moving folder
     let folder1_metadata_path = folder1_path_orig.join("metadata.toml");
     let folder1_metadata = read_to_string(&folder1_metadata_path).unwrap();
     let folder1_metadata_new = folder1_metadata.replace("folder1", "folder1_alt");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&folder1_metadata_path, folder1_metadata_new).unwrap();
 
     let folder1_path_new = base_dir.path().join("test_project/text/000-folder1_alt");
@@ -4459,12 +4465,14 @@ scene3"#;
 ++++++++
 
 asdfjkl123"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene2_path_new, scene2_text_new).unwrap();
 
     let scene4_path = folder1_path_new.join("003-scene4.md");
     let scene4_text = r#"id = "4"
 ++++++++
 scene4"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene4_path, scene4_text).unwrap();
 
     process_updates(&mut project);
@@ -4598,18 +4606,21 @@ asdf"#;
     // Before the move, update scene1 and scene3
     let mut scene1_raw = read_to_string(&scene1_path_orig).unwrap();
     scene1_raw.push_str("updated");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene1_path_orig, scene1_raw).unwrap();
 
     let scene3_path_orig = folder1_path_orig.join("002-scene3.md");
     let scene3_text = r#"id = "3"
 ++++++++
 scene3"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene3_path_orig, scene3_text).unwrap();
 
     // actually update the metadata for the moving folder
     let folder1_metadata_path = folder1_path_orig.join("metadata.toml");
     let folder1_metadata = read_to_string(&folder1_metadata_path).unwrap();
     let folder1_metadata_new = folder1_metadata.replace("folder1", "folder1_alt");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&folder1_metadata_path, folder1_metadata_new).unwrap();
 
     let folder1_path_new = base_dir.path().join("test_project/text/000-folder1_alt");
@@ -4635,12 +4646,14 @@ scene3"#;
 ++++++++
 
 asdfjkl123"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene2_path_new, scene2_text_new).unwrap();
 
     let scene4_path = folder1_path_new.join("003-scene4.md");
     let scene4_text = r#"id = "4"
 ++++++++
 scene4"#;
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene4_path, scene4_text).unwrap();
 
     process_updates(&mut project);
@@ -4792,6 +4805,7 @@ scene4"#;
     // Before the folder move, update and move scene2
     let mut scene2_raw = read_to_string(&scene2_path_orig).unwrap();
     scene2_raw.push_str("updated");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&scene2_path_orig, scene2_raw).unwrap();
 
     let scene2_path_new = folder1_path_orig.join("002-scene2.md");
@@ -4801,6 +4815,7 @@ scene4"#;
     let folder1_metadata_path = folder1_path_orig.join("metadata.toml");
     let folder1_metadata = read_to_string(&folder1_metadata_path).unwrap();
     let folder1_metadata_new = folder1_metadata.replace("folder1", "folder1 alt");
+    thread::sleep(time::Duration::from_millis(50));
     std::fs::write(&folder1_metadata_path, folder1_metadata_new).unwrap();
 
     let folder1_id = get_id_from_file(&folder1_path_orig).unwrap();
