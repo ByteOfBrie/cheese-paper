@@ -96,13 +96,13 @@ pub fn create_dir_if_missing(dest_path: &Path) -> std::io::Result<&Path> {
 }
 
 /// Atomically write a file
-pub fn write_with_temp_file(dest_path: &Path, contents: &[u8]) -> std::io::Result<()> {
+pub fn write_with_temp_file(dest_path: &Path, contents: impl Into<String>) -> std::io::Result<()> {
     let dirname = dest_path.parent().expect("Must pass a path with a parent");
     let basename = dest_path.file_name().expect("Must write to a file");
 
     let mut file = Builder::new().suffix(".tmp").tempfile_in(dirname)?;
 
-    file.write_all(contents)?;
+    file.write_all(contents.into().as_bytes())?;
 
     let mut dest_path = dirname.to_path_buf();
     dest_path.push(basename);
@@ -123,7 +123,7 @@ fn test_write_with_temp_file() -> std::io::Result<()> {
     assert!(!file_full_path.exists());
     assert_eq!(std::fs::read_dir(base_dir.path())?.count(), 0);
 
-    write_with_temp_file(&file_full_path, contents.as_bytes())?;
+    write_with_temp_file(&file_full_path, contents)?;
 
     assert!(file_full_path.exists());
     assert_eq!(std::fs::read_dir(base_dir.path())?.count(), 1);

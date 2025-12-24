@@ -422,7 +422,7 @@ impl dyn FileObject {
             final_str.push_str(&self.get_body());
         }
 
-        write_with_temp_file(&self.get_file(), final_str.as_bytes())?;
+        write_with_temp_file(&self.get_file(), final_str)?;
 
         let new_modtime = std::fs::metadata(self.get_file())
             .expect("attempted to load file that does not exist")

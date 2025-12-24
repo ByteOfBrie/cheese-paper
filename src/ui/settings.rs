@@ -254,7 +254,7 @@ impl Settings {
         data.save(&mut settings_toml);
         write_with_temp_file(
             create_dir_if_missing(&data.config_file_path())?,
-            settings_toml.to_string().as_bytes(),
+            settings_toml.to_string(),
         )
         .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
 
@@ -343,11 +343,8 @@ impl Settings {
         let mut dest_path = data.themes_path().join(file_name);
         dest_path.add_extension("toml");
 
-        write_with_temp_file(
-            create_dir_if_missing(&dest_path)?,
-            config.to_string().as_bytes(),
-        )
-        .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
+        write_with_temp_file(create_dir_if_missing(&dest_path)?, config.to_string())
+            .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
 
         Ok(())
     }

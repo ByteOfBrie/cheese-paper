@@ -230,7 +230,7 @@ impl EditorState {
             self.data.save(&mut self.data_toml);
             write_with_temp_file(
                 create_dir_if_missing(&Data::get_path(&self.project_dirs))?,
-                self.data_toml.to_string().as_bytes(),
+                self.data_toml.to_string(),
             )
             .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
         }
