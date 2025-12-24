@@ -5283,8 +5283,12 @@ contents1
 
     assert!(scene1.get_file().exists());
     assert_eq!(
-        scene1.get_file(),
-        Path::join(base_dir.path(), "test_project/text/000-scene.md")
+        scene1.get_file().canonicalize().unwrap(),
+        base_dir
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("test_project/text/000-scene.md"),
     );
 }
 
