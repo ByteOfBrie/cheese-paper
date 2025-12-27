@@ -369,7 +369,7 @@ impl dyn Schema {
 
             let mut file_object = self.load_file_object(file_type, base, file_body)?;
 
-            file_object.rescan_indexing(objects);
+            file_object.rescan_indexing(objects, false);
 
             objects.insert(file_id.clone(), RefCell::new(file_object));
 

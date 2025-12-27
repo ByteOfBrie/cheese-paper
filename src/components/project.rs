@@ -986,7 +986,7 @@ impl Project {
                     .get(&object_needing_rescan)
                     .unwrap()
                     .borrow_mut()
-                    .rescan_indexing(&self.objects);
+                    .rescan_indexing(&self.objects, true);
             }
 
             // 6. Clean up any dangling objects
