@@ -1,7 +1,9 @@
 use super::ProjectEditor;
 
+type ActionFunction = dyn FnOnce(&mut ProjectEditor, &egui::Context);
+
 #[derive(Default)]
-pub struct Actions(Vec<Box<dyn FnOnce(&mut ProjectEditor, &egui::Context)>>);
+pub struct Actions(Vec<Box<ActionFunction>>);
 
 impl std::fmt::Debug for Actions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -14,7 +16,7 @@ impl Actions {
         self.0.push(Box::new(f))
     }
 
-    pub fn get(&mut self) -> Vec<Box<dyn FnOnce(&mut ProjectEditor, &egui::Context)>> {
+    pub fn get(&mut self) -> Vec<Box<ActionFunction>> {
         std::mem::take(&mut self.0)
     }
 }
