@@ -38,9 +38,6 @@ pub struct Project {
     pub metadata: ProjectMetadata,
     pub base_metadata: FileObjectMetadata,
     pub file: FileInfo,
-    pub text_id: FileID,
-    pub characters_id: FileID,
-    pub worldbuilding_id: FileID,
     /// The list of top level folders. The order is hardcoded for now but this can be relaxed later
     pub top_level_folders: Vec<FileID>,
     pub objects: FileObjectStore,
@@ -245,9 +242,6 @@ impl Project {
                 ..Default::default()
             },
             metadata: ProjectMetadata::default(),
-            text_id: text.id().clone(),
-            characters_id: characters.id().clone(),
-            worldbuilding_id: worldbuilding.id().clone(),
             top_level_folders,
             file,
             toml_header,
@@ -348,11 +342,12 @@ impl Project {
 
         // Load or create folders
         let mut objects = FileObjectStore::new();
-        let text_id = load_top_level_folder(schema, &path, "Text", &mut objects)?;
 
-        let characters_id = load_top_level_folder(schema, &path, "Characters", &mut objects)?;
-
-        let worldbuilding_id = load_top_level_folder(schema, &path, "Worldbuilding", &mut objects)?;
+        let top_level_folders = vec![
+            load_top_level_folder(schema, &path, "Text", &mut objects)?,
+            load_top_level_folder(schema, &path, "Characters", &mut objects)?,
+            load_top_level_folder(schema, &path, "Worldbuilding", &mut objects)?,
+        ];
 
         log::debug!("Finished loading all project file objects, continuing");
 
@@ -369,20 +364,11 @@ impl Project {
             .watch(watcher_path, RecursiveMode::Recursive)
             .unwrap();
 
-        let top_level_folders = vec![
-            text_id.clone(),
-            characters_id.clone(),
-            worldbuilding_id.clone(),
-        ];
-
         let mut project = Self {
             schema,
             metadata,
             base_metadata,
             file: file_info,
-            text_id,
-            characters_id,
-            worldbuilding_id,
             top_level_folders,
             toml_header,
             objects,
