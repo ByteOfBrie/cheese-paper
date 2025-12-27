@@ -183,6 +183,26 @@ fn create_watcher() -> notify::Result<(RecommendedDebouncer, WatcherReceiver)> {
 // We hardcode the path here, might get replaced when schema can change file objects
 const TEXT_FOLDER_POSITION: usize = 0;
 
+#[derive(Debug)]
+enum ProjectPathKind {
+    /// A valid file path within one of the top level folders
+    Contents,
+    /// A valid file path but hidden, should probably be ignored
+    Hidden,
+    /// Part of the contents, but with an unrecognized path
+    UnrecognizedExtension,
+    /// Inside of a .git directory
+    Git,
+    /// A file entirely outside of the project
+    External,
+    /// The project.toml file itself
+    ProjectFile,
+    /// One of the top level files directly
+    TopLevelFolder,
+    /// Within the project, but not at a known path
+    UnrecognizedLocation,
+}
+
 impl Project {
     /// Create a new project
     pub fn new(
@@ -746,24 +766,36 @@ impl Project {
             match response {
                 Ok(events) => {
                     for event in events {
-                        let mut git_event = false;
-                        for event_path in event.paths.iter() {
-                            if event_path.iter().any(|component| component == ".git") {
-                                git_event = true;
-                            }
-                        }
-                        if git_event {
-                            continue;
-                        }
+                        // First, check for an access event, we don't care about this at all
+                        // and can filter early no matter where it is
                         if let EventKind::Access(_) = event.kind {
                             continue;
                         }
 
-                        // We now have an event that isn't noise from .git or file opens:
-                        log::debug!("found event: {event:?}");
+                        // Get all of the paths in the event so we can filter it later. We don't
+                        // necessarily have to collect here but it's nicer for debugging than
+                        // an iterator
+                        let event_paths: Vec<ProjectPathKind> = event
+                            .paths
+                            .iter()
+                            .map(|path| self.classify_path_position(path))
+                            .collect();
 
-                        self.event_queue.push_back(event);
-                        self.last_added_event = Some(Instant::now());
+                        if event_paths.iter().any(|path_kind| {
+                            matches!(
+                                path_kind,
+                                ProjectPathKind::Contents | ProjectPathKind::ProjectFile
+                            )
+                        }) {
+                            // We now have an event that seems to be something we care about
+                            self.event_queue.push_back(event);
+                            self.last_added_event = Some(Instant::now());
+                        } else if !event_paths
+                            .iter()
+                            .any(|path_kind| matches!(path_kind, ProjectPathKind::Git))
+                        {
+                            log::debug!("Filtered event: {event:?}");
+                        }
                     }
                 }
                 Err(err) => log::warn!("Error while trying to watch files: {err:?}"),
@@ -900,15 +932,22 @@ impl Project {
             // 3. every element that needs to be rescanned is removed from their parents (the list of
             //    children), the parents are stored in the needs_reindex set
 
-            let project_info_file = self.get_project_info_file();
-
             // 4. load all of the objects we wanted to rescan
             for path_to_load in paths_to_load {
-                if path_to_load == project_info_file {
-                    if let Err(err) = self.reload_file() {
-                        log::warn!("Error while reloading project info file: {err}");
+                let project_path_kind = self.classify_path_position(&path_to_load);
+                match project_path_kind {
+                    ProjectPathKind::Contents => (),
+                    ProjectPathKind::ProjectFile => {
+                        if let Err(err) = self.reload_file() {
+                            log::warn!("Error while reloading project info file: {err}");
+                        }
+                        continue;
                     }
-                    continue;
+                    _ => {
+                        log::error!(
+                            "Unexpected kind of path to load: {project_path_kind:?}: {path_to_load:?}"
+                        );
+                    }
                 }
 
                 let event_path = if path_to_load.file_name().and_then(|name| name.to_str())
@@ -919,42 +958,31 @@ impl Project {
                     path_to_load
                 };
 
-                if !self.is_relevant_event_path(&event_path) {
-                    continue;
-                }
-
                 match self.schema.load_file(&event_path, &mut self.objects) {
                     Ok(file_id) => {
-                        // Check if we have a normal file path or a top level folder. We should
-                        // possibly filter these out even higher up, but we're already here so
-                        // we need to handle it correctly
-                        if self.is_top_level_folder(&file_id) {
-                            file_objects_needing_rescan.insert(file_id);
-                        } else {
-                            let parent_path = get_parent_path(&event_path);
-                            let parent_id_option = self.find_object_by_path(parent_path);
-                            if let Some(parent_id) = parent_id_option {
-                                let parent_object = self.objects.get(&parent_id).unwrap();
-                                let parent_has_child = parent_object
-                                    .borrow()
-                                    .get_base()
+                        let parent_path = get_parent_path(&event_path);
+                        let parent_id_option = self.find_object_by_path(parent_path);
+                        if let Some(parent_id) = parent_id_option {
+                            let parent_object = self.objects.get(&parent_id).unwrap();
+                            let parent_has_child = parent_object
+                                .borrow()
+                                .get_base()
+                                .children
+                                .contains(&file_id);
+                            if !parent_has_child {
+                                parent_object
+                                    .borrow_mut()
+                                    .get_base_mut()
                                     .children
-                                    .contains(&file_id);
-                                if !parent_has_child {
-                                    parent_object
-                                        .borrow_mut()
-                                        .get_base_mut()
-                                        .children
-                                        .push(file_id);
-                                }
-
-                                file_objects_needing_rescan.insert(parent_id);
-                            } else {
-                                log::debug!(
-                                    "Could not find parent object: {parent_path:?} while processing updates. \
-                                Ignoring for now, maybe it will appear later (or be cleaned up)"
-                                );
+                                    .push(file_id);
                             }
+
+                            file_objects_needing_rescan.insert(parent_id);
+                        } else {
+                            log::debug!(
+                                "Could not find parent object: {parent_path:?} while processing updates. \
+                                Ignoring for now, maybe it will appear later (or be cleaned up)"
+                            );
                         }
                     }
                     Err(err) => log::debug!("Could not load {event_path:?}: {err}"),
@@ -1033,52 +1061,72 @@ impl Project {
         }
     }
 
-    /// Determine if we care about an event happening at this path. This filters out things like events
-    /// starting with `.git/`, hidden files (on linux), unknown extensions, or files not in one of the
-    /// three top level folders
+    // enum PathPositionInProject {
+    //     /// A valid file path within one of the top level folders
+    //     Contents,
+    //
+
+    /// Classify an event happening at a path. This filters out things events starting with `.git/`,
+    /// hidden files (on linux), unknown extensions, or files not in one of the top level folders
     ///
-    /// It does not check for files existing, and does not do anything specific to modification types.
-    /// The string argument is only to provide better log message output
-    fn is_relevant_event_path(&self, modify_path: &Path) -> bool {
-        // We assume that any files that don't have an extension are folders but this function
-        // not checking disk means we can't verify that
-        if modify_path
-            .extension()
-            .is_some_and(|extension| extension != "md" && extension != "toml")
-        {
-            // we write .tmp files and then immediately remove them and other editors can do the same
-            // we also don't care about files that other programs generate
-            return false;
+    /// It does not check for files existing, and does not do anything specific to modification types
+    fn classify_path_position(&self, modify_path: &Path) -> ProjectPathKind {
+        if !modify_path.starts_with(self.get_path()) {
+            // We don't really need to log here but this should also be the path of our
+            // project tracker, so getting implies that something is wrong
+            log::warn!("invalid event path not in project: {modify_path:?}");
+            return ProjectPathKind::External;
         }
 
-        if modify_path
-            .file_name()
-            .is_none_or(|filename| filename.to_string_lossy().starts_with('.'))
-        {
-            // modified files should have a name, and we don't want to look at hidden files
-            return false;
+        if modify_path == self.get_project_info_file() {
+            return ProjectPathKind::ProjectFile;
         }
 
-        let relative_path = match modify_path.strip_prefix(self.get_path()) {
-            Ok(relative_path) => relative_path,
-            Err(err) => {
-                log::error!("invalid event path not in project: {err}");
-                return false;
+        if modify_path.iter().any(|component| component == ".git") {
+            return ProjectPathKind::Git;
+        }
+
+        for top_level_folder_id in &self.top_level_folders {
+            let top_level_folder = self.objects.get(top_level_folder_id).unwrap().borrow();
+            let folder_path = top_level_folder.get_path();
+            if modify_path.starts_with(&folder_path) {
+                if modify_path == folder_path
+                    || modify_path == folder_path.join(FOLDER_METADATA_FILE_NAME)
+                {
+                    return ProjectPathKind::TopLevelFolder;
+                }
+
+                // We've found an object inside of the folders
+
+                // We assume that any files that don't have an extension are folders but this
+                // function doesn't check the disk, so we can't verify if it's actually a folder
+                if modify_path
+                    .extension()
+                    .is_some_and(|extension| extension != "md" && extension != "toml")
+                {
+                    // we write .tmp files and then immediately remove them and other editors can do the same
+                    // we also don't care about files that other programs generate
+                    return ProjectPathKind::UnrecognizedExtension;
+                }
+
+                if let Some(filename) = modify_path.file_name() {
+                    if filename.to_string_lossy().starts_with('.') {
+                        // we don't want to look at hidden files
+                        return ProjectPathKind::Hidden;
+                    }
+                } else {
+                    // this shouldn't be possible but I'm covering my bases
+                    log::error!("Found an event for a file without a filename??");
+                    return ProjectPathKind::UnrecognizedLocation;
+                }
+
+                // This has passed all of our checks, it seems to be a normal update we want to
+                // process
+                return ProjectPathKind::Contents;
             }
-        };
-
-        if !(relative_path.starts_with("text")
-            || relative_path.starts_with("characters")
-            || relative_path.starts_with("worldbuilding"))
-        {
-            if !relative_path.starts_with(".git") {
-                // We expect a bunch of git events, but other events are unexpected, so log it
-                log::debug!("invalid event path not in project folders: {modify_path:?}");
-            }
-            return false;
         }
 
-        true
+        ProjectPathKind::UnrecognizedLocation
     }
 
     #[cfg(test)]
