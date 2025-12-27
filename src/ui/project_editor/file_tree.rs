@@ -114,21 +114,13 @@ impl Project {
         );
 
         // Create the rest of the top level tree
-        self.objects
-            .get(&self.text_id)
-            .unwrap()
-            .borrow_mut()
-            .build_tree(&self.objects, builder, actions, None, node_height);
-        self.objects
-            .get(&self.characters_id)
-            .unwrap()
-            .borrow_mut()
-            .build_tree(&self.objects, builder, actions, None, node_height);
-        self.objects
-            .get(&self.worldbuilding_id)
-            .unwrap()
-            .borrow_mut()
-            .build_tree(&self.objects, builder, actions, None, node_height);
+        for top_level_folder in &self.top_level_folders {
+            self.objects
+                .get(top_level_folder)
+                .unwrap()
+                .borrow_mut()
+                .build_tree(&self.objects, builder, actions, None, node_height);
+        }
     }
 }
 

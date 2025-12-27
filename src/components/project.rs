@@ -41,6 +41,8 @@ pub struct Project {
     pub text_id: FileID,
     pub characters_id: FileID,
     pub worldbuilding_id: FileID,
+    /// The list of top level folders. The order is hardcoded for now but this can be relaxed later
+    pub top_level_folders: Vec<FileID>,
     pub objects: FileObjectStore,
     toml_header: DocumentMut,
 
@@ -181,6 +183,9 @@ fn create_watcher() -> notify::Result<(RecommendedDebouncer, WatcherReceiver)> {
     Ok((watcher, rx))
 }
 
+// We hardcode the path here, might get replaced when schema can change file objects
+const TEXT_FOLDER_POSITION: usize = 0;
+
 impl Project {
     /// Create a new project
     pub fn new(
@@ -227,6 +232,12 @@ impl Project {
         let mut toml_header = DocumentMut::new();
         toml_header["schema"] = toml_edit::value(schema.get_schema_identifier());
 
+        let top_level_folders = vec![
+            text.id().clone(),
+            characters.id().clone(),
+            worldbuilding.id().clone(),
+        ];
+
         let mut project = Self {
             schema,
             base_metadata: FileObjectMetadata {
@@ -237,6 +248,7 @@ impl Project {
             text_id: text.id().clone(),
             characters_id: characters.id().clone(),
             worldbuilding_id: worldbuilding.id().clone(),
+            top_level_folders,
             file,
             toml_header,
             objects: HashMap::new(),
@@ -357,6 +369,12 @@ impl Project {
             .watch(watcher_path, RecursiveMode::Recursive)
             .unwrap();
 
+        let top_level_folders = vec![
+            text_id.clone(),
+            characters_id.clone(),
+            worldbuilding_id.clone(),
+        ];
+
         let mut project = Self {
             schema,
             metadata,
@@ -365,6 +383,7 @@ impl Project {
             text_id,
             characters_id,
             worldbuilding_id,
+            top_level_folders,
             toml_header,
             objects,
             event_queue: VecDeque::new(),
@@ -394,24 +413,17 @@ impl Project {
     pub fn save(&mut self) -> Result<(), CheeseError> {
         // First, try saving the children
 
-        let text_result = self
-            .objects
-            .get(&self.text_id)
-            .unwrap()
-            .borrow_mut()
-            .save(&self.objects);
-        let characters_result = self
-            .objects
-            .get(&self.characters_id)
-            .unwrap()
-            .borrow_mut()
-            .save(&self.objects);
-        let worldbuilding_result = self
-            .objects
-            .get(&self.worldbuilding_id)
-            .unwrap()
-            .borrow_mut()
-            .save(&self.objects);
+        let results: Vec<Result<(), CheeseError>> = self
+            .top_level_folders
+            .iter()
+            .map(|folder_id| {
+                self.objects
+                    .get(folder_id)
+                    .unwrap()
+                    .borrow_mut()
+                    .save(&self.objects)
+            })
+            .collect();
 
         // Now save the project itself
         // unlike other file objects, this one doesn't rename automatically. This might be something
@@ -434,9 +446,9 @@ impl Project {
             self.file.modified = false;
         }
 
-        text_result?;
-        characters_result?;
-        worldbuilding_result?;
+        for result in results {
+            result?
+        }
 
         Ok(())
     }
@@ -576,9 +588,7 @@ impl Project {
     }
 
     pub fn is_top_level_folder(&self, file_id: &FileID) -> bool {
-        *file_id == self.text_id
-            || *file_id == self.characters_id
-            || *file_id == self.worldbuilding_id
+        self.top_level_folders.contains(file_id)
     }
 
     /// Determine if the file should be loaded
@@ -679,52 +689,26 @@ impl Project {
 
         write_outline_property("Story Summary", &self.metadata.summary, &mut export_string);
 
-        let text = self.objects.get(&self.text_id).unwrap().borrow();
+        for top_level_folder_id in &self.top_level_folders {
+            let folder = self.objects.get(top_level_folder_id).unwrap().borrow();
 
-        if !text.get_base().children.is_empty() {
-            export_string.push_str("# Scenes\n\n");
+            if !folder.get_base().children.is_empty() {
+                if folder.get_base().metadata.name == "Text" {
+                    export_string.push_str("# Scenes\n\n");
+                } else {
+                    export_string.push_str(&format!("# {}\n\n", folder.get_base().metadata.name));
+                }
 
-            for child_id in text.get_base().children.iter() {
-                self.objects
-                    .get(child_id)
-                    .unwrap()
-                    .borrow()
-                    .generate_outline(2, &mut export_string, &self.objects);
+                for child_id in folder.get_base().children.iter() {
+                    self.objects
+                        .get(child_id)
+                        .unwrap()
+                        .borrow()
+                        .generate_outline(2, &mut export_string, &self.objects);
+                }
+
+                export_string.push_str("\n\n");
             }
-
-            export_string.push_str("\n\n");
-        }
-
-        let characters = self.objects.get(&self.characters_id).unwrap().borrow();
-
-        if !characters.get_base().children.is_empty() {
-            export_string.push_str("# Characters\n\n");
-
-            for child_id in characters.get_base().children.iter() {
-                self.objects
-                    .get(child_id)
-                    .unwrap()
-                    .borrow()
-                    .generate_outline(2, &mut export_string, &self.objects);
-            }
-
-            export_string.push_str("\n\n");
-        }
-
-        let worldbuilding = self.objects.get(&self.worldbuilding_id).unwrap().borrow();
-
-        if !worldbuilding.get_base().children.is_empty() {
-            export_string.push_str("# Worldbuilding\n\n");
-
-            for child_id in worldbuilding.get_base().children.iter() {
-                self.objects
-                    .get(child_id)
-                    .unwrap()
-                    .borrow()
-                    .generate_outline(2, &mut export_string, &self.objects);
-            }
-
-            export_string.push_str("\n\n");
         }
 
         export_string
@@ -738,7 +722,7 @@ impl Project {
 
         for child_id in self
             .objects
-            .get(&self.text_id)
+            .get(&self.top_level_folders[TEXT_FOLDER_POSITION])
             .unwrap()
             .borrow()
             .get_base()
