@@ -695,7 +695,7 @@ fn test_load_markdown() {
     .unwrap();
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/000-New_Scene.md"),
+        base_dir.path().join("test_project/text/000-New_Scene.md"),
         sample_body,
     )
     .unwrap();
@@ -746,7 +746,7 @@ contents1
     .unwrap();
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/000-New_Scene.md"),
+        base_dir.path().join("test_project/text/000-New_Scene.md"),
         file_text,
     )
     .unwrap();
@@ -792,7 +792,7 @@ fn test_name_from_filename() {
 
     let mut objects = FileObjectStore::new();
 
-    write_with_temp_file(&text_path.join("4-scene2.md"), "contents1").unwrap();
+    write_with_temp_file(text_path.join("4-scene2.md"), "contents1").unwrap();
 
     let scene_id_loaded = SCHEMA.load_file(&text_path, &mut objects).unwrap();
     let folder = objects.get(&scene_id_loaded).unwrap();
@@ -817,7 +817,7 @@ fn test_fix_indexing_on_load() {
         .get_path();
 
     write_with_temp_file(
-        &text_path.join("4-scene2.md"),
+        text_path.join("4-scene2.md"),
         r#"id = "0"
 ++++++++"#,
     )
@@ -825,10 +825,10 @@ fn test_fix_indexing_on_load() {
 
     std::fs::create_dir(text_path.join("05-dir")).unwrap();
 
-    write_with_temp_file(&text_path.join("05-dir/metadata.toml"), r#"id = "1""#).unwrap();
+    write_with_temp_file(text_path.join("05-dir/metadata.toml"), r#"id = "1""#).unwrap();
 
     write_with_temp_file(
-        &text_path.join("05-dir/2-scene.md"),
+        text_path.join("05-dir/2-scene.md"),
         r#"id = "1-0"
 ++++++++
 contents123"#,
@@ -836,14 +836,14 @@ contents123"#,
     .unwrap();
 
     write_with_temp_file(
-        &text_path.join("10-scene2.md"),
+        text_path.join("10-scene2.md"),
         r#"id = "2"
 ++++++++"#,
     )
     .unwrap();
 
     write_with_temp_file(
-        &text_path.join("scene_no_index.md"),
+        text_path.join("scene_no_index.md"),
         r#"id = "3"
 ++++++++"#,
     )
@@ -2646,10 +2646,9 @@ file_type = "worldbuilding""#;
     .unwrap();
 
     write_with_temp_file(
-        &Path::join(
-            base_dir.path(),
-            "test_project/worldbuilding/000-place1/metadata.toml",
-        ),
+        base_dir
+            .path()
+            .join("test_project/worldbuilding/000-place1/metadata.toml"),
         place_file_text,
     )
     .unwrap();
@@ -2661,10 +2660,9 @@ file_type = "worldbuilding""#;
     .unwrap();
 
     write_with_temp_file(
-        &Path::join(
-            base_dir.path(),
-            "test_project/worldbuilding/001-place2/metadata.toml",
-        ),
+        base_dir
+            .path()
+            .join("test_project/worldbuilding/001-place2/metadata.toml"),
         worldbuilding_file_text,
     )
     .unwrap();
@@ -2709,7 +2707,7 @@ fn test_tracker_creation_basic() {
     assert_eq!(project.objects.len(), 3);
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/scene.md"),
+        base_dir.path().join("test_project/text/scene.md"),
         scene_text,
     )
     .unwrap();
@@ -2740,7 +2738,7 @@ fn test_tracker_creation_folder() {
     create_dir(&folder1_path).unwrap();
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/folder1/scene.md"),
+        base_dir.path().join("test_project/text/folder1/scene.md"),
         scene_text,
     )
     .unwrap();
@@ -2778,10 +2776,9 @@ file_type = "place""#;
     .unwrap();
 
     write_with_temp_file(
-        &Path::join(
-            base_dir.path(),
-            "test_project/worldbuilding/000-place1/metadata.toml",
-        ),
+        base_dir
+            .path()
+            .join("test_project/worldbuilding/000-place1/metadata.toml"),
         place_file_text,
     )
     .unwrap();
@@ -2809,7 +2806,7 @@ fn test_tracker_creation_by_movement() {
     )
     .unwrap();
 
-    write_with_temp_file(&other_dir.path().join("scene.md"), scene_text).unwrap();
+    write_with_temp_file(other_dir.path().join("scene.md"), scene_text).unwrap();
 
     process_updates(&mut project);
 
@@ -2846,7 +2843,7 @@ fn test_tracker_creation_by_movement_folder() {
 ++++++++
 123456"#;
 
-    write_with_temp_file(&other_dir.path().join("000-folder1/scene.md"), scene_text).unwrap();
+    write_with_temp_file(other_dir.path().join("000-folder1/scene.md"), scene_text).unwrap();
 
     process_updates(&mut project);
 
@@ -5262,7 +5259,7 @@ contents1
     assert_eq!(project.objects.len(), 3);
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/scene.md"),
+        base_dir.path().join("test_project/text/scene.md"),
         scene_text,
     )
     .unwrap();
@@ -5322,7 +5319,7 @@ fn test_tracker_creation_then_move_folder() {
     create_dir(&folder1_path).unwrap();
 
     write_with_temp_file(
-        &Path::join(base_dir.path(), "test_project/text/folder1/scene.md"),
+        base_dir.path().join("test_project/text/folder1/scene.md"),
         scene1_text,
     )
     .unwrap();

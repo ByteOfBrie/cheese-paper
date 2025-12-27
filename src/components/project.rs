@@ -422,7 +422,7 @@ impl Project {
 
             let final_str = self.toml_header.to_string();
 
-            write_with_temp_file(&self.get_project_info_file(), final_str)?;
+            write_with_temp_file(self.get_project_info_file(), final_str)?;
 
             let new_modtime = std::fs::metadata(self.get_project_info_file())
                 .expect("attempted to load file that does not exist")
