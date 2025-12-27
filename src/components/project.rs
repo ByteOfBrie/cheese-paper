@@ -951,29 +951,39 @@ impl Project {
 
                 match self.schema.load_file(&event_path, &mut self.objects) {
                     Ok(file_id) => {
-                        let parent_path = get_parent_path(&event_path);
-                        let parent_id_option = self.find_object_by_path(parent_path);
-                        if let Some(parent_id) = parent_id_option {
-                            let parent_object = self.objects.get(&parent_id).unwrap();
-                            let parent_has_child = parent_object
-                                .borrow()
-                                .get_base()
-                                .children
-                                .contains(&file_id);
-                            if !parent_has_child {
-                                parent_object
-                                    .borrow_mut()
-                                    .get_base_mut()
-                                    .children
-                                    .push(file_id);
-                            }
-
-                            file_objects_needing_rescan.insert(parent_id);
+                        // Check if we have a normal file path or a top level folder. We should
+                        // possibly filter these out even higher up, but we're already here so
+                        // we need to handle it correctly
+                        if file_id == self.text_id
+                            || file_id == self.characters_id
+                            || file_id == self.worldbuilding_id
+                        {
+                            file_objects_needing_rescan.insert(file_id);
                         } else {
-                            log::debug!(
-                                "Could not find parent object: {parent_path:?} while processing updates. \
+                            let parent_path = get_parent_path(&event_path);
+                            let parent_id_option = self.find_object_by_path(parent_path);
+                            if let Some(parent_id) = parent_id_option {
+                                let parent_object = self.objects.get(&parent_id).unwrap();
+                                let parent_has_child = parent_object
+                                    .borrow()
+                                    .get_base()
+                                    .children
+                                    .contains(&file_id);
+                                if !parent_has_child {
+                                    parent_object
+                                        .borrow_mut()
+                                        .get_base_mut()
+                                        .children
+                                        .push(file_id);
+                                }
+
+                                file_objects_needing_rescan.insert(parent_id);
+                            } else {
+                                log::debug!(
+                                    "Could not find parent object: {parent_path:?} while processing updates. \
                                 Ignoring for now, maybe it will appear later (or be cleaned up)"
-                            );
+                                );
+                            }
                         }
                     }
                     Err(err) => log::debug!("Could not load {event_path:?}: {err}"),
