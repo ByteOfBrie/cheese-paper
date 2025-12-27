@@ -1015,12 +1015,20 @@ impl Project {
         // Visit every object and remove all children from the dangling list. This will
         // not find cycles, but if there are cycles in our tree we have bigger problems
         for file_object in self.objects.values() {
-            for child in file_object.borrow().get_base().children.iter() {
+            let file_object = file_object.borrow();
+            for child in file_object.get_base().children.iter() {
                 if !dangling.remove(child) {
                     // I might regret making this a panic instead of a log, but it
                     // shouldn't be possible (and I'm not sure how to recover)
                     panic!("Found two occurances of child {child} in objects");
                 }
+            }
+            if file_object.get_base().index.is_none()
+                && file_object.id() != &self.text_id
+                && file_object.id() != &self.characters_id
+                && file_object.id() != &self.worldbuilding_id
+            {
+                panic!("Found file object {file_object} with index None");
             }
         }
 
