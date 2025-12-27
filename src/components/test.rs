@@ -13,6 +13,7 @@ use std::path::Path;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 use std::{fmt::Display, thread, time};
 
 use crate::schemas::FileType;
@@ -26,6 +27,10 @@ use crate::schemas::SCHEMA_LIST;
 use crate::schemas::export_file_types::{CHARACTER, FOLDER, PLACE, SCENE};
 
 const SCHEMA: &'static dyn Schema = &crate::schemas::DEFAULT_SCHEMA;
+/// In some cases in CI (presumably because of weird network/vm filesystems), we can write a file
+/// but not have the mtime update. This should be tuned such that we can sleep for this long and
+/// always get an mtime update after writing
+const MTIME_SLEEP_DURATION: Duration = time::Duration::from_millis(10);
 
 fn file_id(s: &str) -> Rc<String> {
     Rc::new(s.to_string())
@@ -5354,4 +5359,77 @@ fn test_tracker_creation_then_move_folder() {
 
     // There should be the metadata file and the scene file
     assert_eq!(std::fs::read_dir(&folder1_path_new).unwrap().count(), 2);
+}
+
+/// Mostly a more complex version of test_tracker_new_file_index: within a folder known to the
+/// project, create a file AND modify the folder in some way, checking that the new file exists
+/// and is read in properly
+#[test]
+fn test_tracker_index_in_modified_folder() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let scene_text = r#"id = "1"
+++++++++
+contents1
+"#;
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    let folder = project
+        .objects
+        .get(&project.text_id)
+        .unwrap()
+        .borrow_mut()
+        .create_child_at_end(FOLDER)
+        .unwrap();
+
+    project.save().unwrap();
+    process_updates(&mut project);
+
+    // Better to write this to a variable because we're going to move things around
+    let folder_path = folder.get_path();
+    let mut folder_path_temp = folder_path.clone();
+    folder_path_temp.set_file_name("temp-folder-name");
+
+    // Starting assumptions
+    assert_eq!(project.objects.len(), 4);
+    assert_eq!(read_dir(&folder_path).unwrap().count(), 1);
+
+    // Create the new file and move the folder twice (ending in the same spot)
+    write_with_temp_file(folder_path.join("scene.md"), scene_text).unwrap();
+    std::fs::rename(&folder_path, &folder_path_temp).unwrap();
+    thread::sleep(MTIME_SLEEP_DURATION);
+    std::fs::rename(&folder_path_temp, &folder_path).unwrap();
+
+    process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 5);
+
+    assert!(project.objects.contains_key(&file_id("1")));
+
+    // Check the file contents (first)
+    let scene1 = project.objects.get(&file_id("1")).unwrap().borrow();
+    assert_eq!(scene1.get_type(), SCENE);
+    assert_eq!(scene1.get_body().trim(), "contents1");
+    assert_eq!(scene1.get_base().index, Some(0));
+
+    assert_eq!(
+        read_dir(Path::join(base_dir.path(), "test_project/text/"))
+            .unwrap()
+            .count(),
+        2
+    );
+
+    assert_eq!(read_dir(&folder_path).unwrap().count(), 2);
+
+    assert!(scene1.get_file().exists());
+    assert_eq!(
+        scene1.get_file().canonicalize().unwrap(),
+        folder_path.canonicalize().unwrap().join("000-scene.md"),
+    );
 }
