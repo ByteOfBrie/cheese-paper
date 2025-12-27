@@ -305,44 +305,31 @@ fn test_create_child() {
 
     // create the scenes
     let scene = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
 
     let character = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(CHARACTER)
         .unwrap();
 
     let folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
 
     let place = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(PLACE)
         .unwrap();
 
     // Four file objects plus the metadata
-    let path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let path = project.get_text_folder().borrow().get_path();
     assert_eq!(read_dir(path).unwrap().count(), 5);
     assert!(scene.get_file().exists());
     assert_eq!(scene.get_base().index, Some(0));
@@ -366,9 +353,7 @@ fn test_set_index_folders() {
     .unwrap();
 
     let mut top_level_folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -557,9 +542,14 @@ fn test_reload_project() {
     )
     .unwrap();
 
+    // This should probably be schema specific, but for now we just have it hardcoded
+    let text_id = project.top_level_folders[0].clone();
+    let characters_id = project.top_level_folders[1].clone();
+    let worldbuilding_id = project.top_level_folders[2].clone();
+
     let mut scene = project
         .objects
-        .get(&project.text_id)
+        .get(&text_id)
         .unwrap()
         .borrow_mut()
         .create_child_at_end(SCENE)
@@ -568,7 +558,7 @@ fn test_reload_project() {
 
     let character = project
         .objects
-        .get(&project.characters_id)
+        .get(&characters_id)
         .unwrap()
         .borrow_mut()
         .create_child_at_end(CHARACTER)
@@ -577,7 +567,7 @@ fn test_reload_project() {
 
     let folder = project
         .objects
-        .get(&project.text_id)
+        .get(&text_id)
         .unwrap()
         .borrow_mut()
         .create_child_at_end(FOLDER)
@@ -586,7 +576,7 @@ fn test_reload_project() {
 
     let place = project
         .objects
-        .get(&project.worldbuilding_id)
+        .get(&worldbuilding_id)
         .unwrap()
         .borrow_mut()
         .create_child_at_end(PLACE)
@@ -613,16 +603,9 @@ fn test_reload_project() {
     // Verify the counts in each folder are correct:
     // Text (scene, folder + metadata)
     assert_eq!(
-        read_dir(
-            project
-                .objects
-                .get(&project.text_id)
-                .unwrap()
-                .borrow()
-                .get_path()
-        )
-        .unwrap()
-        .count(),
+        read_dir(project.objects.get(&text_id).unwrap().borrow().get_path())
+            .unwrap()
+            .count(),
         3
     );
 
@@ -631,7 +614,7 @@ fn test_reload_project() {
         read_dir(
             project
                 .objects
-                .get(&project.characters_id)
+                .get(&characters_id)
                 .unwrap()
                 .borrow()
                 .get_path()
@@ -646,7 +629,7 @@ fn test_reload_project() {
         read_dir(
             project
                 .objects
-                .get(&project.worldbuilding_id)
+                .get(&worldbuilding_id)
                 .unwrap()
                 .borrow()
                 .get_path()
@@ -703,9 +686,7 @@ fn test_load_markdown() {
     let project = Project::load(base_dir.path().join("test_project")).unwrap();
 
     let text_child = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow()
         .get_base()
         .children
@@ -877,9 +858,7 @@ fn test_delete() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -967,7 +946,12 @@ fn test_delete() {
     assert!(!project.objects.contains_key(&scene2_id));
 
     // Now, try to remove the folder
-    <dyn FileObject>::remove_child(&folder1_id, &project.text_id, &mut project.objects).unwrap();
+    <dyn FileObject>::remove_child(
+        &folder1_id,
+        &project.top_level_folders[0],
+        &mut project.objects,
+    )
+    .unwrap();
 
     // we should have removed the ending scene, check on disk
     assert!(project.get_path().join("text/metadata.toml").exists());
@@ -982,14 +966,7 @@ fn test_delete() {
     );
 
     assert_eq!(
-        project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_base()
-            .children
-            .len(),
+        project.get_text_folder().borrow().get_base().children.len(),
         0
     );
 
@@ -1010,9 +987,7 @@ fn test_delete_middle() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1024,9 +999,7 @@ fn test_delete_middle() {
     scene1.get_base_mut().file.modified = true;
 
     let mut scene2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -1041,20 +1014,18 @@ fn test_delete_middle() {
     project.add_object(scene1);
     project.save().unwrap();
 
-    <dyn FileObject>::remove_child(&folder1_id, &project.text_id, &mut project.objects).unwrap();
+    <dyn FileObject>::remove_child(
+        &folder1_id,
+        &project.top_level_folders[0],
+        &mut project.objects,
+    )
+    .unwrap();
 
     assert!(!project.get_path().join("text/000-folder1/").exists());
     assert!(project.get_path().join("text/000-scene2.md").exists());
 
     assert_eq!(
-        project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_base()
-            .children
-            .len(),
+        project.get_text_folder().borrow().get_base().children.len(),
         1
     );
 
@@ -1075,9 +1046,7 @@ fn test_move_simple() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1085,9 +1054,7 @@ fn test_move_simple() {
     folder1.get_base_mut().file.modified = true;
 
     let mut folder2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1161,9 +1128,7 @@ fn test_move_multiple_times() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1171,9 +1136,7 @@ fn test_move_multiple_times() {
     folder1.get_base_mut().file.modified = true;
 
     let mut folder2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1280,12 +1243,10 @@ fn test_move_folder_contents() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1293,9 +1254,7 @@ fn test_move_folder_contents() {
     folder1.get_base_mut().file.modified = true;
 
     let mut folder2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1412,12 +1371,10 @@ fn test_move_within_folder_backwards() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1425,9 +1382,7 @@ fn test_move_within_folder_backwards() {
     folder.get_base_mut().file.modified = true;
 
     let mut scene = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -1483,9 +1438,7 @@ fn test_move_within_folder_backwards() {
     // Check that the values are properly ordered within the children
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -1497,9 +1450,7 @@ fn test_move_within_folder_backwards() {
 
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -1522,12 +1473,10 @@ fn test_move_within_folder_forwards() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1535,9 +1484,7 @@ fn test_move_within_folder_forwards() {
     folder.get_base_mut().file.modified = true;
 
     let mut scene = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -1593,9 +1540,7 @@ fn test_move_within_folder_forwards() {
     // Check that the values are properly ordered within the children
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -1607,9 +1552,7 @@ fn test_move_within_folder_forwards() {
 
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -1653,9 +1596,7 @@ fn test_move_between_folder_contents() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1663,9 +1604,7 @@ fn test_move_between_folder_contents() {
     folder1.get_base_mut().file.modified = true;
 
     let mut folder2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -1995,12 +1934,10 @@ fn test_move_to_parent() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -2050,9 +1987,7 @@ fn test_move_to_parent() {
     // Text contains Folder 1
     assert_eq!(
         project
-            .objects
-            .get(&text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2063,23 +1998,14 @@ fn test_move_to_parent() {
 
     // Text has 2 children
     assert_eq!(
-        project
-            .objects
-            .get(&text_id)
-            .unwrap()
-            .borrow()
-            .get_base()
-            .children
-            .len(),
+        project.get_text_folder().borrow().get_base().children.len(),
         2
     );
 
     // Text contains scene's ID
     assert_eq!(
         project
-            .objects
-            .get(&text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2101,12 +2027,10 @@ fn test_move_to_parent_current_position() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -2156,9 +2080,7 @@ fn test_move_to_parent_current_position() {
     // Text children contains scene
     assert_eq!(
         project
-            .objects
-            .get(&text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2170,9 +2092,7 @@ fn test_move_to_parent_current_position() {
     // Text contains Folder 1
     assert_eq!(
         project
-            .objects
-            .get(&text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2183,14 +2103,7 @@ fn test_move_to_parent_current_position() {
 
     // Text has 2 children
     assert_eq!(
-        project
-            .objects
-            .get(&text_id)
-            .unwrap()
-            .borrow()
-            .get_base()
-            .children
-            .len(),
+        project.get_text_folder().borrow().get_base().children.len(),
         2
     );
 }
@@ -2207,12 +2120,10 @@ fn test_move_to_self() {
     )
     .unwrap();
 
-    let text_id = project.text_id.clone();
+    let text_id = project.top_level_folders[0].clone();
 
     let mut folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -2220,9 +2131,7 @@ fn test_move_to_self() {
     folder.get_base_mut().file.modified = true;
 
     let mut scene = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -2298,9 +2207,7 @@ fn test_move_to_self() {
     // Check that the values are properly ordered within the children
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2312,9 +2219,7 @@ fn test_move_to_self() {
 
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2361,9 +2266,7 @@ fn test_move_to_child() {
     .unwrap();
 
     let mut top_level_folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -2393,7 +2296,7 @@ fn test_move_to_child() {
     // Try to move into a folder it directly contains:
     let immediate_move = SCHEMA.move_child(
         &top_level_folder_id,
-        &project.text_id,
+        &project.top_level_folders[0],
         &mid_level_folder_id,
         1,
         &project.objects,
@@ -2407,7 +2310,7 @@ fn test_move_to_child() {
     // Try to move into a folder contained within a child:
     let child_move = SCHEMA.move_child(
         &top_level_folder_id,
-        &project.text_id,
+        &project.top_level_folders[0],
         &child_folder_id,
         1,
         &project.objects,
@@ -2421,9 +2324,7 @@ fn test_move_to_child() {
     // Make sure nothing moved on disk:
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2496,9 +2397,7 @@ fn test_move_no_clobber() {
     .unwrap();
 
     let mut scene1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -2506,9 +2405,7 @@ fn test_move_no_clobber() {
     scene1.get_base_mut().file.modified = true;
 
     let mut scene2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -2532,8 +2429,8 @@ fn test_move_no_clobber() {
     SCHEMA
         .move_child(
             &scene1_id,
-            &project.text_id,
-            &project.text_id,
+            &project.top_level_folders[0],
+            &project.top_level_folders[0],
             1,
             &project.objects,
         )
@@ -2544,22 +2441,13 @@ fn test_move_no_clobber() {
 
     // Make sure the file objects moved the children appropriately
     assert_eq!(
-        project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_base()
-            .children
-            .len(),
+        project.get_text_folder().borrow().get_base().children.len(),
         2
     );
 
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2570,9 +2458,7 @@ fn test_move_no_clobber() {
 
     assert_eq!(
         project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
+            .get_text_folder()
             .borrow()
             .get_base()
             .children
@@ -2873,9 +2759,7 @@ fn test_tracker_delete_file() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -2960,9 +2844,7 @@ fn test_tracker_delete_folder() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3069,9 +2951,7 @@ fn test_tracker_rename_file() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3208,9 +3088,7 @@ fn test_tracker_rename_folder() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3244,12 +3122,7 @@ fn test_tracker_rename_folder() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -3381,9 +3254,7 @@ fn test_tracker_move_file() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3417,12 +3288,7 @@ fn test_tracker_move_file() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -3566,9 +3432,7 @@ fn test_tracker_move_folder() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3576,9 +3440,7 @@ fn test_tracker_move_folder() {
     folder1.get_base_mut().file.modified = true;
 
     let mut folder2 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3620,12 +3482,7 @@ fn test_tracker_move_folder() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -3746,9 +3603,7 @@ fn test_tracker_move_file_reindex() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -3782,12 +3637,7 @@ fn test_tracker_move_file_reindex() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -3990,9 +3840,7 @@ fn test_tracker_move_file_copy_delete() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -4026,12 +3874,7 @@ fn test_tracker_move_file_copy_delete() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -4218,12 +4061,7 @@ asdfjkl123"#;
                 .count(),
             2
         );
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
@@ -4243,9 +4081,7 @@ fn test_tracker_move_reindex_folder() {
     .unwrap();
 
     let mut folder1 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();
@@ -4261,9 +4097,7 @@ fn test_tracker_move_reindex_folder() {
     scene2.get_base_mut().file.modified = true;
 
     let mut scene3 = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(SCENE)
         .unwrap();
@@ -4292,12 +4126,7 @@ fn test_tracker_move_reindex_folder() {
         .unwrap()
         .borrow()
         .get_path();
-    let text_path = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
-        .borrow()
-        .get_path();
+    let text_path = project.get_text_folder().borrow().get_path();
 
     // a few baseline checks about our starting env
     assert!(project.objects.contains_key(&folder1_id));
@@ -4508,12 +4337,7 @@ scene4"#;
         assert_eq!(scene4_file_object.get_body().trim(), "scene4");
 
         // And a basic check around text
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
@@ -4550,12 +4374,7 @@ scene4"#;
         assert_eq!(scene4_file_object.get_body().trim(), "scene4");
 
         // And a basic check around text
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
@@ -4689,12 +4508,7 @@ scene4"#;
         assert_eq!(scene4_file_object.get_body().trim(), "scene4");
 
         // And a basic check around text
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
@@ -4731,12 +4545,7 @@ scene4"#;
         assert_eq!(scene4_file_object.get_body().trim(), "scene4");
 
         // And a basic check around text
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 2);
     }
@@ -4878,12 +4687,7 @@ scene4"#;
         assert!(scene4_file_object.get_path().exists());
 
         // And a basic check around text
-        let text_path = project
-            .objects
-            .get(&project.text_id)
-            .unwrap()
-            .borrow()
-            .get_path();
+        let text_path = project.get_text_folder().borrow().get_path();
 
         assert_eq!(std::fs::read_dir(&text_path).unwrap().count(), 3);
     }
@@ -5122,7 +4926,7 @@ fn test_multiple_schemas_reload() {
 
         let mut project_file_ids = Vec::new();
 
-        let mut root_folder = project.objects.get(&project.text_id).unwrap().borrow_mut();
+        let mut root_folder = project.get_text_folder().borrow_mut();
 
         for &file_type in schema.get_all_file_types() {
             let mut file = root_folder.create_child_at_end(file_type).unwrap();
@@ -5378,9 +5182,7 @@ contents1
     .unwrap();
 
     let folder = project
-        .objects
-        .get(&project.text_id)
-        .unwrap()
+        .get_text_folder()
         .borrow_mut()
         .create_child_at_end(FOLDER)
         .unwrap();

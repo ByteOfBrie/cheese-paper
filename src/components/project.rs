@@ -1080,6 +1080,11 @@ impl Project {
 
         true
     }
+
+    #[cfg(test)]
+    pub fn get_text_folder(&self) -> &RefCell<Box<dyn FileObject>> {
+        self.objects.get(&self.top_level_folders[0]).unwrap()
+    }
 }
 
 fn get_parent_path(object_path: &Path) -> &Path {
