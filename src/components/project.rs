@@ -576,8 +576,8 @@ impl Project {
     }
 
     /// Determine if the file should be loaded
-    fn should_load(&mut self, file_to_read: &Path) -> Result<bool, CheeseError> {
-        let current_modtime = std::fs::metadata(file_to_read)
+    fn should_load(&mut self) -> Result<bool, CheeseError> {
+        let current_modtime = std::fs::metadata(self.get_project_info_file())
             .expect("attempted to load file that does not exist")
             .modified()
             .expect("Modtime not available");
@@ -593,13 +593,11 @@ impl Project {
     }
 
     pub fn reload_file(&mut self) -> Result<(), CheeseError> {
-        let file_to_read = self.get_project_info_file();
-
-        if !self.should_load(&file_to_read)? {
+        if !self.should_load()? {
             return Ok(());
         }
 
-        let project_info_data = std::fs::read_to_string(file_to_read)?;
+        let project_info_data = std::fs::read_to_string(self.get_project_info_file())?;
 
         let new_toml_header = project_info_data
             .parse::<DocumentMut>()
