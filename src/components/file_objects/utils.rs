@@ -58,7 +58,7 @@ pub fn process_name_for_filename(name: &str) -> String {
     let name = name.replace("'", "");
 
     // Characters that might be annoying to escape/handle sometimes, avoid including them at all
-    let dangerous_character_filter = Regex::new(r#"[/\?%*:|"<>\x7F\x00-\x1F]"#).unwrap();
+    let dangerous_character_filter = Regex::new(r#"[./\?%*:|"<>\x7F\x00-\x1F]"#).unwrap();
     dangerous_character_filter
         .replace_all(&name, "-")
         .into_owned()
