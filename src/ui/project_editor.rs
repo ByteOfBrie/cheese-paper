@@ -611,9 +611,7 @@ impl ProjectEditor {
     fn set_editor_tab(&mut self, page: &Page, keep: bool) {
         // We don't want to open these, so just exit early
         if let Page::FileObject(id) = page
-            && (*id == self.project.text_id
-                || *id == self.project.characters_id
-                || *id == self.project.worldbuilding_id)
+            && self.project.is_top_level_folder(id)
         {
             return;
         }

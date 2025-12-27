@@ -171,10 +171,7 @@ pub fn ui(editor: &mut ProjectEditor, ui: &mut egui::Ui) {
                     && let Page::FileObject(target_file_id) = &drag_and_drop.target
                 {
                     // Don't move one of the roots
-                    if *moving_file_id == editor.project.text_id
-                        || *moving_file_id == editor.project.characters_id
-                        || *moving_file_id == editor.project.worldbuilding_id
-                    {
+                    if editor.project.is_top_level_folder(moving_file_id) {
                         continue;
                     }
 

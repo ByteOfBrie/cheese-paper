@@ -575,6 +575,12 @@ impl Project {
         Ok(modified)
     }
 
+    pub fn is_top_level_folder(&self, file_id: &FileID) -> bool {
+        *file_id == self.text_id
+            || *file_id == self.characters_id
+            || *file_id == self.worldbuilding_id
+    }
+
     /// Determine if the file should be loaded
     fn should_load(&mut self) -> Result<bool, CheeseError> {
         let current_modtime = std::fs::metadata(self.get_project_info_file())
@@ -952,10 +958,7 @@ impl Project {
                         // Check if we have a normal file path or a top level folder. We should
                         // possibly filter these out even higher up, but we're already here so
                         // we need to handle it correctly
-                        if file_id == self.text_id
-                            || file_id == self.characters_id
-                            || file_id == self.worldbuilding_id
-                        {
+                        if self.is_top_level_folder(&file_id) {
                             file_objects_needing_rescan.insert(file_id);
                         } else {
                             let parent_path = get_parent_path(&event_path);
@@ -1013,12 +1016,12 @@ impl Project {
 
     pub fn clean_up_orphaned_objects(&mut self) {
         // Start by getting a set of all objects
-        let mut dangling: HashSet<Rc<String>> = HashSet::from_iter(self.objects.keys().cloned());
-
-        // Remove the three special cases which are supposed to be there
-        dangling.remove(&self.text_id);
-        dangling.remove(&self.characters_id);
-        dangling.remove(&self.worldbuilding_id);
+        let mut dangling: HashSet<Rc<String>> = HashSet::from_iter(
+            self.objects
+                .keys()
+                .filter(|file_id| !self.is_top_level_folder(file_id))
+                .cloned(),
+        );
 
         // Visit every object and remove all children from the dangling list. This will
         // not find cycles, but if there are cycles in our tree we have bigger problems
@@ -1031,10 +1034,7 @@ impl Project {
                     panic!("Found two occurances of child {child} in objects");
                 }
             }
-            if file_object.get_base().index.is_none()
-                && file_object.id() != &self.text_id
-                && file_object.id() != &self.characters_id
-                && file_object.id() != &self.worldbuilding_id
+            if file_object.get_base().index.is_none() && !self.is_top_level_folder(file_object.id())
             {
                 panic!("Found file object {file_object} with index None");
             }
