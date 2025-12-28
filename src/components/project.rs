@@ -803,213 +803,222 @@ impl Project {
         }
     }
 
+    #[cfg(test)]
+    pub fn has_updates_queued(&self) -> bool {
+        self.last_added_event.is_some()
+    }
+
     /// Counterpart to receive_updates, should only be called immediately before a save
-    pub fn process_updates(&mut self) {
+    pub fn process_updates(&mut self) -> bool {
         // Once we stop getting updates, we can process the list of events
-        if let Some(last_event_time) = self.last_added_event
-            && last_event_time.elapsed().as_millis() > (WATCHER_MSEC_DURATION * 2).into()
-        {
-            // Any file objects that should be rescanned at the end. This might be "wasted" sometimes
-            // when a load also calls a rescan, but this is a super cheap operation
-            let mut file_objects_needing_rescan = HashSet::new();
 
-            // Paths that get loaded by `load_file`, either for a modification or a new file
-            let mut paths_to_load = HashSet::new();
+        if self.last_added_event.is_none_or(|last_event_time| {
+            last_event_time.elapsed().as_millis() < (WATCHER_MSEC_DURATION * 2).into()
+        }) {
+            // We're not ready to process events yet, give up
+            return false;
+        }
 
-            // 1. process the entire event list, removing children that have been modified and storing
-            // any new elements in a list to scan
-            let queued_events: Vec<DebouncedEvent> = self.event_queue.drain(..).collect();
-            for event in queued_events {
-                match event.kind {
-                    EventKind::Create(_create_kind) => {
-                        let modify_path = event.paths.first().unwrap().to_owned();
-                        log::debug!("processing creation event: {event:?}");
-                        paths_to_load.insert(modify_path);
+        // Any file objects that should be rescanned at the end. This might be "wasted" sometimes
+        // when a load also calls a rescan, but this is a super cheap operation
+        let mut file_objects_needing_rescan = HashSet::new();
+
+        // Paths that get loaded by `load_file`, either for a modification or a new file
+        let mut paths_to_load = HashSet::new();
+
+        // 1. process the entire event list, removing children that have been modified and storing
+        // any new elements in a list to scan
+        let queued_events: Vec<DebouncedEvent> = self.event_queue.drain(..).collect();
+        for event in queued_events {
+            match event.kind {
+                EventKind::Create(_create_kind) => {
+                    let modify_path = event.paths.first().unwrap().to_owned();
+                    log::debug!("processing creation event: {event:?}");
+                    paths_to_load.insert(modify_path);
+                }
+                EventKind::Modify(ModifyKind::Data(_data_change)) => {
+                    let modify_path = event.paths.first().unwrap().to_owned();
+                    log::debug!("processing modify event: {event:?}");
+                    if let Some(parent_id) = self.remove_path_from_parent(&modify_path) {
+                        file_objects_needing_rescan.insert(parent_id);
                     }
-                    EventKind::Modify(ModifyKind::Data(_data_change)) => {
-                        let modify_path = event.paths.first().unwrap().to_owned();
-                        log::debug!("processing modify event: {event:?}");
-                        if let Some(parent_id) = self.remove_path_from_parent(&modify_path) {
-                            file_objects_needing_rescan.insert(parent_id);
-                        }
-                        paths_to_load.insert(modify_path);
+                    paths_to_load.insert(modify_path);
+                }
+                EventKind::Modify(ModifyKind::Name(RenameMode::From)) => {
+                    let delete_path = event
+                        .paths
+                        .first()
+                        .expect("From rename should have a source");
+
+                    log::debug!("processing rename(from) event as delete: {event:?}");
+
+                    if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
+                        file_objects_needing_rescan.insert(parent_id);
                     }
-                    EventKind::Modify(ModifyKind::Name(RenameMode::From)) => {
-                        let delete_path = event
-                            .paths
-                            .first()
-                            .expect("From rename should have a source");
+                }
+                EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
+                    let modify_path = event
+                        .paths
+                        .last()
+                        .expect("to event should have a destination")
+                        .to_owned();
 
-                        log::debug!("processing rename(from) event as delete: {event:?}");
-
-                        if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
-                            file_objects_needing_rescan.insert(parent_id);
-                        }
+                    log::debug!("processing rename(to) as modify event: {event:?}");
+                    if let Some(parent_id) = self.remove_path_from_parent(&modify_path) {
+                        file_objects_needing_rescan.insert(parent_id);
                     }
-                    EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
-                        let modify_path = event
-                            .paths
-                            .last()
-                            .expect("to event should have a destination")
-                            .to_owned();
+                    paths_to_load.insert(modify_path);
+                }
+                EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
+                    let source_path = event
+                        .paths
+                        .first()
+                        .expect("Rename event should have source");
 
-                        log::debug!("processing rename(to) as modify event: {event:?}");
-                        if let Some(parent_id) = self.remove_path_from_parent(&modify_path) {
-                            file_objects_needing_rescan.insert(parent_id);
-                        }
-                        paths_to_load.insert(modify_path);
+                    let dest_path = event
+                        .paths
+                        .last()
+                        .expect("Rename event should have destination")
+                        .to_owned();
+
+                    log::debug!("processing rename event: {event:?}");
+                    if let Some(parent_id) = self.remove_path_from_parent(source_path) {
+                        file_objects_needing_rescan.insert(parent_id);
                     }
-                    EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => {
-                        let source_path = event
-                            .paths
-                            .first()
-                            .expect("Rename event should have source");
+                    paths_to_load.insert(dest_path);
+                }
+                EventKind::Modify(_) => {
+                    log::debug!("Found unknown modify event: {event:?}, trying to process anyway");
 
-                        let dest_path = event
-                            .paths
-                            .last()
-                            .expect("Rename event should have destination")
-                            .to_owned();
+                    let source_path_option = event.paths.first();
 
-                        log::debug!("processing rename event: {event:?}");
+                    let dest_path_option = event.paths.last();
+
+                    if let Some(dest_path) = dest_path_option
+                        && let Some(source_path) = source_path_option
+                    {
                         if let Some(parent_id) = self.remove_path_from_parent(source_path) {
                             file_objects_needing_rescan.insert(parent_id);
                         }
-                        paths_to_load.insert(dest_path);
-                    }
-                    EventKind::Modify(_) => {
-                        log::debug!(
-                            "Found unknown modify event: {event:?}, trying to process anyway"
-                        );
-
-                        let source_path_option = event.paths.first();
-
-                        let dest_path_option = event.paths.last();
-
-                        if let Some(dest_path) = dest_path_option
-                            && let Some(source_path) = source_path_option
-                        {
-                            if let Some(parent_id) = self.remove_path_from_parent(source_path) {
-                                file_objects_needing_rescan.insert(parent_id);
-                            }
-                            paths_to_load.insert(dest_path.to_owned());
-                        } else {
-                            log::debug!("unable to process modify(any) event");
-                        }
-                    }
-                    EventKind::Remove(_remove_kind) => {
-                        let delete_path = event
-                            .paths
-                            .first()
-                            .expect("Rename event should have source");
-
-                        if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
-                            file_objects_needing_rescan.insert(parent_id);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            // 2. remove all duplicate paths from this list (because I like writing extra code to avoid
-            // probably harmless disk usage apparently)
-            let paths_to_load_clone = paths_to_load.clone();
-            for path1 in &paths_to_load_clone {
-                for path2 in &paths_to_load_clone {
-                    if path1 == path2 {
-                        continue;
-                    }
-                    if *path2 == self.get_path() {
-                        // special case: if we get an event for the entire project, discard it
-                        paths_to_load.remove(path2);
-                    } else if path1.starts_with(path2) {
-                        paths_to_load.remove(path1);
+                        paths_to_load.insert(dest_path.to_owned());
+                    } else {
+                        log::debug!("unable to process modify(any) event");
                     }
                 }
-            }
+                EventKind::Remove(_remove_kind) => {
+                    let delete_path = event
+                        .paths
+                        .first()
+                        .expect("Rename event should have source");
 
-            // I already did step 3 but I'm writing it out here because it makes more sense that way:
-            // 3. every element that needs to be rescanned is removed from their parents (the list of
-            //    children), the parents are stored in the needs_reindex set
-
-            // 4. load all of the objects we wanted to rescan
-            for path_to_load in paths_to_load {
-                let project_path_kind = self.classify_path_position(&path_to_load);
-                match project_path_kind {
-                    ProjectPathKind::Contents => (),
-                    ProjectPathKind::ProjectFile => {
-                        if let Err(err) = self.reload_file() {
-                            log::warn!("Error while reloading project info file: {err}");
-                        }
-                        continue;
-                    }
-                    _ => {
-                        log::error!(
-                            "Unexpected kind of path to load: {project_path_kind:?}: {path_to_load:?}"
-                        );
+                    if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
+                        file_objects_needing_rescan.insert(parent_id);
                     }
                 }
-
-                let event_path = if path_to_load.file_name().and_then(|name| name.to_str())
-                    == Some(FOLDER_METADATA_FILE_NAME)
-                {
-                    path_to_load.parent().unwrap().to_owned()
-                } else {
-                    path_to_load
-                };
-
-                match self.schema.load_file(&event_path, &mut self.objects) {
-                    Ok(file_id) => {
-                        let parent_path = get_parent_path(&event_path);
-                        let parent_id_option = self.find_object_by_path(parent_path);
-                        if let Some(parent_id) = parent_id_option {
-                            let parent_object = self.objects.get(&parent_id).unwrap();
-                            let parent_has_child = parent_object
-                                .borrow()
-                                .get_base()
-                                .children
-                                .contains(&file_id);
-                            if !parent_has_child {
-                                parent_object
-                                    .borrow_mut()
-                                    .get_base_mut()
-                                    .children
-                                    .push(file_id);
-                            }
-
-                            file_objects_needing_rescan.insert(parent_id);
-                        } else {
-                            log::debug!(
-                                "Could not find parent object: {parent_path:?} while processing updates. \
-                                Ignoring for now, maybe it will appear later (or be cleaned up)"
-                            );
-                        }
-                    }
-                    Err(err) => log::debug!("Could not load {event_path:?}: {err}"),
-                }
+                _ => {}
             }
-
-            // 5. Rescan anything that needs it
-            for object_needing_rescan in file_objects_needing_rescan {
-                self.objects
-                    .get(&object_needing_rescan)
-                    .unwrap()
-                    .borrow_mut()
-                    .rescan_indexing(&self.objects, true);
-            }
-
-            // 6. Clean up any dangling objects
-            self.clean_up_orphaned_objects();
-
-            log::debug!(
-                "finished processing event queue at {:?}",
-                std::time::Instant::now()
-            );
-            self.last_added_event = None;
-
-            // 7. Any other steps
-            self.resolve_references();
         }
+
+        // 2. remove all duplicate paths from this list (because I like writing extra code to avoid
+        // probably harmless disk usage apparently)
+        let paths_to_load_clone = paths_to_load.clone();
+        for path1 in &paths_to_load_clone {
+            for path2 in &paths_to_load_clone {
+                if path1 == path2 {
+                    continue;
+                }
+                if *path2 == self.get_path() {
+                    // special case: if we get an event for the entire project, discard it
+                    paths_to_load.remove(path2);
+                } else if path1.starts_with(path2) {
+                    paths_to_load.remove(path1);
+                }
+            }
+        }
+
+        // I already did step 3 but I'm writing it out here because it makes more sense that way:
+        // 3. every element that needs to be rescanned is removed from their parents (the list of
+        //    children), the parents are stored in the needs_reindex set
+
+        // 4. load all of the objects we wanted to rescan
+        for path_to_load in paths_to_load {
+            let project_path_kind = self.classify_path_position(&path_to_load);
+            match project_path_kind {
+                ProjectPathKind::Contents => (),
+                ProjectPathKind::ProjectFile => {
+                    if let Err(err) = self.reload_file() {
+                        log::warn!("Error while reloading project info file: {err}");
+                    }
+                    continue;
+                }
+                _ => {
+                    log::error!(
+                        "Unexpected kind of path to load: {project_path_kind:?}: {path_to_load:?}"
+                    );
+                }
+            }
+
+            let event_path = if path_to_load.file_name().and_then(|name| name.to_str())
+                == Some(FOLDER_METADATA_FILE_NAME)
+            {
+                path_to_load.parent().unwrap().to_owned()
+            } else {
+                path_to_load
+            };
+
+            match self.schema.load_file(&event_path, &mut self.objects) {
+                Ok(file_id) => {
+                    let parent_path = get_parent_path(&event_path);
+                    let parent_id_option = self.find_object_by_path(parent_path);
+                    if let Some(parent_id) = parent_id_option {
+                        let parent_object = self.objects.get(&parent_id).unwrap();
+                        let parent_has_child = parent_object
+                            .borrow()
+                            .get_base()
+                            .children
+                            .contains(&file_id);
+                        if !parent_has_child {
+                            parent_object
+                                .borrow_mut()
+                                .get_base_mut()
+                                .children
+                                .push(file_id);
+                        }
+
+                        file_objects_needing_rescan.insert(parent_id);
+                    } else {
+                        log::debug!(
+                            "Could not find parent object: {parent_path:?} while processing updates. \
+                                Ignoring for now, maybe it will appear later (or be cleaned up)"
+                        );
+                    }
+                }
+                Err(err) => log::debug!("Could not load {event_path:?}: {err}"),
+            }
+        }
+
+        // 5. Rescan anything that needs it
+        for object_needing_rescan in file_objects_needing_rescan {
+            self.objects
+                .get(&object_needing_rescan)
+                .unwrap()
+                .borrow_mut()
+                .rescan_indexing(&self.objects, true);
+        }
+
+        // 6. Clean up any dangling objects
+        self.clean_up_orphaned_objects();
+
+        log::debug!(
+            "finished processing event queue at {:?}",
+            std::time::Instant::now()
+        );
+        self.last_added_event = None;
+
+        // 7. Any other steps
+        self.resolve_references();
+
+        true
     }
 
     pub fn clean_up_orphaned_objects(&mut self) {

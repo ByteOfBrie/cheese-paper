@@ -43,7 +43,14 @@ fn process_updates(project: &mut Project) {
         thread::sleep(time::Duration::from_millis(60));
         project.receive_updates();
     }
-    project.process_updates();
+    // Make sure the process_updates call goes through
+    loop {
+        if project.process_updates() || !project.has_updates_queued() {
+            break;
+        }
+        thread::sleep(time::Duration::from_millis(50));
+        project.receive_updates();
+    }
     project.save().unwrap();
 }
 
