@@ -529,6 +529,12 @@ impl ProjectEditor {
                             });
                         }
                     });
+
+                    ui.menu_button("View", |ui| {
+                        if ui.button("Close All Tabs").clicked() {
+                            self.close_all_tabs();
+                        }
+                    });
                 });
             });
     }
@@ -634,6 +640,10 @@ impl ProjectEditor {
                 tab.keep = true;
             }
         }
+    }
+
+    fn close_all_tabs(&mut self) {
+        self.dock_state.retain_tabs(|_| false);
     }
 
     // last_export_folder probably should be wrapped in another object but I don't have a good object
