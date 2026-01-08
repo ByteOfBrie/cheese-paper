@@ -17,11 +17,19 @@ use egui::ScrollArea;
 pub struct CharacterMetadata {
     pub summary: Text,
     pub notes: Text,
-    pub appearance: Text,
-    pub personality: Text,
+
     pub goal: Text,
-    pub conflict: Text,
-    pub habits: Text,
+
+    pub appearance: Text,
+
+    // how the character's personality looks to the outside world
+    pub persona: Text,
+
+    // what's going on in the character's head
+    pub interior: Text,
+
+    // what the character does in the story
+    pub role: Text,
 }
 
 #[derive(Debug)]
@@ -91,28 +99,28 @@ impl FileObject for Character {
             None => modified = true,
         }
 
-        match metadata_extract_string(self.base.toml_header.as_table(), "appearance")? {
-            Some(appearance) => self.metadata.appearance = appearance.into(),
-            None => modified = true,
-        }
-
-        match metadata_extract_string(self.base.toml_header.as_table(), "personality")? {
-            Some(personality) => self.metadata.personality = personality.into(),
-            None => modified = true,
-        }
-
         match metadata_extract_string(self.base.toml_header.as_table(), "goal")? {
             Some(goal) => self.metadata.goal = goal.into(),
             None => modified = true,
         }
 
-        match metadata_extract_string(self.base.toml_header.as_table(), "conflict")? {
-            Some(conflict) => self.metadata.conflict = conflict.into(),
+        match metadata_extract_string(self.base.toml_header.as_table(), "appearance")? {
+            Some(appearance) => self.metadata.appearance = appearance.into(),
             None => modified = true,
         }
 
-        match metadata_extract_string(self.base.toml_header.as_table(), "habits")? {
-            Some(habits) => self.metadata.habits = habits.into(),
+        match metadata_extract_string(self.base.toml_header.as_table(), "persona")? {
+            Some(persona) => self.metadata.persona = persona.into(),
+            None => modified = true,
+        }
+
+        match metadata_extract_string(self.base.toml_header.as_table(), "interior")? {
+            Some(interior) => self.metadata.interior = interior.into(),
+            None => modified = true,
+        }
+
+        match metadata_extract_string(self.base.toml_header.as_table(), "role")? {
+            Some(role) => self.metadata.role = role.into(),
             None => modified = true,
         }
 
@@ -136,10 +144,10 @@ impl FileObject for Character {
         self.base.toml_header["summary"] = toml_edit::value(&*self.metadata.summary);
         self.base.toml_header["notes"] = toml_edit::value(&*self.metadata.notes);
         self.base.toml_header["appearance"] = toml_edit::value(&*self.metadata.appearance);
-        self.base.toml_header["personality"] = toml_edit::value(&*self.metadata.personality);
+        self.base.toml_header["persona"] = toml_edit::value(&*self.metadata.persona);
         self.base.toml_header["goal"] = toml_edit::value(&*self.metadata.goal);
-        self.base.toml_header["conflict"] = toml_edit::value(&*self.metadata.conflict);
-        self.base.toml_header["habits"] = toml_edit::value(&*self.metadata.habits);
+        self.base.toml_header["interior"] = toml_edit::value(&*self.metadata.interior);
+        self.base.toml_header["role"] = toml_edit::value(&*self.metadata.role);
     }
 
     fn generate_outline(&self, depth: u64, export_string: &mut String, _objects: &FileObjectStore) {
@@ -147,10 +155,10 @@ impl FileObject for Character {
 
         write_outline_property("summary", &self.metadata.summary, export_string);
         write_outline_property("appearance", &self.metadata.appearance, export_string);
-        write_outline_property("personality", &self.metadata.personality, export_string);
+        write_outline_property("persona", &self.metadata.persona, export_string);
         write_outline_property("goal", &self.metadata.goal, export_string);
-        write_outline_property("conflict", &self.metadata.conflict, export_string);
-        write_outline_property("habits", &self.metadata.habits, export_string);
+        write_outline_property("interior", &self.metadata.interior, export_string);
+        write_outline_property("role", &self.metadata.role, export_string);
         write_outline_property("notes", &self.metadata.notes, export_string);
     }
 
@@ -191,20 +199,20 @@ impl FileObjectEditor for Character {
         f(&self.metadata.summary, "summary");
         f(&self.metadata.notes, "notes");
         f(&self.metadata.appearance, "appearance");
-        f(&self.metadata.personality, "personality");
+        f(&self.metadata.persona, "persona");
         f(&self.metadata.goal, "goal");
-        f(&self.metadata.conflict, "conflict");
-        f(&self.metadata.habits, "habits");
+        f(&self.metadata.interior, "interior");
+        f(&self.metadata.role, "role");
     }
 
     fn for_each_textbox_mut<'a>(&'a mut self, f: &mut dyn FnMut(&mut Text, &'static str)) {
         f(&mut self.metadata.summary, "summary");
         f(&mut self.metadata.notes, "notes");
         f(&mut self.metadata.appearance, "appearance");
-        f(&mut self.metadata.personality, "personality");
+        f(&mut self.metadata.persona, "persona");
         f(&mut self.metadata.goal, "goal");
-        f(&mut self.metadata.conflict, "conflict");
-        f(&mut self.metadata.habits, "habits");
+        f(&mut self.metadata.interior, "interior");
+        f(&mut self.metadata.role, "role");
     }
 
     fn provide_spellcheck_additions(&self) -> Vec<&str> {
@@ -264,32 +272,31 @@ impl Character {
     fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
         let mut ids = Vec::new();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
+            ui.label("Goals");
+            let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.goal.ui(ui, ctx));
+            self.process_response(&response);
+            ids.push(response.id);
+
             ui.label("Appearance");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
             self.process_response(&response);
             ids.push(response.id);
 
-            ui.label("Personality");
+            ui.label("Persona");
             let response: egui::Response =
-                ui.add(|ui: &'_ mut Ui| self.metadata.personality.ui(ui, ctx));
+                ui.add(|ui: &'_ mut Ui| self.metadata.persona.ui(ui, ctx));
             self.process_response(&response);
             ids.push(response.id);
 
-            ui.label("Goals");
-            let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.goal.ui(ui, ctx));
+            ui.label("Interior");
+            let response: egui::Response =
+                ui.add(|ui: &'_ mut Ui| self.metadata.interior.ui(ui, ctx));
             self.process_response(&response);
             ids.push(response.id);
 
-            ui.label("Conflicts");
-            let response: egui::Response =
-                ui.add(|ui: &'_ mut Ui| self.metadata.conflict.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
-
-            ui.label("Habits");
-            let response: egui::Response =
-                ui.add(|ui: &'_ mut Ui| self.metadata.habits.ui(ui, ctx));
+            ui.label("Narrative Role");
+            let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.role.ui(ui, ctx));
             self.process_response(&response);
             ids.push(response.id);
         });
