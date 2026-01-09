@@ -170,7 +170,7 @@ impl SettingsPage {
             }
             let response = ui.button("Default");
             if response.clicked() {
-                ctx.settings.select_theme(ThemeSelection::Default);
+                ctx.settings.select_theme(ThemeSelection::Default).unwrap();
                 update = true;
             }
             ids.push(response.id);
@@ -184,13 +184,34 @@ impl SettingsPage {
             }
             let response = ui.button("Random");
             if response.clicked() {
-                ctx.settings.select_theme(ThemeSelection::Random);
+                ctx.settings.select_theme(ThemeSelection::Random).unwrap();
                 update = true;
             }
             ids.push(response.id);
         });
 
-        ui.heading("Available Presets");
+        ui.horizontal(|ui| {
+            ui.heading("Available Presets");
+            if ui.button("reload").clicked() {
+                ctx.actions.schedule(move |project_editor, ctx| {
+                    project_editor
+                        .editor_context
+                        .settings
+                        .load()
+                        .unwrap_or_else(|err| {
+                            log::error!("Error encountered while reloading settings: {err}");
+                        });
+                    project_editor
+                        .editor_context
+                        .settings
+                        .select_theme(selected)
+                        .unwrap_or_else(|err| {
+                            log::error!("Error encountered while selecting settings: {err}");
+                        });
+                    project_editor.update_theme(ctx);
+                });
+            }
+        });
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (idx, (name, _)) in ctx.settings.available_themes().iter().enumerate() {
@@ -202,7 +223,9 @@ impl SettingsPage {
                     }
                     let response = ui.button(name);
                     if response.clicked() {
-                        ctx.settings.select_theme(ThemeSelection::Preset(idx));
+                        ctx.settings
+                            .select_theme(ThemeSelection::Preset(idx))
+                            .unwrap();
                         update = true;
                     }
                     ids.push(response.id);

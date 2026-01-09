@@ -523,7 +523,8 @@ impl ProjectEditor {
                         if ui.button("Randomize Theme").clicked() {
                             self.editor_context
                                 .settings
-                                .select_theme(ThemeSelection::Random);
+                                .select_theme(ThemeSelection::Random)
+                                .unwrap();
                             self.editor_context.actions.schedule(|project_editor, ctx| {
                                 project_editor.update_theme(ctx);
                             });

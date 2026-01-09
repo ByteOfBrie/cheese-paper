@@ -240,7 +240,7 @@ impl Settings {
         self.0.borrow().modified
     }
 
-    pub fn select_theme(&self, selection: ThemeSelection) {
+    pub fn select_theme(&self, selection: ThemeSelection) -> Result<(), CheeseError> {
         let mut data = self.0.borrow_mut();
         match selection {
             ThemeSelection::Default => {
@@ -250,9 +250,19 @@ impl Settings {
                 let new_theme = Theme::new_random();
                 data.theme = new_theme;
             }
-            ThemeSelection::Preset(idx) => data.theme = data.available_themes[idx].1.clone(),
+            ThemeSelection::Preset(idx) => {
+                data.theme = data
+                    .available_themes
+                    .get(idx)
+                    .ok_or(cheese_error!(
+                        "there does not exist a custom theme with index {idx}"
+                    ))?
+                    .1
+                    .clone()
+            }
         }
         data.selected_theme = selection;
+        Ok(())
     }
 
     fn available_themes(&self) -> Rc<Vec<(String, Theme)>> {
