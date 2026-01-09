@@ -612,71 +612,70 @@ impl CheesePaperApp {
     }
 
     fn load_project(&mut self, project_path: PathBuf) -> Result<(), CheeseError> {
-        match Project::load(project_path) {
-            Ok(project) => {
-                // open the project
-                let project_path = project.get_path();
 
-                // update recent projects
-                if project_path.parent()
-                    != Some(self.state.data.last_project_parent_folder.as_path())
-                    && let Some(path) = project_path.parent()
-                {
-                    self.state.data.last_project_parent_folder = path.to_path_buf();
+        let project = Project::load(project_path).map_err(|err|{
+            log::error!("encountered error while trying to load project: {err}");
+            let error_message = format!("unable to load project: {err}");
+            self.state.error_message = Some((error_message, Instant::now()));
+            cheese_error!("unable to load project\n{}", err)
+        })?;
+
+        // open the project
+        let project_path = project.get_path();
+
+        // update recent projects
+        if project_path.parent()
+            != Some(self.state.data.last_project_parent_folder.as_path())
+            && let Some(path) = project_path.parent()
+        {
+            self.state.data.last_project_parent_folder = path.to_path_buf();
+            self.state.data_modified = true;
+        }
+
+        let project_path_position = self
+            .state
+            .data
+            .recent_projects
+            .iter()
+            .position(|id| id == &project_path);
+
+        match project_path_position {
+            Some(position) => {
+                if position != 0 {
+                    let project_pathbuf = self.state.data.recent_projects.remove(position);
+                    self.state.data.recent_projects.insert(0, project_pathbuf);
                     self.state.data_modified = true;
                 }
-
-                let project_path_position = self
-                    .state
+            }
+            None => {
+                self.state
                     .data
                     .recent_projects
-                    .iter()
-                    .position(|id| id == &project_path);
-
-                match project_path_position {
-                    Some(position) => {
-                        if position != 0 {
-                            let project_pathbuf = self.state.data.recent_projects.remove(position);
-                            self.state.data.recent_projects.insert(0, project_pathbuf);
-                            self.state.data_modified = true;
-                        }
-                    }
-                    None => {
-                        self.state
-                            .data
-                            .recent_projects
-                            .insert(0, project_path.clone());
-                        self.state.data_modified = true;
-                    }
-                };
-
-                // load tabs
-                let open_tabs = self
-                    .state
-                    .data
-                    .last_open_file_ids
-                    .get(&*project.base_metadata.id)
-                    .cloned()
-                    .unwrap_or_default();
-
-                self.project_editor = Some(ProjectEditor::new(
-                    project,
-                    open_tabs.clone(),
-                    self.dictionary.clone(),
-                    self.state.settings.clone(),
-                    self.state.data.last_export_folder.clone(),
-                    &self.state.data.custom_dictionary,
-                ));
-
-                Ok(())
+                    .insert(0, project_path.clone());
+                self.state.data_modified = true;
             }
-            Err(err) => {
-                log::error!("encountered error while trying to load project: {err}");
-                let error_message = format!("unable to load project: {err}");
-                self.state.error_message = Some((error_message, Instant::now()));
-                Err(cheese_error!("unable to load project\n{}", err))
-            }
-        }
+        };
+
+        // load tabs
+        let open_tabs = self
+            .state
+            .data
+            .last_open_file_ids
+            .get(&*project.base_metadata.id)
+            .cloned()
+            .unwrap_or_default();
+
+        self.project_editor = Some(ProjectEditor::new(
+            project,
+            open_tabs.clone(),
+            self.dictionary.clone(),
+            self.state.settings.clone(),
+            self.state.data.last_export_folder.clone(),
+            &self.state.data.custom_dictionary,
+        ));
+
+        Ok(())
+
     }
 
     fn update_open_tabs(&mut self) {
