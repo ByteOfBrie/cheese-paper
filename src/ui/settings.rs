@@ -11,16 +11,49 @@ use std::fs::read_dir;
 use std::{fs::read_to_string, path::PathBuf};
 
 use directories::ProjectDirs;
-use toml_edit::{DocumentMut, value};
+use toml_edit::{DocumentMut, Item, Value, value};
 
 pub use theme::Theme;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ThemeSelection {
+    #[default]
     Default,
     DefaultLight,
     Random,
     Preset(usize),
+}
+
+impl From<ThemeSelection> for Value {
+    fn from(value: ThemeSelection) -> Self {
+        match value {
+            ThemeSelection::Default => "default".to_string().into(),
+            ThemeSelection::DefaultLight => "light".to_string().into(),
+            ThemeSelection::Random => "random".to_string().into(),
+            ThemeSelection::Preset(idx) => (idx as i64).into(),
+        }
+    }
+}
+
+impl TryFrom<&Item> for ThemeSelection {
+    type Error = ();
+    fn try_from(value: &Item) -> Result<Self, Self::Error> {
+        if let Some(s) = value.as_str() {
+            match s {
+                "default" => return Ok(Self::Default),
+                "light" => return Ok(Self::DefaultLight),
+                "random" => return Ok(Self::Random),
+                _ => return Err(()),
+            }
+        }
+
+        if let Some(v) = value.as_integer() {
+            let u: usize = v.try_into().map_err(|_| ())?;
+            return Ok(Self::Preset(u));
+        }
+
+        Err(())
+    }
 }
 
 #[derive(Debug)]
@@ -101,6 +134,11 @@ impl SettingsData {
             .and_then(|theme_item| theme_item.as_table_like())
         {
             self.theme = Theme::load(theme_table);
+        } else if let Some(selected_theme) = table
+            .get("selected_theme")
+            .and_then(|i| ThemeSelection::try_from(i).ok())
+        {
+            self.selected_theme = selected_theme;
         }
     }
 
@@ -108,6 +146,7 @@ impl SettingsData {
         table.insert("font_size", value(self.font_size as f64));
         table.insert("reopen_last", value(self.reopen_last));
         table.insert("indent_line_start", value(self.indent_line_start));
+        table.insert("selected_theme", value(self.selected_theme));
     }
 
     fn config_file_path(&self) -> PathBuf {
@@ -194,6 +233,17 @@ impl Settings {
 
         data.available_themes = Rc::new(available_themes);
 
+        let selected_theme = data.selected_theme;
+
+        // release the RefCell
+        drop(data);
+
+        if !matches!(selected_theme, ThemeSelection::Default) {
+            self.select_theme(selected_theme).unwrap_or_else(|err| {
+                log::error!("Error encountered while applying the config's selected theme: {err}");
+            });
+        }
+
         Ok(())
     }
 
@@ -266,6 +316,7 @@ impl Settings {
             }
         }
         data.selected_theme = selection;
+        data.modified = true;
         Ok(())
     }
 

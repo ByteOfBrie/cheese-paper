@@ -612,8 +612,7 @@ impl CheesePaperApp {
     }
 
     fn load_project(&mut self, project_path: PathBuf) -> Result<(), CheeseError> {
-
-        let project = Project::load(project_path).map_err(|err|{
+        let project = Project::load(project_path).map_err(|err| {
             log::error!("encountered error while trying to load project: {err}");
             let error_message = format!("unable to load project: {err}");
             self.state.error_message = Some((error_message, Instant::now()));
@@ -624,8 +623,7 @@ impl CheesePaperApp {
         let project_path = project.get_path();
 
         // update recent projects
-        if project_path.parent()
-            != Some(self.state.data.last_project_parent_folder.as_path())
+        if project_path.parent() != Some(self.state.data.last_project_parent_folder.as_path())
             && let Some(path) = project_path.parent()
         {
             self.state.data.last_project_parent_folder = path.to_path_buf();
@@ -665,17 +663,26 @@ impl CheesePaperApp {
             .cloned()
             .unwrap_or_default();
 
-        self.project_editor = Some(ProjectEditor::new(
+        let mut project_editor = ProjectEditor::new(
             project,
             open_tabs.clone(),
             self.dictionary.clone(),
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,
-        ));
+        );
+
+        // bit of a dirty hack to get the theme initialized properly
+        project_editor
+            .editor_context
+            .actions
+            .schedule(|project_editor, ctx| {
+                project_editor.update_theme(ctx);
+            });
+
+        self.project_editor = Some(project_editor);
 
         Ok(())
-
     }
 
     fn update_open_tabs(&mut self) {
