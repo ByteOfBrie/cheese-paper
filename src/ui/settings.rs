@@ -18,6 +18,7 @@ pub use theme::Theme;
 #[derive(Debug, Clone, Copy)]
 pub enum ThemeSelection {
     Default,
+    DefaultLight,
     Random,
     Preset(usize),
 }
@@ -245,6 +246,9 @@ impl Settings {
         match selection {
             ThemeSelection::Default => {
                 data.theme = Theme::default();
+            }
+            ThemeSelection::DefaultLight => {
+                data.theme = Theme::default_light();
             }
             ThemeSelection::Random => {
                 let new_theme = Theme::new_random();

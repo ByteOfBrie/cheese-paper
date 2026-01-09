@@ -177,6 +177,22 @@ impl SettingsPage {
         });
 
         ui.horizontal(|ui| {
+            if matches!(selected, ThemeSelection::DefaultLight) {
+                ui.label("->");
+            } else {
+                ui.label("  ");
+            }
+            let response = ui.button("Light");
+            if response.clicked() {
+                ctx.settings
+                    .select_theme(ThemeSelection::DefaultLight)
+                    .unwrap();
+                update = true;
+            }
+            ids.push(response.id);
+        });
+
+        ui.horizontal(|ui| {
             if matches!(selected, ThemeSelection::Random) {
                 ui.label("->");
             } else {

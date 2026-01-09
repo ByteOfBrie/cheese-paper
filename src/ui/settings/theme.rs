@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 #[allow(unused)]
 use crate::ui::prelude::*;
 
-use egui::Color32;
+use egui::{Color32, Visuals};
 use egui::{Style, style::WidgetVisuals};
 use rand::{Rng, rngs::ThreadRng};
 use toml_edit::{InlineTable, TableLike, value};
@@ -65,6 +65,10 @@ fn update_widget_theme(
 /// as requested/desired
 #[derive(Debug, Default, Clone)]
 pub struct Theme {
+    // indicates if this should be a a light theme.
+    // this also changes which default theme gets used for unset values
+    light_mode: bool,
+
     override_text_color: Option<Color32>,
 
     weak_text_color: Option<Color32>,
@@ -152,10 +156,18 @@ fn write_widget_theme(table: &mut dyn TableLike, field: &str, theme: &Option<Wid
 }
 
 impl Theme {
+    pub fn default_light() -> Self {
+        Self {
+            light_mode: true,
+            ..Default::default()
+        }
+    }
+
     pub fn new_random() -> Self {
         let mut rng = rand::rng();
 
         Self {
+            light_mode: rng.random_bool(0.5),
             override_text_color: Some(random_color32(&mut rng)),
             weak_text_color: Some(random_color32(&mut rng)),
             hyperlink_color: Some(random_color32(&mut rng)),
@@ -178,6 +190,10 @@ impl Theme {
     }
 
     pub fn load(theme_table: &dyn TableLike) -> Self {
+        let light_mode = theme_table
+            .get("light_mode")
+            .and_then(|r| r.as_bool())
+            .unwrap_or_default();
         let override_text_color = read_color32(theme_table, "override_text_color");
         let weak_text_color = read_color32(theme_table, "weak_text_color");
         let hyperlink_color = read_color32(theme_table, "hyperlink_color");
@@ -200,6 +216,7 @@ impl Theme {
         let open_widget = read_widget_theme(theme_table, "open_widget");
 
         Theme {
+            light_mode,
             override_text_color,
             weak_text_color,
             hyperlink_color,
@@ -222,6 +239,7 @@ impl Theme {
     }
 
     pub fn save(&self, theme_table: &mut dyn TableLike) {
+        theme_table.insert("light_mode", value(self.light_mode));
         write_color32(theme_table, "override_text_color", self.override_text_color);
         write_color32(theme_table, "weak_text_color", self.weak_text_color);
         write_color32(theme_table, "hyperlink_color", self.hyperlink_color);
@@ -253,7 +271,19 @@ impl Theme {
     }
 
     pub fn apply(&self, style: &mut Style) {
-        static DEFAULT_STYLE: LazyLock<Style> = LazyLock::new(|| Style::default());
+        static DEFAULT_STYLE_DARK: LazyLock<Style> = LazyLock::new(Style::default);
+        static DEFAULT_STYLE_LIGHT: LazyLock<Style> = LazyLock::new(|| Style {
+            visuals: Visuals::light(),
+            ..Default::default()
+        });
+
+        let default_style = if self.light_mode {
+            &*DEFAULT_STYLE_LIGHT
+        } else {
+            &*DEFAULT_STYLE_DARK
+        };
+
+        style.visuals.dark_mode = !self.light_mode;
 
         style.visuals.override_text_color = self.override_text_color;
 
@@ -263,82 +293,82 @@ impl Theme {
 
         style.visuals.hyperlink_color = match self.hyperlink_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.hyperlink_color,
+            None => default_style.visuals.hyperlink_color,
         };
 
         style.visuals.faint_bg_color = match self.faint_bg_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.faint_bg_color,
+            None => default_style.visuals.faint_bg_color,
         };
 
         style.visuals.extreme_bg_color = match self.extreme_bg_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.extreme_bg_color,
+            None => default_style.visuals.extreme_bg_color,
         };
 
         style.visuals.warn_fg_color = match self.warn_fg_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.warn_fg_color,
+            None => default_style.visuals.warn_fg_color,
         };
 
         style.visuals.error_fg_color = match self.error_fg_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.error_fg_color,
+            None => default_style.visuals.error_fg_color,
         };
 
         style.visuals.window_fill = match self.window_fill_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.window_fill,
+            None => default_style.visuals.window_fill,
         };
 
         style.visuals.panel_fill = match self.panel_fill_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.panel_fill,
+            None => default_style.visuals.panel_fill,
         };
 
         style.visuals.window_stroke.color = match self.window_stroke_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.window_stroke.color,
+            None => default_style.visuals.window_stroke.color,
         };
 
         style.visuals.selection.bg_fill = match self.selection_bg_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.selection.bg_fill,
+            None => default_style.visuals.selection.bg_fill,
         };
 
         style.visuals.selection.stroke.color = match self.selection_fg_stroke_color {
             Some(color) => color,
-            None => DEFAULT_STYLE.visuals.selection.stroke.color,
+            None => default_style.visuals.selection.stroke.color,
         };
 
         update_widget_theme(
             &self.active_widget,
             &mut style.visuals.widgets.active,
-            &DEFAULT_STYLE.visuals.widgets.active,
+            &default_style.visuals.widgets.active,
         );
 
         update_widget_theme(
             &self.inactive_widget,
             &mut style.visuals.widgets.inactive,
-            &DEFAULT_STYLE.visuals.widgets.inactive,
+            &default_style.visuals.widgets.inactive,
         );
 
         update_widget_theme(
             &self.noninteractive_widget,
             &mut style.visuals.widgets.noninteractive,
-            &DEFAULT_STYLE.visuals.widgets.noninteractive,
+            &default_style.visuals.widgets.noninteractive,
         );
 
         update_widget_theme(
             &self.hovered_widget,
             &mut style.visuals.widgets.hovered,
-            &DEFAULT_STYLE.visuals.widgets.hovered,
+            &default_style.visuals.widgets.hovered,
         );
 
         update_widget_theme(
             &self.open_widget,
             &mut style.visuals.widgets.open,
-            &DEFAULT_STYLE.visuals.widgets.open,
+            &default_style.visuals.widgets.open,
         );
     }
 }
