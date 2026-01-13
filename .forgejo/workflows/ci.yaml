@@ -33,7 +33,7 @@ jobs:
       run: cargo build --release
     - name: Run tests
       # windows sometimes breaks if we have too many tests running at the same time :)
-      run: cargo test --release -- --test-threads=3
+      run: cargo test --release -- --test-threads=1
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:
