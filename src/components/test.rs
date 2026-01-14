@@ -151,6 +151,76 @@ fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> std::io::Result<()>
     }
 }
 
+#[cfg(not(windows))]
+fn remove_file<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    std::fs::remove_file(path)
+}
+
+#[cfg(not(windows))]
+fn remove_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    std::fs::remove_dir(path)
+}
+
+#[cfg(windows)]
+fn remove_file<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    match std::fs::remove_file(&path) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
+
+                log::warn!("Could not remove file on windows: retrying");
+
+                loop {
+                    if std::fs::remove_file(&path).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(err);
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+
+                Ok(())
+            } else {
+                Err(err)
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn remove_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    match std::fs::remove_dir(&path) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
+
+                log::warn!("Could not remove dir on windows: retrying");
+
+                loop {
+                    if std::fs::remove_dir(&path).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(err);
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+
+                Ok(())
+            } else {
+                Err(err)
+            }
+        }
+    }
+}
+
 #[test]
 /// Ensure that projects are created properly
 fn test_basic_create_project() {
@@ -2845,7 +2915,7 @@ fn test_tracker_delete_file() {
     let scene2_path_orig = project.objects.get(&scene2_id).unwrap().borrow().get_path();
 
     // Delete the file
-    std::fs::remove_file(&scene1_path).unwrap();
+    remove_file(&scene1_path).unwrap();
 
     assert!(!scene1_path.exists());
     assert!(
@@ -2943,7 +3013,10 @@ fn test_tracker_delete_folder() {
     );
 
     // Delete the file
-    std::fs::remove_dir_all(&folder1_path).unwrap();
+    remove_file(&scene1_path).unwrap();
+    remove_file(&scene2_path).unwrap();
+    remove_file(folder1_path.join("metadata.toml")).unwrap();
+    remove_dir(&folder1_path).unwrap();
 
     assert!(!scene1_path.exists());
     assert!(!scene2_path.exists());
@@ -3937,7 +4010,7 @@ fn test_tracker_move_file_copy_delete() {
 
     // Actual start of the testing
     std::fs::copy(&scene1_path_orig, &scene1_path_new).unwrap();
-    std::fs::remove_file(&scene1_path_orig).unwrap();
+    remove_file(&scene1_path_orig).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene1_path_orig.exists());
@@ -4506,11 +4579,11 @@ scene3"#;
     std::fs::copy(&scene2_path_orig, &scene2_path_new).unwrap();
     std::fs::copy(&scene3_path_orig, &scene3_path_new).unwrap();
     std::fs::copy(&folder1_metadata_path, &folder1_metadata_path_new).unwrap();
-    std::fs::remove_file(&scene1_path_orig).unwrap();
-    std::fs::remove_file(&scene2_path_orig).unwrap();
-    std::fs::remove_file(&scene3_path_orig).unwrap();
-    std::fs::remove_file(&folder1_metadata_path).unwrap();
-    std::fs::remove_dir(&folder1_path_orig).unwrap();
+    remove_file(&scene1_path_orig).unwrap();
+    remove_file(&scene2_path_orig).unwrap();
+    remove_file(&scene3_path_orig).unwrap();
+    remove_file(&folder1_metadata_path).unwrap();
+    remove_dir(&folder1_path_orig).unwrap();
 
     // And update scene2 and scene4 after the move
     let scene2_text_new = r#"id = "2"
@@ -4868,7 +4941,7 @@ scene1"#;
     rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // And remove scene3
-    std::fs::remove_file(folder1_path_new.join("000-scene1.md")).unwrap();
+    remove_file(folder1_path_new.join("000-scene1.md")).unwrap();
 
     process_updates(&mut project);
 
