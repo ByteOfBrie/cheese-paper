@@ -99,23 +99,41 @@ pub fn create_dir_if_missing(dest_path: &Path) -> std::io::Result<&Path> {
 pub fn write_with_temp_file<P: AsRef<Path>>(
     dest_path: P,
     contents: impl Into<String>,
-) -> std::io::Result<()> {
+) -> Result<(), CheeseError> {
     let dirname = dest_path
         .as_ref()
         .parent()
         .expect("Must pass a path with a parent");
 
-    let mut file = Builder::new().suffix(".tmp").tempfile_in(dirname)?;
+    let mut file = match Builder::new().suffix(".tmp").tempfile_in(dirname) {
+        Ok(tempfile) => tempfile,
+        Err(err) => {
+            return Err(cheese_error!(
+                "Could not create tempfile for {:?}: {err}",
+                dest_path.as_ref()
+            ));
+        }
+    };
 
-    file.write_all(contents.into().as_bytes())?;
+    if let Err(err) = file.write_all(contents.into().as_bytes()) {
+        return Err(cheese_error!(
+            "Could not write to tempfile for {:?}: {err}",
+            dest_path.as_ref()
+        ));
+    };
 
-    file.persist(dest_path)?;
+    if let Err(err) = file.persist(dest_path.as_ref()) {
+        return Err(cheese_error!(
+            "Could not persist tempfile with path {:?}: {err}",
+            dest_path.as_ref()
+        ));
+    }
 
     Ok(())
 }
 
 #[test]
-fn test_write_with_temp_file() -> std::io::Result<()> {
+fn test_write_with_temp_file() -> Result<(), CheeseError> {
     let base_dir = tempfile::TempDir::new()?;
     let filename = std::ffi::OsString::from("file.md");
     let contents = "some file contents";
