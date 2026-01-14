@@ -16,6 +16,9 @@ use std::rc::Rc;
 use std::time::Duration;
 use std::{fmt::Display, thread, time};
 
+#[cfg(windows)]
+use std::time::Instant;
+
 use crate::schemas::FileType;
 use crate::schemas::SCHEMA_LIST;
 
@@ -106,6 +109,46 @@ fn get_id_from_file(filename: &Path) -> Option<FileID> {
     }
 
     None
+}
+
+/// When not on windows this is just std::fs::rename. when on windows, this is
+/// std::fs::rename in a loop. we can't deal with antivirus software any other way
+#[cfg(not(windows))]
+fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> std::io::Result<()> {
+    std::fs::rename(from, to)
+}
+
+#[cfg(windows)]
+const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+
+#[cfg(windows)]
+fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> std::io::Result<()> {
+    match std::fs::rename(&from, &to) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
+
+                log::warn!("Could not rename on windows: retrying");
+
+                loop {
+                    if std::fs::rename(&from, &to).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(err);
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+
+                Ok(())
+            } else {
+                Err(err)
+            }
+        }
+    }
 }
 
 #[test]
@@ -2705,7 +2748,7 @@ fn test_tracker_creation_by_movement() {
 
     assert_eq!(project.objects.len(), 3);
 
-    std::fs::rename(
+    rename(
         other_dir.path().join("scene.md"),
         base_dir.path().join("test_project/text/scene.md"),
     )
@@ -2742,7 +2785,7 @@ fn test_tracker_creation_by_movement_folder() {
 
     assert_eq!(project.objects.len(), 3);
 
-    std::fs::rename(
+    rename(
         other_dir.path().join("000-folder1"),
         base_dir.path().join("test_project/text/000-folder1"),
     )
@@ -3003,7 +3046,7 @@ fn test_tracker_rename_file() {
     let scene1_path_new = folder1_path.join("000-alt_name_scene1.md");
 
     // Actual start of the testing
-    std::fs::rename(&scene1_path_orig, &scene1_path_new).unwrap();
+    rename(&scene1_path_orig, &scene1_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene1_path_orig.exists());
@@ -3141,7 +3184,7 @@ fn test_tracker_rename_folder() {
     let folder1_path_new = text_path.join("000-alt_name_folder1");
 
     // Actual start of the testing
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!folder1_path_orig.exists());
@@ -3307,7 +3350,7 @@ fn test_tracker_move_file() {
     let scene1_path_new = text_path.join("001-scene1.md");
 
     // Actual start of the testing
-    std::fs::rename(&scene1_path_orig, &scene1_path_new).unwrap();
+    rename(&scene1_path_orig, &scene1_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene1_path_orig.exists());
@@ -3503,7 +3546,7 @@ fn test_tracker_move_folder() {
     let folder1_path_new = folder2_path_orig.join("000-folder1");
 
     // Actual start of the testing, move the folder
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene1_path_orig.exists());
@@ -3656,7 +3699,7 @@ fn test_tracker_move_file_reindex() {
     let scene1_path_new = folder1_path.join("005-scene1.md");
 
     // Actual start of the testing
-    std::fs::rename(&scene1_path_orig, &scene1_path_new).unwrap();
+    rename(&scene1_path_orig, &scene1_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene1_path_orig.exists());
@@ -4045,7 +4088,7 @@ asdfjkl123"#;
         .path()
         .join("test_project/text/001-folder1/000-scene1.md");
     assert!(scene1_path.exists());
-    std::fs::rename(&scene1_path, &new_scene1_path).unwrap();
+    rename(&scene1_path, &new_scene1_path).unwrap();
 
     thread::sleep(MTIME_SLEEP_DURATION);
     std::fs::write(new_scene1_path, new_scene_text).unwrap();
@@ -4148,8 +4191,8 @@ fn test_tracker_move_reindex_folder() {
     let scene2_path_new = folder1_path.join("002-scene2.md");
 
     // Actual start of the testing
-    std::fs::rename(&scene2_path_orig, &scene2_path_new).unwrap();
-    std::fs::rename(&scene3_path_orig, &scene3_path_new).unwrap();
+    rename(&scene2_path_orig, &scene2_path_new).unwrap();
+    rename(&scene3_path_orig, &scene3_path_new).unwrap();
 
     // mostly checking our test logic, we expect the original file to not exist
     assert!(!scene2_path_orig.exists());
@@ -4295,7 +4338,7 @@ scene3"#;
     let folder1_path_new = base_dir.path().join("test_project/text/000-folder1_alt");
 
     // Now, rename the folder
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // And update scene2 and scene4 after the move
     let scene2_path_new = folder1_path_new.join("001-scene2.md");
@@ -4627,7 +4670,7 @@ scene4"#;
     std::fs::write(&scene2_path_orig, scene2_raw).unwrap();
 
     let scene2_path_new = folder1_path_orig.join("002-scene2.md");
-    std::fs::rename(&scene2_path_orig, &scene2_path_new).unwrap();
+    rename(&scene2_path_orig, &scene2_path_new).unwrap();
 
     // actually update the metadata for the moving folder
     let folder1_metadata_path = folder1_path_orig.join("metadata.toml");
@@ -4642,11 +4685,11 @@ scene4"#;
     let folder1_path_new = base_dir.path().join("test_project/text/000-folder1_alt");
 
     // Now, rename folder1
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // And move scene3
     let scene3_path_new = folder1_path_new.join("001-scene3.md");
-    std::fs::rename(&scene3_path_orig, &scene3_path_new).unwrap();
+    rename(&scene3_path_orig, &scene3_path_new).unwrap();
 
     process_updates(&mut project);
 
@@ -4749,11 +4792,11 @@ scene1"#;
     let folder1_path_new = text_path.join("001-folder1");
 
     // Rename folder1
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // And move scene1
     let scene1_path_new = text_path.join("000-scene1.md");
-    std::fs::rename(folder1_path_new.join("000-scene1.md"), &scene1_path_new).unwrap();
+    rename(folder1_path_new.join("000-scene1.md"), &scene1_path_new).unwrap();
 
     process_updates(&mut project);
 
@@ -4822,7 +4865,7 @@ scene1"#;
 
     // Move folder1
     let folder1_path_new = text_path.join("000-folder1-alt");
-    std::fs::rename(&folder1_path_orig, &folder1_path_new).unwrap();
+    rename(&folder1_path_orig, &folder1_path_new).unwrap();
 
     // And remove scene3
     std::fs::remove_file(folder1_path_new.join("000-scene1.md")).unwrap();
@@ -5160,7 +5203,7 @@ fn test_tracker_creation_then_move_folder() {
         assert!(scene1_file_object.get_file().exists());
     }
 
-    std::fs::rename(&folder1_path_moved, &folder1_path_new).unwrap();
+    rename(&folder1_path_moved, &folder1_path_new).unwrap();
 
     process_updates_after_save(&mut project);
     assert_eq!(project.objects.len(), 5);
@@ -5208,9 +5251,9 @@ contents1
 
     // Create the new file and move the folder twice (ending in the same spot)
     write_with_temp_file(folder_path.join("scene.md"), scene_text).unwrap();
-    std::fs::rename(&folder_path, &folder_path_temp).unwrap();
+    rename(&folder_path, &folder_path_temp).unwrap();
     thread::sleep(MTIME_SLEEP_DURATION);
-    std::fs::rename(&folder_path_temp, &folder_path).unwrap();
+    rename(&folder_path_temp, &folder_path).unwrap();
 
     process_updates(&mut project);
 
