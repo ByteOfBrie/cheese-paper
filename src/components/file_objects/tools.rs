@@ -20,6 +20,8 @@ pub type FileID = Rc<String>;
 
 pub type FileObjectStore = HashMap<FileID, RefCell<Box<dyn FileObject>>>;
 
+const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+
 impl dyn FileObject {
     pub fn is_folder(&self) -> bool {
         self.get_type().is_folder()
@@ -313,8 +315,6 @@ impl dyn FileObject {
             ));
         }
 
-        const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
-
         if old_path.exists()
             && let Err(err) = std::fs::rename(old_path.as_path(), new_path.as_path())
         {
@@ -532,10 +532,62 @@ impl dyn FileObject {
         }
 
         // then, we need to take care of this file
-        std::fs::remove_file(self.get_file())?;
+        if let Err(err) = std::fs::remove_file(self.get_file()) {
+            if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
 
-        if self.is_folder() {
-            std::fs::remove_dir(self.get_path())?;
+                log::warn!(
+                    "Could not remove file on windows: retrying. This may be due to \
+                    antivirus software, consider adjusting settings if this issue persists"
+                );
+
+                loop {
+                    if std::fs::remove_file(self.get_file()).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(cheese_error!(
+                            "Could not remove file for {self}, even \
+                            after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                        ));
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+            } else {
+                return Err(cheese_error!("Could not remove file for {self}: {err}"));
+            }
+        }
+
+        if self.is_folder()
+            && let Err(err) = std::fs::remove_dir(self.get_path())
+        {
+            if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
+
+                log::warn!(
+                    "Could not remove file on windows: retrying. This may be due to \
+                    antivirus software, consider adjusting settings if this issue persists"
+                );
+
+                loop {
+                    if std::fs::remove_dir(self.get_path()).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(cheese_error!(
+                            "Could not remove file for {self}, even \
+                            after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                        ));
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+            } else {
+                return Err(cheese_error!("Could not remove file for {self}: {err}"));
+            }
         }
 
         // If we had any errors earlier, return them
