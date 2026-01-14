@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::cheese_error;
 use crate::components::file_objects::utils::{get_index_from_name, write_with_temp_file};
@@ -311,8 +313,38 @@ impl dyn FileObject {
             ));
         }
 
-        if old_path.exists() {
-            std::fs::rename(old_path, new_path)?;
+        const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+
+        if old_path.exists()
+            && let Err(err) = std::fs::rename(old_path.as_path(), new_path.as_path())
+        {
+            if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
+                let start = Instant::now();
+
+                log::warn!(
+                    "Could not rename on windows: retrying. This may be due to antivirus \
+                    software, consider adjusting settings if this issue persists"
+                );
+
+                loop {
+                    if std::fs::rename(old_path.as_path(), new_path.as_path()).is_ok() {
+                        break;
+                    }
+
+                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                        return Err(cheese_error!(
+                            "Could not rename file from {old_path:?} to {new_path:?} even \
+                            after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                        ));
+                    }
+
+                    thread::sleep(Duration::from_millis(20));
+                }
+            } else {
+                return Err(cheese_error!(
+                    "Could not rename file from {old_path:?} to {new_path:?}: {err}"
+                ));
+            }
         }
 
         for child in self.children(objects) {
