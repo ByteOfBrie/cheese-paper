@@ -1,5 +1,7 @@
 use std::io::Write;
 use std::path::Path;
+use std::thread;
+use std::time::{Duration, Instant};
 use tempfile::Builder;
 use toml_edit::TableLike;
 
@@ -115,14 +117,53 @@ pub fn write_with_temp_file<P: AsRef<Path>>(
         }
     };
 
-    if let Err(err) = file.write_all(contents.into().as_bytes()) {
+    let file_contents = contents.into();
+    // We need to copy it here if we're on windows, other OSes should hopefully
+    // optimize this out (since it will be unused)
+    let contents_copy = file_contents.clone();
+
+    if let Err(err) = file.write_all(file_contents.as_bytes()) {
         return Err(cheese_error!(
             "Could not write to tempfile for {:?}: {err}",
             dest_path.as_ref()
         ));
     };
 
-    if let Err(err) = file.persist(dest_path.as_ref()) {
+    const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+
+    if cfg!(windows) {
+        // We have to potentially retry on windows because antivirus software can
+        // lock the directory. There isn't a super nice way to do this logic since
+        // we consume the tempfile each time, but we can just create a new one...
+        // https://github.com/Stebalien/tempfile/issues/316
+        if let Err(err) = file.persist(dest_path.as_ref()) {
+            let start = Instant::now();
+
+            log::warn!(
+                "Could not persist tempfile on windows: retrying. This may be due to \
+                antivirus software, consider adjusting settings if this issue persists"
+            );
+
+            loop {
+                let mut file = Builder::new().suffix(".tmp").tempfile_in(dirname)?;
+                file.write_all(contents_copy.clone().as_bytes())?;
+
+                if file.persist(dest_path.as_ref()).is_ok() {
+                    break;
+                }
+
+                if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                    return Err(cheese_error!(
+                        "Could not persist tempfile with path {:?}, even after \
+                        {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                        dest_path.as_ref()
+                    ));
+                }
+
+                thread::sleep(Duration::from_millis(20));
+            }
+        }
+    } else if let Err(err) = file.persist(dest_path.as_ref()) {
         return Err(cheese_error!(
             "Could not persist tempfile with path {:?}: {err}",
             dest_path.as_ref()
