@@ -22,8 +22,8 @@ jobs:
             name: windows.exe
             archive_name: cheese-paper.exe
           - os: macos-arm64
-            name: macos
-            archive_name: cheese-paper
+            name: macos.app
+            archive_name: bundle/osx/cheese-paper.app
 
     runs-on: ${{ matrix.os }}
 
@@ -32,8 +32,12 @@ jobs:
     - name: Build
       run: cargo build --release
     - name: Run tests
-      # windows sometimes breaks if we have too many tests running at the same time :)
-      run: cargo test --release -- --test-threads=1
+      run: cargo test --release
+    - name: Create app bundle
+      if matrix.os == "macos-arm64"
+      run: |
+        cargo install bundle
+        cargo bundle --release
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
       with:

@@ -2,6 +2,12 @@
 name = "cheese-paper"
 version = "0.1.0"
 edition = "2024"
+description = "Organized writing tool with simple file format for easy syncing"
+
+[package.metadata.bundle]
+identifier = "gay.brie.cheese-paper"
+category = "Productivity"
+icon = ["resources/cheese-paper-icon.png"]
 
 [profile.release]
 lto = "fat"
