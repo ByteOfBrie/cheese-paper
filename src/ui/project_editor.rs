@@ -669,6 +669,10 @@ impl ProjectEditor {
 
         let references = References::new(&project);
 
+        let mut actions = Actions::default();
+
+        actions.schedule(|editor, ctx| update_title(&editor.project.base_metadata.name, ctx));
+
         let mut project_editor = Self {
             project,
             dock_state: DockState::new(open_tabs),
@@ -679,7 +683,7 @@ impl ProjectEditor {
                 typing_status: TypingStatus::default(),
                 search: Search::default(),
                 stores: Stores::default(),
-                actions: Actions::default(),
+                actions,
                 references,
                 last_export_folder,
                 version: 0,
