@@ -35,8 +35,10 @@ jobs:
       run: cargo test --release
     - name: Create app bundle
       if: runner.os == 'macOS'
+      shell: bash
       run: |
         cargo install bundle
+        export PATH=$PATH:/Users/runner/.cargo/bin
         cargo bundle --release
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3
