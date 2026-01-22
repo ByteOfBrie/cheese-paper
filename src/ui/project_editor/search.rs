@@ -76,6 +76,11 @@ pub enum Searchable<'a> {
 
 impl Searchable<'_> {
     pub fn search(&self, page: &Page, search: &mut Search) {
+        // Empty searches are a bad idea, the UI falls apart. This is a band-aid but it's better than nothing
+        if search.find_text.is_empty() {
+            return;
+        }
+
         let mut search_function = |text: &'_ Text, box_name: &'_ str| {
             let search_result = textbox_search::search(text, page, box_name, &search.find_text);
             search
