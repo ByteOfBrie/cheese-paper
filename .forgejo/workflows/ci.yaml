@@ -34,7 +34,7 @@ jobs:
     - name: Run tests
       run: cargo test --release
     - name: Create app bundle
-      if: matrix.os == "macos-arm64"
+      if: runner.os == 'macOS'
       run: |
         cargo install bundle
         cargo bundle --release
