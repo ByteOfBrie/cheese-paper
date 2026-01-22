@@ -179,11 +179,8 @@ impl std::fmt::Debug for EditorState {
     }
 }
 
-impl Default for EditorState {
-    fn default() -> Self {
-        let project_dirs = ProjectDirs::from("", "", "cheese-paper")
-            .expect("it should be possible to write to system dirs");
-
+impl EditorState {
+    pub fn new(project_dirs: ProjectDirs) -> Self {
         let mut settings = Settings::new(&project_dirs);
 
         settings.load().unwrap_or_else(|err| {
@@ -382,8 +379,8 @@ fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
 }
 
 impl CheesePaperApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let state = EditorState::default();
+    pub fn new(cc: &eframe::CreationContext<'_>, project_dirs: ProjectDirs) -> Self {
+        let state = EditorState::new(project_dirs);
 
         configure_text_styles(&cc.egui_ctx, state.settings.font_size());
 
