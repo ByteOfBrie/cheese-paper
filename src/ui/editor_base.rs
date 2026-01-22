@@ -18,6 +18,7 @@ use super::metrics::Metrics;
 
 #[derive(Debug)]
 pub struct Data {
+    data_directory: PathBuf,
     pub recent_projects: Vec<PathBuf>,
     pub last_project_parent_folder: PathBuf,
     pub last_export_folder: PathBuf,
@@ -28,9 +29,10 @@ pub struct Data {
     pub custom_dictionary: Vec<String>,
 }
 
-impl Default for Data {
-    fn default() -> Self {
+impl Data {
+    pub fn new(data_directory: PathBuf) -> Self {
         Self {
+            data_directory,
             recent_projects: Vec::new(),
             last_project_parent_folder: directories::UserDirs::new()
                 .unwrap()
@@ -44,9 +46,7 @@ impl Default for Data {
             custom_dictionary: Vec::new(),
         }
     }
-}
 
-impl Data {
     fn load(&mut self, table: &DocumentMut) {
         if let Some(recent_projects_array) =
             table.get("recent_projects").and_then(|val| val.as_array())
@@ -111,6 +111,7 @@ impl Data {
         }
     }
 
+    /// Save the data in this object to a table
     fn save(&self, table: &mut DocumentMut) {
         let mut recent_projects = toml_edit::Array::new();
         for project in self.recent_projects.iter() {
@@ -148,8 +149,8 @@ impl Data {
         );
     }
 
-    fn get_path(project_dirs: &ProjectDirs) -> PathBuf {
-        project_dirs.data_dir().join("data.toml")
+    fn get_path(&self) -> PathBuf {
+        self.data_directory.join("data.toml")
     }
 }
 
@@ -158,7 +159,6 @@ pub struct EditorState {
     pub data: Data,
     data_toml: DocumentMut,
     data_modified: bool,
-    project_dirs: ProjectDirs,
     error_message: Option<(String, Instant)>,
     new_project_dir: Option<PathBuf>,
     new_project_name: String,
@@ -174,23 +174,22 @@ impl std::fmt::Debug for EditorState {
             .field("settings", &self.settings)
             .field("data", &self.data)
             .field("data_modified", &self.data_modified)
-            .field("project_dirs", &self.project_dirs)
             .finish()
     }
 }
 
 impl EditorState {
     pub fn new(project_dirs: ProjectDirs) -> Self {
-        let mut settings = Settings::new(&project_dirs);
+        let mut settings = Settings::new(project_dirs.config_dir().to_path_buf());
 
         settings.load().unwrap_or_else(|err| {
             log::error!("{err}");
             panic!("{err}");
         });
 
-        let mut data = Data::default();
+        let mut data = Data::new(project_dirs.data_dir().to_path_buf());
 
-        let data_toml = match read_to_string(Data::get_path(&project_dirs)) {
+        let data_toml = match read_to_string(data.get_path()) {
             Ok(config) => config
                 .parse::<DocumentMut>()
                 .expect("invalid toml data file"),
@@ -210,7 +209,6 @@ impl EditorState {
             data,
             data_toml,
             data_modified: false,
-            project_dirs,
             error_message: None,
             new_project_dir: None,
             new_project_name: String::new(),
@@ -226,7 +224,7 @@ impl EditorState {
         if self.data_modified {
             self.data.save(&mut self.data_toml);
             write_with_temp_file(
-                create_dir_if_missing(&Data::get_path(&self.project_dirs))?,
+                create_dir_if_missing(self.data.get_path().as_path())?,
                 self.data_toml.to_string(),
             )
             .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;

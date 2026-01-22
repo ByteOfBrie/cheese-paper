@@ -10,7 +10,6 @@ use crate::components::file_objects::utils::{
 use std::fs::read_dir;
 use std::{fs::read_to_string, path::PathBuf};
 
-use directories::ProjectDirs;
 use toml_edit::{DocumentMut, Item, Value, value};
 
 pub use theme::Theme;
@@ -58,6 +57,8 @@ impl TryFrom<&Item> for ThemeSelection {
 
 #[derive(Debug)]
 struct SettingsData {
+    settings_path: PathBuf,
+
     /// size of the text font
     font_size: f32,
 
@@ -78,14 +79,13 @@ struct SettingsData {
     // theme_selection: ThemeSelection,
     available_themes: Rc<Vec<(String, Theme)>>,
 
-    project_dirs: Rc<ProjectDirs>,
-
     modified: bool,
 }
 
 impl SettingsData {
-    pub fn new(project_dirs: &ProjectDirs) -> Self {
+    pub fn new(settings_path: PathBuf) -> Self {
         Self {
+            settings_path,
             font_size: 18.0,
             reopen_last: true,
             indent_line_start: false,
@@ -93,7 +93,6 @@ impl SettingsData {
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
             available_themes: Rc::new(Vec::new()),
-            project_dirs: Rc::new(project_dirs.clone()),
             modified: false,
         }
     }
@@ -150,11 +149,11 @@ impl SettingsData {
     }
 
     fn config_file_path(&self) -> PathBuf {
-        self.project_dirs.config_dir().join("settings.toml")
+        self.settings_path.join("settings.toml")
     }
 
     fn themes_path(&self) -> PathBuf {
-        self.project_dirs.config_dir().join("themes")
+        self.settings_path.join("themes")
     }
 }
 
@@ -162,8 +161,8 @@ impl SettingsData {
 pub struct Settings(Rc<RefCell<SettingsData>>);
 
 impl Settings {
-    pub fn new(project_dirs: &ProjectDirs) -> Self {
-        Self(Rc::new(RefCell::new(SettingsData::new(project_dirs))))
+    pub fn new(config_dir: PathBuf) -> Self {
+        Self(Rc::new(RefCell::new(SettingsData::new(config_dir))))
     }
 
     pub fn load(&mut self) -> Result<(), CheeseError> {
