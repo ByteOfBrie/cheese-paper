@@ -25,7 +25,7 @@ fn main() -> eframe::Result {
     };
 
     eframe::run_native(
-        "Cheese Paper Rust Single File",
+        "Cheese Paper",
         native_options,
         Box::new(|cc| Ok(Box::new(CheesePaperApp::new(cc, project_dirs)))),
     )
