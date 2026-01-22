@@ -304,19 +304,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             self.editor_context.search.show();
         }
 
-        // lock tab presses (to whatever currently has focus)
-        if let Some(focused_widget) = ui.memory(|i| i.focused()) {
-            ui.memory_mut(|i| {
-                i.set_focus_lock_filter(
-                    focused_widget,
-                    egui::EventFilter {
-                        tab: true,
-                        ..Default::default()
-                    },
-                );
-            });
-        }
-
         // draw the actual UI for the tab open in the editor
         tab.ui(ui, self.project, self.editor_context);
     }
