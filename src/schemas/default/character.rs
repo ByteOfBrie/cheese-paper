@@ -230,10 +230,16 @@ impl Character {
             self.process_response(&response);
             ids.push(response.id);
 
-            // Make each text box take up a bit of the screen by default
-            // this could be smarter, but available/2.5 is visually better than /3, and /2
-            // doesn't work (because the collapsing headers themself take up space)
-            let min_height = ui.available_height() / 2.5;
+            let text_box_height = response.rect.height().abs();
+
+            // half of the available height should go to each widget
+            let widget_space = ui.available_height() / 2.0;
+
+            // we assume that the widget metadata itself will take up slightly more room than the text box
+            let metadata_text_space = widget_space - text_box_height * 1.2;
+
+            // make sure we don't go smaller than one line (which would be meaningless)
+            let min_height = metadata_text_space.max(text_box_height);
 
             egui::CollapsingHeader::new("Summary")
                 .default_open(true)
