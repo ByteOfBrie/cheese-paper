@@ -84,6 +84,10 @@ pub struct PageData {
     last_selected_id: Option<Id>,
 
     settings_page: Option<SettingsPage>,
+
+    /// We can only rerequest focus properly after rendering the UI, so we set a flag and
+    /// do it in the UI function (Sorry Eve)
+    rerequest_focus: bool,
 }
 
 pub type Store = RenderDataStore<Page, PageData>;
@@ -91,10 +95,9 @@ pub type Store = RenderDataStore<Page, PageData>;
 #[derive(Debug)]
 enum FocusShiftDirection {
     Next,
-    // /// This means a no-op, could have been encoded with an option instead but this makes more sense
-    // /// to me.
-    // None,
     Previous,
+    /// We need to do this sometimes when tabs have changed, but we want to remain on the same UI element
+    Same,
 }
 
 const MAX_TITLE_LENGTH: usize = 20;
@@ -133,6 +136,9 @@ impl OpenPage {
             Some(FocusShiftDirection::Previous)
         } else if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Tab)) {
             Some(FocusShiftDirection::Next)
+        } else if page_data.rerequest_focus {
+            page_data.rerequest_focus = false;
+            Some(FocusShiftDirection::Same)
         } else {
             None
         };
@@ -195,6 +201,13 @@ impl OpenPage {
                         }
                     } else {
                         page_tabable_ids.last().unwrap()
+                    }
+                }
+                FocusShiftDirection::Same => {
+                    if let Some(last_id) = &page_data.last_selected_id {
+                        last_id
+                    } else {
+                        page_tabable_ids.first().unwrap()
                     }
                 }
             };
@@ -281,6 +294,12 @@ impl OpenPage {
         } else {
             false
         }
+    }
+
+    pub fn rerequest_focus(&self, ctx: &mut EditorContext) {
+        let rdata = ctx.stores.page.get(&self.page);
+        let page_data = &mut rdata.borrow_mut();
+        page_data.rerequest_focus = true;
     }
 }
 

@@ -396,14 +396,14 @@ impl ProjectEditor {
         }
 
         // Move between tabs (ctrl-tab or ctrl-shift-tab)
-        if ctx.input_mut(|i| {
+        let tab_move_option = if ctx.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut {
                 modifiers: Modifiers::CTRL | Modifiers::SHIFT,
                 logical_key: Key::Tab,
             })
         }) {
             // ctrl-shift-tab was pressed, move backwards
-            self.move_tab(TabMove::Previous)
+            Some(TabMove::Previous)
         } else if ctx.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut {
                 modifiers: Modifiers::CTRL,
@@ -411,11 +411,19 @@ impl ProjectEditor {
             })
         }) {
             // ctrl-tab was pressed, move fowards
-            self.move_tab(TabMove::Next)
+            Some(TabMove::Next)
+        } else {
+            None
+        };
+
+        if let Some(tab_move) = tab_move_option
+            && let Some(new_tab) = self.move_tab(tab_move)
+        {
+            new_tab.rerequest_focus(&mut self.editor_context)
         }
     }
 
-    fn move_tab(&mut self, tab_move: TabMove) {
+    fn move_tab(&mut self, tab_move: TabMove) -> Option<OpenPage> {
         // We could probably get around this by learning how dock_state works better, but
         // this is easy and reliable
         // Eve note: nah this is probably the best way actually. egui_dock doesn't expose the logic
@@ -438,11 +446,14 @@ impl ProjectEditor {
                     .unwrap_or_else(|| open_tabs.len() - 1),
             };
 
-            let new_tab_index = self
-                .dock_state
-                .find_tab(open_tabs.get(new_pos).unwrap())
-                .unwrap();
+            let new_tab_page = open_tabs.get(new_pos).unwrap();
+
+            let new_tab_index = self.dock_state.find_tab(new_tab_page).unwrap();
             self.dock_state.set_active_tab(new_tab_index);
+
+            Some(new_tab_page.clone())
+        } else {
+            None
         }
     }
 
