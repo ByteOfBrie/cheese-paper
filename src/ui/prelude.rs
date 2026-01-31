@@ -8,6 +8,7 @@ pub use {
     },
     crate::schemas::FileType,
     crate::ui::{
+        elements::NameBox,
         project_editor::page::{OpenPage, Page},
         project_editor::{EditorContext, ProjectEditor, search::Search},
         render_data::RenderDataStore,

@@ -1,8 +1,8 @@
 mod render_data;
 
 mod editor_base;
-mod settings;
 mod elements;
+mod settings;
 
 mod project_editor;
 mod project_tracker;
