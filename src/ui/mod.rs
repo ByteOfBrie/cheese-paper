@@ -2,7 +2,7 @@ mod render_data;
 
 mod editor_base;
 mod settings;
-mod text_box;
+mod elements;
 
 mod project_editor;
 mod project_tracker;

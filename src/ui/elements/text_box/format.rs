@@ -1,7 +1,7 @@
 use crate::ui::prelude::*;
 use crate::ui::{
     project_editor::search::textbox_search::{TextBoxSearchResult, WordFind},
-    text_box::spellcheck::find_misspelled_words,
+    elements::text_box::spellcheck::find_misspelled_words,
 };
 
 use egui::{Color32, Stroke, TextFormat, text::LayoutJob};

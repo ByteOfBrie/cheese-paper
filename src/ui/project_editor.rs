@@ -261,7 +261,7 @@ pub struct EditorContext {
 
 #[derive(Debug, Default)]
 pub struct Stores {
-    pub text_box: crate::ui::text_box::Store,
+    pub text_box: crate::ui::elements::text_box::Store,
     pub page: page::Store,
     pub file_objects: render_data::FileObjectRDStore,
 }
