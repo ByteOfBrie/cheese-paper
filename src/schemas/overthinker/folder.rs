@@ -214,8 +214,9 @@ pub enum Tab {
 }
 
 #[derive(Debug, Default)]
-pub struct Data {
+struct RenderData {
     tab: Tab,
+    name_box: NameBox,
 }
 
 impl FileObjectEditor for Folder {
@@ -238,7 +239,7 @@ impl FileObjectEditor for Folder {
 
 impl Folder {
     fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        ford_get!(Data, folder_data, ctx.stores.file_objects, self.id());
+        ford_get!(RenderData, folder_data, ctx.stores.file_objects, self.id());
 
         let mut ids = Vec::new();
 
@@ -252,15 +253,12 @@ impl Folder {
         ui.separator();
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut self.get_base_mut().metadata.name)
-                    .id_salt("name")
-                    .hint_text("Folder Name")
-                    .lock_focus(true)
-                    .desired_width(f32::INFINITY),
-            );
-            self.process_response(&response);
-            ids.push(response.id);
+
+            let (modified, nb_ids) = folder_data.name_box.ui(
+                    &mut self.get_base_mut().metadata.name,
+                    "Unnamed Folder", ui, ctx);
+            self.get_base_mut().file.modified |= modified;
+            ids.extend(nb_ids);
 
             match folder_data.tab {
                 Tab::Notes => {

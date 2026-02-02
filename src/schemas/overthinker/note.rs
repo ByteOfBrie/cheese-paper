@@ -8,6 +8,7 @@ use crate::util::CheeseError;
 use crate::ui::FileObjectEditor;
 use crate::ui::prelude::*;
 
+use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
 use egui::Id;
@@ -24,6 +25,11 @@ pub struct Note {
     base: BaseFileObject,
     pub metadata: NoteMetadata,
     pub text: Text,
+}
+
+#[derive(Debug, Default)]
+struct RenderData {
+    name_box: NameBox,
 }
 
 impl Note {
@@ -135,11 +141,13 @@ impl FileObject for Note {
 
 impl FileObjectEditor for Note {
     fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+        ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
+
         let sidebar_ids = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
-            .show_inside(ui, |ui| self.show_sidebar(ui, ctx))
+            .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
         let mut ids = egui::CentralPanel::default()
@@ -178,7 +186,12 @@ impl Note {
             .inner
     }
 
-    fn show_sidebar(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn show_sidebar(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+        rdata: &mut RenderData,
+    ) -> Vec<Id> {
         let mut ids = Vec::new();
 
         egui::TopBottomPanel::bottom("word_count").show_inside(ui, |ui| {
@@ -191,41 +204,33 @@ impl Note {
         });
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut self.get_base_mut().metadata.name)
-                    .id_salt("name")
-                    .hint_text("Note Name")
-                    .lock_focus(true)
-                    .desired_width(f32::INFINITY),
+            let (modified, nb_ids) = rdata.name_box.ui(
+                &mut self.get_base_mut().metadata.name,
+                "Unnamed Note",
+                ui,
+                ctx,
             );
-            self.process_response(&response);
-            ids.push(response.id);
-
-            let text_box_height = response.rect.height().abs();
+            self.get_base_mut().file.modified |= modified;
+            ids.extend(nb_ids);
 
             ui.separator();
 
-            self.show_sidebar_metadata(ui, ctx, text_box_height);
+            self.show_sidebar_metadata(ui, ctx);
         });
         ids
     }
 
-    fn show_sidebar_metadata(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut EditorContext,
-        text_box_height: f32,
-    ) -> Vec<Id> {
+    fn show_sidebar_metadata(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
         let mut ids = Vec::new();
 
         // half of the available height should go to each widget
         let widget_space = ui.available_height() / 2.0;
 
         // we assume that the widget metadata itself will take up slightly more room than the text box
-        let metadata_text_space = widget_space - text_box_height * 1.2;
+        let metadata_text_space = widget_space - util::MIN_ELEMENT_BOX_HEIGHT;
 
         // make sure we don't go smaller than one line (which would be meaningless)
-        let min_height = metadata_text_space.max(text_box_height);
+        let min_height = metadata_text_space.max(util::MIN_ELEMENT_BOX_HEIGHT);
 
         egui::CollapsingHeader::new("Subject")
             .default_open(true)
