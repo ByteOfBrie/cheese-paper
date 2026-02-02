@@ -262,19 +262,20 @@ pub enum SidebarTab {
 }
 
 #[derive(Debug, Default)]
-pub struct SceneData {
+struct RenderData {
     sidebar_tab: SidebarTab,
+    name_box: NameBox,
 }
-
-// pub type Store = RenderDataStore<FileID, SceneData>;
 
 impl FileObjectEditor for Scene {
     fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+        ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
+
         let sidebar_ids = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
-            .show_inside(ui, |ui| self.show_sidebar(ui, ctx))
+            .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
         let mut ids = egui::CentralPanel::default()
@@ -313,9 +314,12 @@ impl Scene {
             .inner
     }
 
-    fn show_sidebar(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        ford_get!(SceneData, scene_data, ctx.stores.file_objects, self.id());
-
+    fn show_sidebar(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+        rdata: &mut RenderData,
+    ) -> Vec<Id> {
         let mut ids = Vec::new();
 
         egui::TopBottomPanel::bottom("word_count").show_inside(ui, |ui| {
@@ -328,32 +332,25 @@ impl Scene {
         });
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut self.get_base_mut().metadata.name)
-                    .id_salt("name")
-                    .hint_text("Scene Name")
-                    .lock_focus(true)
-                    .desired_width(f32::INFINITY),
+            let (modified, nb_ids) = rdata.name_box.ui(
+                &mut self.get_base_mut().metadata.name,
+                "Unnamed Scene",
+                ui,
+                ctx,
             );
-            self.process_response(&response);
-            ids.push(response.id);
-
-            let text_box_height = response.rect.height().abs();
+            self.get_base_mut().file.modified |= modified;
+            ids.extend(nb_ids);
 
             // Tab selection
             ui.horizontal(|ui| {
-                ui.selectable_value(
-                    &mut scene_data.sidebar_tab,
-                    SidebarTab::Notes,
-                    "Summary/Notes",
-                );
-                ui.selectable_value(&mut scene_data.sidebar_tab, SidebarTab::Export, "Export");
+                ui.selectable_value(&mut rdata.sidebar_tab, SidebarTab::Notes, "Summary/Notes");
+                ui.selectable_value(&mut rdata.sidebar_tab, SidebarTab::Export, "Export");
             });
 
             ui.separator();
 
-            let sidebar_other_ids = match scene_data.sidebar_tab {
-                SidebarTab::Notes => self.show_sidebar_metadata(ui, ctx, text_box_height),
+            let sidebar_other_ids = match rdata.sidebar_tab {
+                SidebarTab::Notes => self.show_sidebar_metadata(ui, ctx),
                 SidebarTab::Export => self.show_sidebar_export(ui),
             };
 
@@ -362,12 +359,7 @@ impl Scene {
         ids
     }
 
-    fn show_sidebar_metadata(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut EditorContext,
-        text_box_height: f32,
-    ) -> Vec<Id> {
+    fn show_sidebar_metadata(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
         let mut ids = Vec::new();
 
         // I am doing horrible things here but the borrow checker must be satisifed
@@ -430,10 +422,10 @@ impl Scene {
         let widget_space = ui.available_height() / 2.0;
 
         // we assume that the widget metadata itself will take up slightly more room than the text box
-        let metadata_text_space = widget_space - text_box_height * 1.2;
+        let metadata_text_space = widget_space - util::MIN_ELEMENT_BOX_HEIGHT;
 
         // make sure we don't go smaller than one line (which would be meaningless)
-        let min_height = metadata_text_space.max(text_box_height);
+        let min_height = metadata_text_space.max(util::MIN_ELEMENT_BOX_HEIGHT);
 
         egui::CollapsingHeader::new("Summary")
             .default_open(true)

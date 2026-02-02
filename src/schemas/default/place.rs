@@ -8,6 +8,7 @@ use crate::util::CheeseError;
 use crate::ui::FileObjectEditor;
 use crate::ui::prelude::*;
 
+use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
 use egui::Id;
@@ -26,6 +27,11 @@ pub struct PlaceMetadata {
 pub struct Place {
     pub base: BaseFileObject,
     pub metadata: PlaceMetadata,
+}
+
+#[derive(Debug, Default)]
+struct RenderData {
+    name_box: NameBox,
 }
 
 impl Place {
@@ -162,11 +168,13 @@ impl FileObject for Place {
 
 impl FileObjectEditor for Place {
     fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+        ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
+
         let sidebar_ids = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
-            .show_inside(ui, |ui| self.show_sidebar(ui, ctx))
+            .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
         let mut ids = egui::CentralPanel::default()
@@ -203,21 +211,25 @@ impl FileObjectEditor for Place {
 }
 
 impl Place {
-    fn show_sidebar(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn show_sidebar(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+        rdata: &mut RenderData,
+    ) -> Vec<Id> {
         let mut ids = Vec::new();
 
         ScrollArea::vertical()
             .id_salt("main metadata")
             .show(ui, |ui| {
-                let response = ui.add(
-                    egui::TextEdit::singleline(&mut self.get_base_mut().metadata.name)
-                        .id_salt("name")
-                        .hint_text("Place Name")
-                        .lock_focus(true)
-                        .desired_width(f32::INFINITY),
+                let (modified, nb_ids) = rdata.name_box.ui(
+                    &mut self.get_base_mut().metadata.name,
+                    "Unnamed Place",
+                    ui,
+                    ctx,
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                self.get_base_mut().file.modified |= modified;
+                ids.extend(nb_ids);
 
                 ui.label("Notes");
                 let response = ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| {
