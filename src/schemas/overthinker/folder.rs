@@ -239,28 +239,28 @@ impl FileObjectEditor for Folder {
 
 impl Folder {
     fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        ford_get!(RenderData, folder_data, ctx.stores.file_objects, self.id());
+        ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
 
         let mut ids = Vec::new();
 
         // Tab selection
         // TODO: make selectable_values here more subtle (e.g., different color gray)
         ui.horizontal(|ui| {
-            ui.selectable_value(&mut folder_data.tab, Tab::Notes, "Summary/Notes");
-            ui.selectable_value(&mut folder_data.tab, Tab::Export, "Export");
+            ui.selectable_value(&mut rdata.tab, Tab::Notes, "Summary/Notes");
+            ui.selectable_value(&mut rdata.tab, Tab::Export, "Export");
         });
 
         ui.separator();
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
 
-            let (modified, nb_ids) = folder_data.name_box.ui(
+            let (modified, nb_ids) = rdata.name_box.ui(
                     &mut self.get_base_mut().metadata.name,
                     "Unnamed Folder", ui, ctx);
             self.get_base_mut().file.modified |= modified;
             ids.extend(nb_ids);
 
-            match folder_data.tab {
+            match rdata.tab {
                 Tab::Notes => {
                     egui::CollapsingHeader::new("Summary")
                         .default_open(true)
