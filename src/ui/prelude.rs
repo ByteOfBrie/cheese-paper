@@ -13,6 +13,7 @@ pub use {
         project_editor::{EditorContext, ProjectEditor, search::Search},
         render_data::RenderDataStore,
         settings::Settings,
+        util,
     },
     crate::util::CheeseError,
     egui::{Response, Ui},
