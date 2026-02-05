@@ -8,7 +8,6 @@ mod project_editor;
 mod project_tracker;
 
 pub mod prelude;
-pub mod util;
 
 pub use editor_base::CheesePaperApp;
 pub use project_editor::page::FileObjectEditor;
