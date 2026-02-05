@@ -349,6 +349,66 @@ impl Text {
             }
         }
 
+        // Check for page up and page down
+        if let Some(focused_window) = ui.ctx().memory(|i| i.focused())
+            && focused_window == output.response.id
+            && let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), output.response.id)
+            && let Some(output_cursor_range) = state.cursor.char_range()
+        {
+            let mut cursor_range = output_cursor_range;
+            let mut changed_formatting = false;
+
+            ui.input_mut(|i| {
+                // First, we check for if we have page up or page down pressed, and get a modifier to
+                // scroll direction based on which of those keys were pressed
+                let page_scroll_modifier_option = if i.consume_key(Modifiers::NONE, Key::PageDown) {
+                    Some(1.0)
+                } else if i.consume_key(Modifiers::NONE, Key::PageUp) {
+                    Some(-1.0)
+                } else {
+                    None
+                };
+
+                // Next, compute the directions based on the key press
+                if let Some(page_scroll_modifier) = page_scroll_modifier_option {
+                    // Get the current cursor
+                    let mut cursor_pos = output
+                        .galley
+                        .pos_from_cursor(output_cursor_range.primary)
+                        .min;
+                    let interact_rect_height = output.response.interact_rect.height();
+
+                    // Compute the scroll distance
+                    let scroll_distance = interact_rect_height * 0.8 * page_scroll_modifier;
+                    cursor_pos.y += scroll_distance;
+
+                    // Set the primary cursor to the new position
+                    cursor_range.primary = output.galley.cursor_from_pos(cursor_pos.to_vec2());
+
+                    // When shift isn't being held down, we also need to update the secondary cursor
+                    if !i.modifiers.shift {
+                        cursor_range.secondary = cursor_range.primary;
+                    }
+                    changed_formatting = true;
+                }
+            });
+
+            if changed_formatting {
+                state.cursor.set_char_range(Some(cursor_range));
+                state.store(ui.ctx(), output.response.id);
+
+                // Now we compute the galley based on the new cursor we've just scrolled to
+                let new_cursor_pos_rect = output.galley.pos_from_cursor(cursor_range.primary);
+
+                // Add the minimum of the text edit widget to the galley position to get the
+                // absolute rectangle, which is what we'll actually scroll to
+                let cursor_absolute_pos =
+                    new_cursor_pos_rect.translate(output.response.rect.min.to_vec2());
+
+                ui.scroll_to_rect(cursor_absolute_pos, None);
+            }
+        }
+
         output.response
     }
 
