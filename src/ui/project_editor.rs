@@ -422,7 +422,7 @@ impl ProjectEditor {
         if let Some(tab_move) = tab_move_option
             && let Some(new_tab) = self.move_tab(tab_move)
         {
-            new_tab.rerequest_focus(&mut self.editor_context)
+            self.editor_context.focus_jumper.send(new_tab);
         }
     }
 

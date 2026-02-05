@@ -84,10 +84,6 @@ pub struct PageData {
     last_selected_id: Option<Id>,
 
     settings_page: Option<SettingsPage>,
-
-    /// We can only rerequest focus properly after rendering the UI, so we set a flag and
-    /// do it in the UI function (Sorry Eve)
-    rerequest_focus: bool,
 }
 
 pub type Store = RenderDataStore<Page, PageData>;
@@ -136,8 +132,7 @@ impl OpenPage {
             Some(FocusShiftDirection::Previous)
         } else if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Tab)) {
             Some(FocusShiftDirection::Next)
-        } else if page_data.rerequest_focus {
-            page_data.rerequest_focus = false;
+        } else if ctx.focus_jumper.recieve(self.clone()) {
             Some(FocusShiftDirection::Same)
         } else {
             None
@@ -294,12 +289,6 @@ impl OpenPage {
         } else {
             false
         }
-    }
-
-    pub fn rerequest_focus(&self, ctx: &mut EditorContext) {
-        let rdata = ctx.stores.page.get(&self.page);
-        let page_data = &mut rdata.borrow_mut();
-        page_data.rerequest_focus = true;
     }
 }
 
