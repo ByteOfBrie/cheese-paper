@@ -132,7 +132,7 @@ impl OpenPage {
             Some(FocusShiftDirection::Previous)
         } else if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Tab)) {
             Some(FocusShiftDirection::Next)
-        } else if ctx.focus_jumper.recieve(self.clone()) {
+        } else if ctx.focus_jumper.recieve(self) {
             Some(FocusShiftDirection::Same)
         } else {
             None
