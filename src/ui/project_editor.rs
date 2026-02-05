@@ -1,5 +1,6 @@
 pub mod action;
 mod file_tree;
+pub mod focus_jumper;
 pub mod page;
 pub mod search;
 mod util;
@@ -13,6 +14,7 @@ use crate::ui::project_editor::search::global_search;
 use crate::ui::project_tracker::ProjectTracker;
 
 use action::Actions;
+use focus_jumper::FocusJumper;
 
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Formatter};
@@ -251,6 +253,7 @@ pub struct EditorContext {
     pub stores: Stores,
     pub references: References,
     pub actions: Actions,
+    pub focus_jumper: FocusJumper,
 
     /// Duplicates the value from state.data, which is then more recent
     pub last_export_folder: PathBuf,
@@ -695,6 +698,7 @@ impl ProjectEditor {
                 search: Search::default(),
                 stores: Stores::default(),
                 actions,
+                focus_jumper: FocusJumper::default(),
                 references,
                 last_export_folder,
                 version: 0,
