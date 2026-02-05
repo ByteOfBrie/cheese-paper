@@ -416,11 +416,11 @@ impl Scene {
         // half of the available height should go to each widget
         let widget_space = ui.available_height() / 2.0;
 
-        // we assume that the widget metadata itself will take up slightly more room than the text box
-        let metadata_text_space = widget_space - util::MIN_ELEMENT_BOX_HEIGHT;
+        // widget metadata itself will take up slightly more room than the text box
+        let metadata_text_space = widget_space - ctx.measurements.collapsible_header_extra_height;
 
         // make sure we don't go smaller than one line (which would be meaningless)
-        let min_height = metadata_text_space.max(util::MIN_ELEMENT_BOX_HEIGHT);
+        let min_height = metadata_text_space.max(ctx.measurements.text_box_height);
 
         egui::CollapsingHeader::new("Summary")
             .default_open(true)

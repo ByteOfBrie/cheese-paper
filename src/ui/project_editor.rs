@@ -1,10 +1,12 @@
 pub mod action;
 mod file_tree;
 pub mod focus_jumper;
+pub mod measurements;
 pub mod page;
 pub mod search;
 mod util;
 
+use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
 
@@ -16,6 +18,7 @@ use crate::ui::project_tracker::ProjectTracker;
 use action::Actions;
 use focus_jumper::FocusJumper;
 
+use core::f32;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
@@ -253,6 +256,7 @@ pub struct EditorContext {
     pub stores: Stores,
     pub references: References,
     pub actions: Actions,
+    pub measurements: Measurements,
     pub focus_jumper: FocusJumper,
 
     /// Duplicates the value from state.data, which is then more recent
@@ -339,6 +343,13 @@ impl ProjectEditor {
         self.process_state(ctx);
 
         self.draw_menu(ctx, state);
+
+        if !self.editor_context.measurements.measured {
+            egui::SidePanel::right("measurement panel").show(ctx, |ui| {
+                ui.set_height(f32::INFINITY);
+                self.editor_context.measurements.measure(ui);
+            });
+        }
 
         egui::SidePanel::left("project tree panel").show(ctx, |ui| {
             self.side_panel(ui);
@@ -699,6 +710,7 @@ impl ProjectEditor {
                 stores: Stores::default(),
                 actions,
                 focus_jumper: FocusJumper::default(),
+                measurements: Measurements::default(),
                 references,
                 last_export_folder,
                 version: 0,

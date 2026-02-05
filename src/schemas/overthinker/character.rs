@@ -250,10 +250,8 @@ impl Character {
             self.get_base_mut().file.modified |= modified;
             ids.extend(nb_ids);
 
-            // Make each text box take up a bit of the screen by default
-            // this could be smarter, but available/2.5 is visually better than /3, and /2
-            // doesn't work (because the collapsing headers themself take up space)
-            let min_height = ui.available_height() / 2.5;
+            let min_height =
+                (ui.available_height() / 2.0) - ctx.measurements.collapsible_header_extra_height;
 
             egui::CollapsingHeader::new("Summary")
                 .default_open(true)
