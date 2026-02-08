@@ -70,12 +70,26 @@ impl Page {
 }
 
 /// the identifier for a Page which has been open in a Tab
-#[derive(Debug, PartialEq, Eq, Hash, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct OpenPage {
     pub page: Page,
 
     /// indicate if the page should be kept. if not, it will be closed when a new tab is opened.
     pub keep: bool,
+}
+
+impl PartialEq for OpenPage {
+    fn eq(&self, other: &Self) -> bool {
+        self.page == other.page
+    }
+}
+
+impl Eq for OpenPage {}
+
+impl std::hash::Hash for OpenPage {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.page.hash(state);
+    }
 }
 
 #[derive(Debug, Default)]
@@ -124,7 +138,7 @@ impl OpenPage {
         text.into()
     }
 
-    pub fn ui(&self, ui: &mut Ui, project: &mut Project, ctx: &mut EditorContext) {
+    pub fn ui(&mut self, ui: &mut Ui, project: &mut Project, ctx: &mut EditorContext) {
         let rdata = ctx.stores.page.get(&self.page);
         let page_data: &mut PageData = &mut rdata.borrow_mut();
 
@@ -145,7 +159,7 @@ impl OpenPage {
         };
 
         let CheeseResponse {
-            modified: _modified,
+            modified,
             tabable_ids: page_tabable_ids,
         } = match &self.page {
             Page::ProjectMetadata => project.metadata_ui(ui, ctx),
@@ -165,6 +179,8 @@ impl OpenPage {
                 settings_page.ui(ui, ctx)
             }
         };
+
+        self.keep |= modified;
 
         if let Some(focus_shift) = focus_shift_option {
             let current_element_index = if let Some(last_id) = page_data.last_selected_id {
