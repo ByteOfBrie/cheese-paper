@@ -1,21 +1,24 @@
 use crate::ui::{prelude::*, project_editor::update_title};
 
-use egui::Id;
 use egui::ScrollArea;
 
 impl Project {
-    pub fn metadata_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        egui::CentralPanel::default()
+    pub fn metadata_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let cheese_response = egui::CentralPanel::default()
             .show_inside(ui, |ui| self.show_project_metadata_editor(ui, ctx))
-            .inner
+            .inner;
+        if cheese_response.modified {
+            self.file.modified = true;
+        }
+        cheese_response
     }
 
     fn show_project_metadata_editor(
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
-    ) -> Vec<Id> {
-        let mut ids = Vec::new();
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
             let response = ui.add(
                 egui::TextEdit::singleline(&mut self.base_metadata.name)
@@ -24,8 +27,7 @@ impl Project {
                     .lock_focus(true)
                     .desired_width(f32::INFINITY),
             );
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             // Special case: update the title if we've changed it:
             if response.changed() {
@@ -39,8 +41,7 @@ impl Project {
                     .lock_focus(true)
                     .desired_width(f32::INFINITY),
             );
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             ui.horizontal(|ui| {
                 let half_width = ui.available_width() / 2.0;
@@ -52,8 +53,7 @@ impl Project {
                         .lock_focus(true)
                         .desired_width(half_width),
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
 
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.metadata.email)
@@ -62,8 +62,7 @@ impl Project {
                         .lock_focus(true)
                         .desired_width(half_width),
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
 
             // extract the height from some arbitrary text box, it shouldn't matter much
@@ -83,8 +82,7 @@ impl Project {
                         egui::vec2(ui.available_width(), widget_height),
                         |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                     );
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
 
             egui::CollapsingHeader::new("Notes")
@@ -95,16 +93,9 @@ impl Project {
                         |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                     );
 
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
         });
-        ids
-    }
-
-    pub fn process_response(&mut self, response: &egui::Response) {
-        if response.changed() {
-            self.file.modified = true;
-        }
+        cheese_response
     }
 }

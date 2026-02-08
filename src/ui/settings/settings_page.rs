@@ -91,30 +91,38 @@ impl SettingsPage {
         settings_data.modified = true;
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<egui::Id> {
-        let mut ids = Vec::new();
+    pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         ui.heading("Settings");
 
-        ids.extend(self.settings_ui(ui, ctx));
+        cheese_response.extend(self.settings_ui(ui, ctx));
 
         ui.separator();
 
         ui.heading("Themes");
 
-        ids.extend(self.themes_ui(ui, ctx));
+        cheese_response.extend(self.themes_ui(ui, ctx));
 
-        ids
+        if cheese_response.modified {
+            let next_update = SystemTime::now() + Self::UPDATE_DELAY;
+            if let Some(prev_ne) = self.next_update {
+                self.next_update = Some(std::cmp::max(next_update, prev_ne));
+            } else {
+                self.next_update = Some(next_update);
+            }
+        }
+
+        cheese_response
     }
 
-    fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<egui::Id> {
-        let mut ids = Vec::new();
+    fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         ui.label("Font Size");
 
         let response = ui.text_edit_singleline(&mut self.font_size_config);
-        self.process_response(&response);
-        ids.push(response.id);
+        cheese_response.process_response(&response, true);
 
         if let Some(err) = &self.font_size_error {
             ui.label(RichText::new(err).color(Color32::RED));
@@ -123,20 +131,17 @@ impl SettingsPage {
         ui.label("Indent Line Start");
 
         let response = ui.checkbox(&mut self.indent_line_start_config, "");
-        self.process_response(&response);
-        ids.push(response.id);
+        cheese_response.process_response(&response, true);
 
         ui.label("Reopen Last Project on Launch");
 
         let response = ui.checkbox(&mut self.reopen_last_config, "");
-        self.process_response(&response);
-        ids.push(response.id);
+        cheese_response.process_response(&response, true);
 
         ui.label("Dictionary Location");
 
         let response = ui.text_edit_singleline(&mut self.dictionary_location_config);
-        self.process_response(&response);
-        ids.push(response.id);
+        cheese_response.process_response(&response, true);
 
         if let Some(err) = &self.dictionary_location_error {
             ui.label(RichText::new(err).color(Color32::RED));
@@ -153,11 +158,11 @@ impl SettingsPage {
             }
         }
 
-        ids
+        cheese_response
     }
 
-    fn themes_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<egui::Id> {
-        let mut ids = Vec::new();
+    fn themes_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         let mut update = false;
 
         let selected = ctx.settings.selected_theme();
@@ -173,7 +178,7 @@ impl SettingsPage {
                 ctx.settings.select_theme(ThemeSelection::Default).unwrap();
                 update = true;
             }
-            ids.push(response.id);
+            cheese_response.tabable_ids.push(response.id);
         });
 
         ui.horizontal(|ui| {
@@ -189,7 +194,7 @@ impl SettingsPage {
                     .unwrap();
                 update = true;
             }
-            ids.push(response.id);
+            cheese_response.tabable_ids.push(response.id);
         });
 
         ui.horizontal(|ui| {
@@ -203,7 +208,7 @@ impl SettingsPage {
                 ctx.settings.select_theme(ThemeSelection::Random).unwrap();
                 update = true;
             }
-            ids.push(response.id);
+            cheese_response.tabable_ids.push(response.id);
         });
 
         ui.horizontal(|ui| {
@@ -244,7 +249,7 @@ impl SettingsPage {
                             .unwrap();
                         update = true;
                     }
-                    ids.push(response.id);
+                    cheese_response.tabable_ids.push(response.id);
                 });
             }
         });
@@ -256,7 +261,7 @@ impl SettingsPage {
             ui.horizontal(|ui| {
                 ui.label("name : ");
                 let response = ui.text_edit_singleline(&mut self.random_theme_name);
-                ids.push(response.id);
+                cheese_response.tabable_ids.push(response.id);
                 let response = ui.button("Save");
                 if response.clicked() {
                     self.random_theme_save_error = ctx
@@ -271,7 +276,7 @@ impl SettingsPage {
                         });
                     }
                 }
-                ids.push(response.id);
+                cheese_response.tabable_ids.push(response.id);
             });
             if let Some(err) = &self.random_theme_save_error {
                 ui.label(RichText::new(err.to_string()).color(Color32::RED));
@@ -284,17 +289,6 @@ impl SettingsPage {
             });
         }
 
-        ids
-    }
-
-    fn process_response(&mut self, response: &egui::Response) {
-        if response.changed() {
-            let next_update = SystemTime::now() + Self::UPDATE_DELAY;
-            if let Some(prev_ne) = self.next_update {
-                self.next_update = Some(std::cmp::max(next_update, prev_ne));
-            } else {
-                self.next_update = Some(next_update);
-            }
-        }
+        cheese_response
     }
 }

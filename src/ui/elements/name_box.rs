@@ -1,7 +1,6 @@
 //! A box for editing the name of a file object
 
 use crate::ui::prelude::*;
-use egui::Id;
 
 #[derive(Debug, Default)]
 pub struct NameBox {
@@ -16,9 +15,8 @@ impl NameBox {
         empty_text: &str,
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
-    ) -> (bool, Option<Id>) {
-        let mut tabable_id = None;
-        let mut modified = false;
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         ui.horizontal(|ui| {
             if self.editing {
@@ -31,14 +29,14 @@ impl NameBox {
                 if ctx.focus_jumper.recieve(&"name_edit_field") {
                     edit_response.request_focus();
                 }
-                tabable_id = Some(edit_response.id);
+                cheese_response.tabable_ids.push(edit_response.id);
 
                 let response = ui.button("✅");
                 if response.clicked()
                     || (edit_response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
                 {
                     *text = std::mem::take(&mut self.edit_content);
-                    modified = true;
+                    cheese_response.modified = true;
                     self.editing = false;
                 }
                 let response = ui.button("❌");
@@ -63,6 +61,6 @@ impl NameBox {
             }
         });
 
-        (modified, tabable_id)
+        cheese_response
     }
 }

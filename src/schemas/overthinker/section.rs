@@ -15,7 +15,6 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::Id;
 use egui::ScrollArea;
 
 #[derive(Debug, Default)]
@@ -220,10 +219,12 @@ pub struct RenderData {
 }
 
 impl FileObjectEditor for Section {
-    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        egui::CentralPanel::default()
+    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let cheese_response = egui::CentralPanel::default()
             .show_inside(ui, |ui| self.show_editor(ui, ctx))
-            .inner
+            .inner;
+        self.process_response(&cheese_response);
+        cheese_response
     }
 
     fn for_each_textbox<'a>(&'a self, f: &mut dyn FnMut(&Text, &'static str)) {
@@ -238,10 +239,9 @@ impl FileObjectEditor for Section {
 }
 
 impl Section {
-    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
-
-        let mut ids = Vec::new();
+        let mut cheese_response = CheeseResponse::default();
 
         // Tab selection
         // TODO: make selectable_values here more subtle (e.g., different color gray)
@@ -253,14 +253,12 @@ impl Section {
         ui.separator();
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let (modified, nb_ids) = rdata.name_box.ui(
+            rdata.name_box.ui(
                 &mut self.get_base_mut().metadata.name,
                 "Unnamed Section",
                 ui,
                 ctx,
-            );
-            self.get_base_mut().file.modified |= modified;
-            ids.extend(nb_ids);
+            ).append_to(&mut cheese_response);
 
             match rdata.tab {
                 Tab::Notes => {
@@ -269,16 +267,14 @@ impl Section {
                         .show(ui, |ui| {
                             let response =
                                 ui.add(|ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx));
-                            self.process_response(&response);
-                            ids.push(response.id);
+                            cheese_response.process_response(&response, true);
                         });
 
                     egui::CollapsingHeader::new("Notes")
                         .default_open(true)
                         .show(ui, |ui| {
                             let response = ui.add(|ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx));
-                            self.process_response(&response);
-                            ids.push(response.id);
+                            cheese_response.process_response(&response, true);
                         });
                 }
                 Tab::Export => {
@@ -294,8 +290,7 @@ impl Section {
                             .compile_status
                             .set(CompileStatus::INCLUDE, export_include);
                     }
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
 
                     // The rest of the checkboxes have no effect if export isn't included
                     ui.add_enabled_ui(export_include, |ui| {
@@ -333,7 +328,7 @@ impl Section {
 
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
-                            ids.push(title_combobox_response.response.id);
+                            cheese_response.tabable_ids.push(title_combobox_response.response.id);
                         });
 
                         // We don't have an actual response here so we have to manually process
@@ -379,7 +374,7 @@ impl Section {
 
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
-                            ids.push(break_combobox_response.response.id);
+                            cheese_response.tabable_ids.push(break_combobox_response.response.id);
                         });
 
                         // We don't have an actual response here so we have to manually process
@@ -391,6 +386,6 @@ impl Section {
                 }
             }
         });
-        ids
+        cheese_response
     }
 }

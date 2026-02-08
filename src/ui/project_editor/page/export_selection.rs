@@ -1,4 +1,3 @@
-use egui::Id;
 use egui::Vec2;
 use rfd::FileDialog;
 
@@ -12,14 +11,22 @@ use crate::{
 
 //This probably shouldn't be a part of Project but it's easy enough right now
 impl Project {
-    pub fn export_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        egui::CentralPanel::default()
+    pub fn export_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let cheese_response = egui::CentralPanel::default()
             .show_inside(ui, |ui| self.show_export_selection(ui, ctx))
-            .inner
+            .inner;
+        if cheese_response.modified {
+            self.file.modified = true;
+        }
+        cheese_response
     }
 
-    fn show_export_selection(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        let mut ids = Vec::new();
+    fn show_export_selection(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         ui.label("Project Export Selection");
 
         egui::Grid::new("Export Options")
@@ -33,8 +40,7 @@ impl Project {
                     "If this is checked, the title from every folder will be included \
                     in the export (as headings)",
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
                 ui.end_row();
 
                 const FOLDER_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
@@ -54,8 +60,7 @@ impl Project {
                     let response = ui.add(egui::DragValue::new(
                         &mut self.metadata.export.include_folder_title_depth,
                     ));
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
                 ui.end_row();
 
@@ -68,8 +73,7 @@ impl Project {
                     "If checked, the title of every scene will be included \
                     in the export (as headings)",
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
                 ui.end_row();
 
                 const SCENE_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
@@ -89,8 +93,7 @@ impl Project {
                     let response = ui.add(egui::DragValue::new(
                         &mut self.metadata.export.include_scene_title_depth,
                     ));
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
                 ui.end_row();
 
@@ -99,8 +102,7 @@ impl Project {
                     "Insert break between consecutive scenes",
                 ).on_hover_text("If checked, insert break (horizontal line) between scenes. If this is \
                     not set, two consecutive scenes will only have a newline in the final export");
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
 
         ui.add_space(40.0);
@@ -151,8 +153,10 @@ impl Project {
             }
         }
 
-        ids.push(export_story_button_response.id);
+        cheese_response
+            .tabable_ids
+            .push(export_story_button_response.id);
 
-        ids
+        cheese_response
     }
 }

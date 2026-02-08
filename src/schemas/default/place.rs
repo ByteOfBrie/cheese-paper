@@ -11,7 +11,6 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::Id;
 use egui::ScrollArea;
 
 #[derive(Debug, Default)]
@@ -167,22 +166,25 @@ impl FileObject for Place {
 }
 
 impl FileObjectEditor for Place {
-    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
 
-        let sidebar_ids = egui::SidePanel::right("metadata sidebar")
+        let mut cheese_response = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
             .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
-        let mut ids = egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_editor(ui, ctx))
-            .inner;
+        cheese_response.extend(
+            egui::CentralPanel::default()
+                .show_inside(ui, |ui| self.show_editor(ui, ctx))
+                .inner,
+        );
 
-        ids.extend(sidebar_ids);
-        ids
+        self.process_response(&cheese_response);
+
+        cheese_response
     }
 
     fn for_each_textbox<'a>(&'a self, f: &mut dyn FnMut(&Text, &'static str)) {
@@ -216,57 +218,50 @@ impl Place {
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
         rdata: &mut RenderData,
-    ) -> Vec<Id> {
-        let mut ids = Vec::new();
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         ScrollArea::vertical()
             .id_salt("main metadata")
             .show(ui, |ui| {
-                let (modified, nb_ids) = rdata.name_box.ui(
+                cheese_response.extend(rdata.name_box.ui(
                     &mut self.get_base_mut().metadata.name,
                     "Unnamed Place",
                     ui,
                     ctx,
-                );
-                self.get_base_mut().file.modified |= modified;
-                ids.extend(nb_ids);
+                ));
 
                 ui.label("Notes");
                 let response = ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| {
                     self.metadata.notes.ui(ui, ctx)
                 });
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
-        ids
+        cheese_response
     }
 
-    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        let mut ids = Vec::new();
+    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         ScrollArea::vertical()
             .id_salt("main metadata")
             .show(ui, |ui| {
                 ui.label("Connection To Story");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.connection.ui(ui, ctx));
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
 
                 ui.label("Description");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.description.ui(ui, ctx));
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
 
                 ui.label("Appearance");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
 
                 ui.label("Other Senses");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.other_senses.ui(ui, ctx));
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
-        ids
+        cheese_response
     }
 }

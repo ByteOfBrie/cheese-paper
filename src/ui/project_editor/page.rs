@@ -144,14 +144,16 @@ impl OpenPage {
             false
         };
 
-        // Draw the UI, saving the ids of the (selectable) elements to do tabbing on
-        let page_tabable_ids = match &self.page {
+        let CheeseResponse {
+            modified: _modified,
+            tabable_ids: page_tabable_ids,
+        } = match &self.page {
             Page::ProjectMetadata => project.metadata_ui(ui, ctx),
             Page::FileObject(file_object_id) => {
                 if let Some(file_object) = project.objects.get(file_object_id) {
                     file_object.borrow_mut().as_editor_mut().ui(ui, ctx)
                 } else {
-                    Vec::new()
+                    CheeseResponse::default()
                 }
             }
             Page::Export => project.export_ui(ui, ctx),

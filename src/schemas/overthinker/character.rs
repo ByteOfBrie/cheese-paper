@@ -11,7 +11,6 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::Id;
 use egui::ScrollArea;
 
 #[derive(Debug, Default)]
@@ -185,22 +184,23 @@ impl FileObject for Character {
 // shortcuts for not having to cast every time
 
 impl FileObjectEditor for Character {
-    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
 
-        let sidebar_ids = egui::SidePanel::right("metadata sidebar")
+        let mut cheese_response = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
             .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
-        let mut ids = egui::CentralPanel::default()
+        egui::CentralPanel::default()
             .show_inside(ui, |ui| self.show_editor(ui, ctx))
-            .inner;
+            .inner
+            .append_to(&mut cheese_response);
 
-        ids.extend(sidebar_ids);
-        ids
+        self.process_response(&cheese_response);
+        cheese_response
     }
 
     fn for_each_textbox<'a>(&'a self, f: &mut dyn FnMut(&Text, &'static str)) {
@@ -238,17 +238,18 @@ impl Character {
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
         rdata: &mut RenderData,
-    ) -> Vec<Id> {
-        let mut ids = Vec::new();
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let (modified, nb_ids) = rdata.name_box.ui(
-                &mut self.get_base_mut().metadata.name,
-                "Unnamed Character",
-                ui,
-                ctx,
-            );
-            self.get_base_mut().file.modified |= modified;
-            ids.extend(nb_ids);
+            rdata
+                .name_box
+                .ui(
+                    &mut self.get_base_mut().metadata.name,
+                    "Unnamed Character",
+                    ui,
+                    ctx,
+                )
+                .append_to(&mut cheese_response);
 
             let min_height =
                 (ui.available_height() / 2.0) - ctx.measurements.collapsible_header_extra_height;
@@ -260,8 +261,7 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                     );
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
 
             egui::CollapsingHeader::new("Notes")
@@ -271,45 +271,39 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                     );
-                    self.process_response(&response);
-                    ids.push(response.id);
+                    cheese_response.process_response(&response, true);
                 });
         });
 
-        ids
+        cheese_response
     }
 
-    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        let mut ids = Vec::new();
+    fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
             ui.label("Goals");
             let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.goal.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             ui.label("Appearance");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             ui.label("Persona");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.persona.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             ui.label("Interior");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.interior.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
 
             ui.label("Narrative Role");
             let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.role.ui(ui, ctx));
-            self.process_response(&response);
-            ids.push(response.id);
+            cheese_response.process_response(&response, true);
         });
-        ids
+        cheese_response
     }
 }

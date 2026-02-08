@@ -1,7 +1,7 @@
 use crate::ui::prelude::*;
 
 pub trait FileObjectEditor: FileObject {
-    fn ui<'a>(&'a mut self, ui: &'a mut egui::Ui, ctx: &'a mut EditorContext) -> Vec<egui::Id>;
+    fn ui<'a>(&'a mut self, ui: &'a mut egui::Ui, ctx: &'a mut EditorContext) -> CheeseResponse;
 
     // we cannot use `impl FnMut`` here because we need FileObjectEditor to be dyn-compatible
     // note to Brie: in any other situation please use `impl FnMut` and not `&mut dyn FnMut``
@@ -15,8 +15,8 @@ pub trait FileObjectEditor: FileObject {
         Vec::new()
     }
 
-    fn process_response(&mut self, response: &egui::Response) {
-        if response.changed() {
+    fn process_response(&mut self, response: &CheeseResponse) {
+        if response.modified {
             self.get_base_mut().file.modified = true;
         }
     }

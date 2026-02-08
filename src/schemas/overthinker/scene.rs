@@ -19,7 +19,6 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::Id;
 use egui::ScrollArea;
 
 #[derive(Debug, Default)]
@@ -268,20 +267,21 @@ struct RenderData {
 }
 
 impl FileObjectEditor for Scene {
-    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        let sidebar_ids = egui::SidePanel::right("metadata sidebar")
+    fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut cheese_response = egui::SidePanel::right("metadata sidebar")
             .resizable(true)
             .default_width(200.0)
             .width_range(50.0..)
             .show_inside(ui, |ui| self.show_sidebar(ui, ctx))
             .inner;
 
-        let mut ids = egui::CentralPanel::default()
+        egui::CentralPanel::default()
             .show_inside(ui, |ui| self.show_text_editor(ui, ctx))
-            .inner;
+            .inner
+            .append_to(&mut cheese_response);
 
-        ids.extend(sidebar_ids);
-        ids
+        self.process_response(&cheese_response);
+        cheese_response
     }
 
     fn for_each_textbox<'a>(&'a self, f: &mut dyn FnMut(&Text, &'static str)) {
@@ -298,24 +298,20 @@ impl FileObjectEditor for Scene {
 }
 
 impl Scene {
-    fn show_text_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn show_text_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ScrollArea::vertical()
             .id_salt("text")
             .auto_shrink(egui::Vec2b { x: false, y: false })
             .show(ui, |ui| {
-                let response =
-                    ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| self.text.ui(ui, ctx));
-
-                self.process_response(&response);
-                vec![response.id]
+                ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| self.text.ui(ui, ctx))
+                    .into()
             })
             .inner
     }
 
-    fn show_sidebar(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
+    fn show_sidebar(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
-
-        let mut ids = Vec::new();
+        let mut cheese_response = CheeseResponse::default();
 
         egui::TopBottomPanel::bottom("word_count").show_inside(ui, |ui| {
             ui.add_space(4.0);
@@ -327,14 +323,15 @@ impl Scene {
         });
 
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let (modified, nb_ids) = rdata.name_box.ui(
-                &mut self.get_base_mut().metadata.name,
-                "Unnamed Scene",
-                ui,
-                ctx,
-            );
-            self.get_base_mut().file.modified |= modified;
-            ids.extend(nb_ids);
+            rdata
+                .name_box
+                .ui(
+                    &mut self.get_base_mut().metadata.name,
+                    "Unnamed Scene",
+                    ui,
+                    ctx,
+                )
+                .append_to(&mut cheese_response);
 
             // Tab selection
             ui.horizontal(|ui| {
@@ -344,18 +341,21 @@ impl Scene {
 
             ui.separator();
 
-            let sidebar_other_ids = match rdata.sidebar_tab {
+            match rdata.sidebar_tab {
                 SidebarTab::Notes => self.show_sidebar_metadata(ui, ctx),
                 SidebarTab::Export => self.show_sidebar_export(ui),
-            };
-
-            ids.extend(sidebar_other_ids);
+            }
+            .append_to(&mut cheese_response);
         });
-        ids
+        cheese_response
     }
 
-    fn show_sidebar_metadata(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Vec<Id> {
-        let mut ids = Vec::new();
+    fn show_sidebar_metadata(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+    ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
 
         // I am doing horrible things here but the borrow checker must be satisifed
         let changed = {
@@ -429,8 +429,7 @@ impl Scene {
                     egui::vec2(ui.available_width(), min_height),
                     |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
 
         egui::CollapsingHeader::new("Notes")
@@ -440,14 +439,13 @@ impl Scene {
                     egui::vec2(ui.available_width(), min_height),
                     |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                 );
-                self.process_response(&response);
-                ids.push(response.id);
+                cheese_response.process_response(&response, true);
             });
-        ids
+        cheese_response
     }
 
-    fn show_sidebar_export(&mut self, ui: &mut egui::Ui) -> Vec<Id> {
-        let mut ids = Vec::new();
+    fn show_sidebar_export(&mut self, ui: &mut egui::Ui) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         // Check box for including this file entirely
         let mut export_include = self
             .metadata
@@ -459,8 +457,7 @@ impl Scene {
                 .compile_status
                 .set(CompileStatus::INCLUDE, export_include);
         }
-        self.process_response(&response);
-        ids.push(response.id);
+        cheese_response.process_response(&response, true);
 
         // The rest of the checkboxes have no effect if export isn't included
         ui.add_enabled_ui(export_include, |ui| {
@@ -487,7 +484,7 @@ impl Scene {
 
                 // We want to be able to tab to the box, but it doesn't get a process_response
                 // call because that needs to be handled below
-                ids.push(title_combobox_response.response.id);
+                cheese_response.tabable_ids.push(title_combobox_response.response.id);
             });
 
             // We don't have an actual response here so we have to manually process
@@ -522,7 +519,7 @@ impl Scene {
 
                 // We want to be able to tab to the box, but it doesn't get a process_response
                 // call because that needs to be handled below
-                ids.push(break_combobox_response.response.id);
+                cheese_response.tabable_ids.push(break_combobox_response.response.id);
             });
 
             // We don't have an actual response here so we have to manually process
@@ -532,6 +529,6 @@ impl Scene {
             }
         });
 
-        ids
+        cheese_response
     }
 }
