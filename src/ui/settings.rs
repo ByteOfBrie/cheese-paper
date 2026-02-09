@@ -1,5 +1,6 @@
 pub mod settings_page;
 pub mod theme;
+mod version;
 
 use crate::ui::prelude::*;
 
@@ -13,6 +14,7 @@ use std::{fs::read_to_string, path::PathBuf};
 use toml_edit::{DocumentMut, Item, Value, value};
 
 pub use theme::Theme;
+pub use version::Version;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum ThemeSelection {
@@ -57,6 +59,8 @@ impl TryFrom<&Item> for ThemeSelection {
 
 #[derive(Debug)]
 struct SettingsData {
+    version: Version,
+
     settings_path: PathBuf,
 
     /// size of the text font
@@ -88,6 +92,7 @@ struct SettingsData {
 impl SettingsData {
     pub fn new(settings_path: PathBuf) -> Self {
         Self {
+            version: Version::new(),
             settings_path,
             font_size: 18.0,
             reopen_last: true,
@@ -300,6 +305,14 @@ impl Settings {
 
     pub fn modified(&self) -> bool {
         self.0.borrow().modified
+    }
+
+    pub fn version_current(&self) -> &'static str {
+        Version::current()
+    }
+
+    pub fn version_latest(&self) -> Option<Rc<String>> {
+        self.0.borrow_mut().version.latest()
     }
 
     pub fn select_theme(&self, selection: ThemeSelection) -> Result<(), CheeseError> {
