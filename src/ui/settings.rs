@@ -231,16 +231,6 @@ impl Settings {
                         continue;
                     };
 
-                    // let Some(theme_table) = theme_config
-                    //     .get("config")
-                    //     .and_then(|theme_item| theme_item.as_table_like())
-                    // else {
-                    //     log::error!(
-                    //         "Error while parsing theme {name}: theme must contain a table of configs"
-                    //     );
-                    //     continue;
-                    // };
-
                     let theme = Theme::load(theme_config.as_table());
 
                     available_themes.push((name.to_string(), theme));
