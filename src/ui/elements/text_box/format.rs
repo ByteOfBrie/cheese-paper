@@ -316,7 +316,9 @@ pub fn compute_layout_job(
     applied_rules.push(italic);
     applied_rules.push(format_rule_newlines(text, ctx));
     applied_rules.push(format_rule_spellcheck(text, ctx));
-    applied_rules.push(format_rule_spaces(text, ctx));
+    if ctx.settings.highlight_multiple_spaces() {
+        applied_rules.push(format_rule_spaces(text, ctx));
+    }
     if let Some(search_result) = search_result {
         applied_rules.push(format_rule_search(text, search_result));
     }

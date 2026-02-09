@@ -15,6 +15,8 @@ pub struct SettingsPage {
 
     indent_line_start_config: bool,
 
+    highlight_multiple_spaces: bool,
+
     reopen_last_config: bool,
 
     dictionary_location_config: String,
@@ -38,6 +40,8 @@ impl SettingsPage {
 
         let indent_line_start_config = data.indent_line_start;
 
+        let highlight_multiple_spaces = data.highlight_multiple_spaces;
+
         let reopen_last_config = data.reopen_last;
 
         let dictionary_location_config = match data.dictionary_location.to_str() {
@@ -49,6 +53,7 @@ impl SettingsPage {
             font_size_config,
             font_size_error: None,
             indent_line_start_config,
+            highlight_multiple_spaces,
             reopen_last_config,
             dictionary_location_config,
             dictionary_location_error: None,
@@ -74,6 +79,7 @@ impl SettingsPage {
         }
 
         settings_data.indent_line_start = self.indent_line_start_config;
+        settings_data.highlight_multiple_spaces = self.highlight_multiple_spaces;
         settings_data.reopen_last = self.reopen_last_config;
 
         match self.dictionary_location_config.parse::<PathBuf>() {
@@ -131,6 +137,11 @@ impl SettingsPage {
         ui.label("Indent Line Start");
 
         let response = ui.checkbox(&mut self.indent_line_start_config, "");
+        cheese_response.process_response(&response, true);
+
+        ui.label("Highlight Multiple Spaces (in a Row)");
+
+        let response = ui.checkbox(&mut self.highlight_multiple_spaces, "");
         cheese_response.process_response(&response, true);
 
         ui.label("Reopen Last Project on Launch");

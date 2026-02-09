@@ -65,6 +65,9 @@ struct SettingsData {
     /// visual indentation at the start of lines (buggy)
     indent_line_start: bool,
 
+    /// highlight multiple spaces in a row
+    highlight_multiple_spaces: bool,
+
     /// re-open the last project when launching the app
     reopen_last: bool,
 
@@ -89,6 +92,7 @@ impl SettingsData {
             font_size: 18.0,
             reopen_last: true,
             indent_line_start: false,
+            highlight_multiple_spaces: true,
             dictionary_location: PathBuf::from("/usr/share/hunspell/en_US"),
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -121,6 +125,16 @@ impl SettingsData {
             None => self.modified = true,
         }
 
+        match table
+            .get("highlight_multiple_spaces")
+            .and_then(|val| val.as_bool())
+        {
+            Some(highlight_multiple_spaces) => {
+                self.highlight_multiple_spaces = highlight_multiple_spaces
+            }
+            None => self.modified = true,
+        }
+
         if let Some(dictionary_location) = table
             .get("dictionary_location")
             .and_then(|location| location.as_str())
@@ -145,6 +159,10 @@ impl SettingsData {
         table.insert("font_size", value(self.font_size as f64));
         table.insert("reopen_last", value(self.reopen_last));
         table.insert("indent_line_start", value(self.indent_line_start));
+        table.insert(
+            "highlight_multiple_spaces",
+            value(self.highlight_multiple_spaces),
+        );
         table.insert("selected_theme", value(self.selected_theme));
     }
 
@@ -276,6 +294,10 @@ impl Settings {
 
     pub fn indent_line_start(&self) -> bool {
         self.0.borrow().indent_line_start
+    }
+
+    pub fn highlight_multiple_spaces(&self) -> bool {
+        self.0.borrow().highlight_multiple_spaces
     }
 
     pub fn dictionary_location(&self) -> PathBuf {
