@@ -11,6 +11,7 @@ enum StyleOption {
     Strong,
     Italic,
     Misspelled,
+    Spaces,
     NewLine,
     SearchHighlight,
     SearchHighlightFocus,
@@ -29,6 +30,7 @@ struct Style {
     strong: bool,
     italic: bool,
     misspelled: bool,
+    spaces: bool,
     search_highlight: bool,
     search_highlight_focus: bool,
     newline: bool,
@@ -40,6 +42,7 @@ impl Style {
             StyleOption::Strong => self.strong = marker.on,
             StyleOption::Italic => self.italic = marker.on,
             StyleOption::Misspelled => self.misspelled = marker.on,
+            StyleOption::Spaces => self.spaces = marker.on,
             StyleOption::NewLine => self.newline = marker.on,
             StyleOption::SearchHighlight => self.search_highlight = marker.on,
             StyleOption::SearchHighlightFocus => self.search_highlight_focus = marker.on,
@@ -53,6 +56,7 @@ fn format_from_style(egui_style: &egui::Style, text_style: &Style) -> egui::text
         strong,
         italic: italics,
         misspelled,
+        spaces,
         search_highlight,
         search_highlight_focus,
         newline: _newline,
@@ -81,6 +85,13 @@ fn format_from_style(egui_style: &egui::Style, text_style: &Style) -> egui::text
             width: 2.0,
             color: egui_style.visuals.error_fg_color,
         }
+    }
+
+    if spaces {
+        format.underline = Stroke {
+            width: 2.0,
+            color: egui_style.visuals.warn_fg_color,
+        };
     }
 
     if search_highlight {
@@ -230,6 +241,31 @@ fn format_rule_spellcheck(text: &str, ctx: &EditorContext) -> Vec<StyleMarker> {
         .collect()
 }
 
+/// Finds multiple spaces in a row that are not at the start of the line
+fn format_rule_spaces(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
+    let mut res = Vec::new();
+
+    static MULTIPLE_SPACES_REGEX: SavedRegex =
+        SavedRegex::new(|| Regex::new(r#"[^ \n](  +)"#).unwrap());
+
+    for ag in MULTIPLE_SPACES_REGEX.captures_iter(text) {
+        let ag = ag.get(1).unwrap();
+
+        res.push(StyleMarker {
+            idx: ag.start(),
+            style: StyleOption::Spaces,
+            on: true,
+        });
+        res.push(StyleMarker {
+            idx: ag.end(),
+            style: StyleOption::Spaces,
+            on: false,
+        });
+    }
+
+    res
+}
+
 fn format_rule_search(_text: &str, search_result: &TextBoxSearchResult) -> Vec<StyleMarker> {
     let mut res = Vec::new();
 
@@ -280,6 +316,7 @@ pub fn compute_layout_job(
     applied_rules.push(italic);
     applied_rules.push(format_rule_newlines(text, ctx));
     applied_rules.push(format_rule_spellcheck(text, ctx));
+    applied_rules.push(format_rule_spaces(text, ctx));
     if let Some(search_result) = search_result {
         applied_rules.push(format_rule_search(text, search_result));
     }
