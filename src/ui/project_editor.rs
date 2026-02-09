@@ -662,6 +662,7 @@ impl ProjectEditor {
     pub fn new(
         project: Project,
         open_tab_ids: Vec<String>,
+        last_open_tab: Option<String>,
         dictionary: Option<Dictionary>,
         settings: Settings,
         last_export_folder: PathBuf,
@@ -692,6 +693,13 @@ impl ProjectEditor {
             .map(|tab_id| Page::from_id(tab_id).open(true))
             .collect();
 
+        let mut dock_state = DockState::new(open_tabs);
+        if let Some(open_tab) = last_open_tab
+            && let Some(new_tab_index) = dock_state.find_tab(&Page::from_id(&open_tab).open(true))
+        {
+            dock_state.set_active_tab(new_tab_index);
+        }
+
         let references = References::new(&project);
 
         let mut actions = Actions::default();
@@ -700,7 +708,7 @@ impl ProjectEditor {
 
         let mut project_editor = Self {
             project,
-            dock_state: DockState::new(open_tabs),
+            dock_state,
             editor_context: EditorContext {
                 settings,
                 dictionary_state,
@@ -751,8 +759,15 @@ impl ProjectEditor {
         // order it gave us.
         self.dock_state
             .iter_all_tabs()
-            .map(|((_, _), tab)| tab.clone())
+            .map(|(_, tab)| tab.clone())
             .collect()
+    }
+
+    /// Gets the current tab. No idea why the library requires a mut reference
+    pub fn get_current_tab(&mut self) -> Option<OpenPage> {
+        self.dock_state
+            .find_active_focused()
+            .map(|(_, tab)| tab.clone())
     }
 
     /// Process any queued events and then do the actual save

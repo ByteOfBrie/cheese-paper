@@ -16,13 +16,15 @@ use std::{
 #[cfg(feature = "metrics")]
 use super::metrics::Metrics;
 
+type OpenFileIds = (Vec<String>, Option<String>);
+
 #[derive(Debug)]
 pub struct Data {
     data_directory: PathBuf,
     pub recent_projects: Vec<PathBuf>,
     pub last_project_parent_folder: PathBuf,
     pub last_export_folder: PathBuf,
-    pub last_open_file_ids: HashMap<String, Vec<String>>,
+    pub last_open_file_ids: HashMap<String, OpenFileIds>,
 
     /// Words that have been ignored by the user. Maybe should be in a separate file, but they're here for
     /// now
@@ -86,15 +88,26 @@ impl Data {
             .and_then(|val| val.as_table_like())
         {
             for (key, val) in last_open_file_ids.iter() {
-                if let Some(file_id_list) = val.as_array() {
-                    self.last_open_file_ids.insert(
-                        key.to_string(),
-                        file_id_list
-                            .iter()
-                            .filter_map(|val| val.as_str())
-                            .map(|val| val.to_string())
-                            .collect(),
-                    );
+                if let Some(open_tab_info) = val.as_array()
+                    && let Some(file_id_list_value) = open_tab_info.get(0)
+                    && let Some(file_id_list) = file_id_list_value.as_array()
+                    && let Some(current_tab_value) = open_tab_info.get(1)
+                    && let Some(current_tab) = current_tab_value.as_str()
+                {
+                    let current_tab = if current_tab.is_empty() {
+                        None
+                    } else {
+                        Some(current_tab.to_owned())
+                    };
+
+                    let open_file_ids = file_id_list
+                        .iter()
+                        .filter_map(|val| val.as_str())
+                        .map(|val| val.to_string())
+                        .collect();
+
+                    self.last_open_file_ids
+                        .insert(key.to_string(), (open_file_ids, current_tab));
                 }
             }
         }
@@ -134,12 +147,12 @@ impl Data {
         );
 
         let mut last_open_file_ids = toml_edit::InlineTable::new();
-        for (project_id, open_file_ids) in self.last_open_file_ids.iter() {
-            let mut open_file_ids_arr = toml_edit::Array::new();
-            for file_id in open_file_ids.iter() {
-                open_file_ids_arr.push(file_id);
-            }
-            last_open_file_ids.insert(project_id, value(open_file_ids_arr).into_value().unwrap());
+        for (project_id, (open_file_ids, current_tab)) in self.last_open_file_ids.iter() {
+            let open_file_ids_arr = toml_edit::Array::from_iter(open_file_ids.iter());
+            let mut open_tab_info = toml_edit::Array::new();
+            open_tab_info.push(open_file_ids_arr);
+            open_tab_info.push(current_tab.clone().unwrap_or_default());
+            last_open_file_ids.insert(project_id, value(open_tab_info).into_value().unwrap());
         }
         table.insert("last_open_file_ids", value(last_open_file_ids));
 
@@ -579,6 +592,7 @@ impl CheesePaperApp {
                                     self.project_editor = Some(ProjectEditor::new(
                                         project,
                                         Vec::new(),
+                                        None,
                                         self.dictionary.clone(),
                                         self.state.settings.clone(),
                                         self.state.data.last_export_folder.clone(),
@@ -650,7 +664,7 @@ impl CheesePaperApp {
         };
 
         // load tabs
-        let open_tabs = self
+        let (open_tabs, current_tab) = self
             .state
             .data
             .last_open_file_ids
@@ -661,6 +675,7 @@ impl CheesePaperApp {
         let mut project_editor = ProjectEditor::new(
             project,
             open_tabs.clone(),
+            current_tab.clone(),
             self.dictionary.clone(),
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
@@ -681,14 +696,20 @@ impl CheesePaperApp {
     }
 
     fn update_open_tabs(&mut self) {
-        if let Some(project_editor) = &self.project_editor {
+        if let Some(project_editor) = &mut self.project_editor {
             let open_tabs_ids = project_editor
                 .get_open_tabs()
                 .iter()
                 .map(|tab| tab.page.get_id().to_owned())
                 .collect();
 
-            if Some(&open_tabs_ids)
+            let current_tab = project_editor
+                .get_current_tab()
+                .map(|tab| tab.page.get_id().to_owned());
+
+            let open_tab_info = (open_tabs_ids, current_tab);
+
+            if Some(&open_tab_info)
                 != self
                     .state
                     .data
@@ -697,7 +718,7 @@ impl CheesePaperApp {
             {
                 self.state.data.last_open_file_ids.insert(
                     project_editor.project.base_metadata.id.to_string(),
-                    open_tabs_ids,
+                    open_tab_info,
                 );
 
                 self.state.data_modified = true;
