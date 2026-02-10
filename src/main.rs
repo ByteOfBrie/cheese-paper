@@ -14,6 +14,8 @@ use eframe::NativeOptions;
 fn main() -> eframe::Result {
     env_logger::init();
 
+    util::version::fetch_version();
+
     let project_dirs =
         ProjectDirs::from("", "", "cheese-paper").expect("home directories should always exist");
 
