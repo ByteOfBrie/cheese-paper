@@ -112,6 +112,7 @@ impl Text {
     pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> Response {
         let rdata = ctx.stores.text_box.get(&self.struct_uid);
         let text_box: &mut TextBox = &mut rdata.borrow_mut();
+        let start_version = self.version;
 
         let mut layouter = |ui: &egui::Ui, text: &dyn TextBuffer, wrap_width: f32| {
             let mut layout_job = text_box.get_layout(ui, text, ctx);
@@ -407,6 +408,10 @@ impl Text {
 
                 ui.scroll_to_rect(cursor_absolute_pos, None);
             }
+        }
+
+        if self.version != start_version {
+            output.response.mark_changed();
         }
 
         output.response
