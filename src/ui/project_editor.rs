@@ -6,6 +6,7 @@ pub mod page;
 pub mod search;
 mod util;
 
+use crate::ui::message::{GenericMessage, Message};
 use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
@@ -19,7 +20,7 @@ use action::Actions;
 use focus_jumper::FocusJumper;
 
 use core::f32;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 use std::path::PathBuf;
@@ -51,6 +52,8 @@ pub struct ProjectEditor {
     dock_state: DockState<OpenPage>,
 
     pub editor_context: EditorContext,
+
+    pub messages: VecDeque<Message>,
 
     tracker: Option<ProjectTracker>,
 
@@ -351,6 +354,20 @@ impl ProjectEditor {
             });
         }
 
+        let dismiss = if let Some(message) = self.messages.front() {
+            egui::TopBottomPanel::top("message panel")
+                .show(ctx, |ui| {
+                    message.ui(ui, &self.project, &mut self.editor_context)
+                })
+                .inner
+        } else {
+            false
+        };
+
+        if dismiss {
+            self.messages.pop_front();
+        }
+
         egui::SidePanel::left("project tree panel").show(ctx, |ui| {
             self.side_panel(ui);
         });
@@ -407,6 +424,21 @@ impl ProjectEditor {
             let current_tab = current_tab_ref.clone();
             let tab_position = self.dock_state.find_tab(&current_tab).unwrap();
             self.dock_state.remove_tab(tab_position);
+        }
+
+        if ctx.input_mut(|i| {
+            i.consume_shortcut(&egui::KeyboardShortcut {
+                modifiers: Modifiers::CTRL,
+                logical_key: Key::K,
+            })
+        }) {
+            self.messages.push_back(Message::Generic(GenericMessage {
+                message: format!(
+                    "Test message from {} generated at {:?}",
+                    env!("CARGO_PKG_VERSION"),
+                    std::time::SystemTime::now()
+                ),
+            }));
         }
 
         // Move between tabs (ctrl-tab or ctrl-shift-tab)
@@ -723,6 +755,7 @@ impl ProjectEditor {
                 last_export_folder,
                 version: 0,
             },
+            messages: VecDeque::new(),
             tracker,
             tree_state: Default::default(),
             current_open_tab: None,

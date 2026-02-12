@@ -2,6 +2,7 @@ mod render_data;
 
 mod editor_base;
 mod elements;
+mod message;
 mod settings;
 
 mod project_editor;
