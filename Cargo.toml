@@ -1,6 +1,6 @@
 [package]
 name = "cheese-paper"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2024"
 description = "Organized writing tool with easy syncing and a simple file format"
 repository = "https://codeberg.org/ByteOfBrie/cheese-paper"
