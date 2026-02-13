@@ -1,10 +1,9 @@
-name: Rust build/publish
+name: cheese-paper ci build and publish
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - '**'
 
 env:
   CARGO_TERM_COLOR: always
@@ -42,6 +41,9 @@ jobs:
         cargo install cargo-bundle
         cargo bundle --release
     - name: Upload Artifacts
+      # we don't need/want to upload binaries on pull requests, but doing everything
+      # else is good
+      if: forgejo.event_name != 'pull_request'
       uses: actions/upload-artifact@v3
       with:
         name: cheese-paper-${{ matrix.name }}
