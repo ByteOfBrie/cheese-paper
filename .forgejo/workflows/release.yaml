@@ -1,0 +1,63 @@
+name: cheese-paper release
+
+on:
+  push:
+    tags:
+      - "[0-9]+\.[0-9]+\.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-create-release:
+    strategy:
+    fail-fast: false
+    matrix:
+      include:
+        - os: linux-x86_64
+          name: linux-x86_64
+          archive_name: cheese-paper
+        - os: windows-x86_64
+          name: windows.exe
+          archive_name: cheese-paper.exe
+        - os: macos-arm64
+          name: macos.app
+          archive_name: bundle/osx/cheese-paper.app
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+    - name: Get the release version from the tag
+      run: echo "VERSION=${{ forgejo.ref_name }}" >> $FORGEJO_ENV
+    - name: Check that tag version and Cargo.toml version are the same
+      shell: bash
+      run: |
+        if ! grep -q "version = \"$VERSION\"" Cargo.toml; then
+          echo "version does not match Cargo.toml" >&2
+          exit 1
+        fi
+    - name: Build
+      run: cargo build --release
+    - name: Run tests
+      run: cargo test --release
+    - name: Create app bundle
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        cargo install cargo-bundle
+        cargo bundle --release
+
+    - name: move artifacts to release folder
+      shell: bash
+      run: |
+        mkdir release
+        cp -a cheese-paper-${{ matrix.name }} release/${{ matrix.archive_name }}
+
+    - name: publish release
+      uses: https://code.forgejo.org/actions/forgejo-release@v2.10.0
+      with:
+        direction: upload
+        release-dir: release
