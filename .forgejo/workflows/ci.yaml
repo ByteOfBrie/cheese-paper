@@ -16,13 +16,16 @@ jobs:
         include:
           - os: linux-x86_64
             name: linux-x86_64
+            build_name: cheese-paper
             archive_name: cheese-paper
           - os: windows-x86_64
             name: windows.exe
+            build_name: cheese-paper.exe
             archive_name: cheese-paper.exe
           - os: macos-arm64
-            name: macos.app
-            archive_name: bundle/osx/cheese-paper.app
+            name: macos.app.zip
+            build_name: bundle/osx/cheese-paper.app
+            archive_name: bundle/osx/cheese-paper.app.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -40,6 +43,7 @@ jobs:
       run: |
         cargo install cargo-bundle
         cargo bundle --release
+        zip -r target/release/${{ matrix.archive_name }} target/release/${{ matrix.build_name }}
     - name: Upload Artifacts
       # we don't need/want to upload binaries on pull requests, but doing everything
       # else is good
