@@ -11,18 +11,18 @@ permissions:
 jobs:
   build-and-create-release:
     strategy:
-    fail-fast: false
-    matrix:
-      include:
-        - os: linux-x86_64
-          name: linux-x86_64
-          archive_name: cheese-paper
-        - os: windows-x86_64
-          name: windows.exe
-          archive_name: cheese-paper.exe
-        - os: macos-arm64
-          name: macos.app
-          archive_name: bundle/osx/cheese-paper.app
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-x86_64
+            name: linux-x86_64
+            archive_name: cheese-paper
+          - os: windows-x86_64
+            name: windows.exe
+            archive_name: cheese-paper.exe
+          - os: macos-arm64
+            name: macos.app
+            archive_name: bundle/osx/cheese-paper.app
 
     runs-on: ${{ matrix.os }}
 
