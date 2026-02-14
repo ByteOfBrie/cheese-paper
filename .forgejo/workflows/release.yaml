@@ -64,3 +64,4 @@ jobs:
       uses: https://github.com/ncipollo/release-action@v1
       with:
         artifacts: "release/cheese-paper-${{ matrix.name }}"
+        tag: "${{ forgejo.ref_name }}"
