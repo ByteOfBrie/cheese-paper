@@ -57,6 +57,6 @@ jobs:
         cp -a target/release/${{ matrix.archive_name }} release/cheese-paper-${{ matrix.name }}
 
     - name: publish release
-      uses: ncipollo/release-action@v1
+      uses: https://github.com/ncipollo/release-action@v1
       with:
         artifacts: "release/cheese-paper-${{ matrix.name }}"
