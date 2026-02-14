@@ -57,7 +57,6 @@ jobs:
         cp -a target/release/${{ matrix.archive_name }} release/cheese-paper-${{ matrix.name }}
 
     - name: publish release
-      uses: https://code.forgejo.org/actions/forgejo-release@v2.10.0
+      uses: ncipollo/release-action@v1
       with:
-        direction: upload
-        release-dir: release
+        artifacts: "release/cheese-paper-${{ matrix.name }}"
