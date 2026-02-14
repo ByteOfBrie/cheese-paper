@@ -1,7 +1,9 @@
 name: cheese-paper ci build and publish
 
 on:
-  push
+  push:
+    branches:
+      - '**'
 
 env:
   CARGO_TERM_COLOR: always
