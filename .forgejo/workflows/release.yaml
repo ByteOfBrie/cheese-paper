@@ -40,7 +40,7 @@ jobs:
       run: echo "CARGO_TOML_VERSION=$(cargo pkgid | awk -F'[#@]' '{print $NF}')" >> $FORGEJO_ENV
     - name: Compare the version in cargo.toml to the tag
       if: ${{ forgejo.ref_name }} != ${{ env.CARGO_TOML_VERSION }}
-      run: exit 1
+      run: echo "ref name '${{ forgejo.ref_name }}' does not match cargo toml version '${{ env.CARGO_TOML_VERSION }}'" && exit 1
     - name: Build
       run: cargo build --release
     - name: Run tests
