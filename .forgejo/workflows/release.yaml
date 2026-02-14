@@ -54,7 +54,7 @@ jobs:
       shell: bash
       run: |
         mkdir release
-        cp -a cheese-paper-${{ matrix.name }} release/${{ matrix.archive_name }}
+        cp -a target/release/${{ matrix.archive_name }} release/cheese-paper-${{ matrix.name }}
 
     - name: publish release
       uses: https://code.forgejo.org/actions/forgejo-release@v2.10.0
