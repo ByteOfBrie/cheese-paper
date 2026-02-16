@@ -91,7 +91,7 @@ jobs:
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
           --no-progress-meter --fail-with-body \
           -H 'Authorization: token ${{ forgejo.token }}' \
-          -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])' | tr -d '\r')
 
         echo "release id: ${RELEASE_ID}"
 
