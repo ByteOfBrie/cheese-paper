@@ -43,7 +43,8 @@ jobs:
           "draft": true
         }'
 
-  build-and-create-release:
+  build-and-upload-release:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
