@@ -26,7 +26,11 @@ jobs:
       run: echo "ref name '${{ forgejo.ref_name }}' does not match cargo toml version '${{ env.CARGO_TOML_VERSION }}'"; exit 1
     - name: publish release
       shell: bash
+      # if the tag already exists, we accept that as a success for the job, allowing re-runs of the entire release
       run: |
+        curl -X 'GET' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' --no-progress-meter \
+          --fail-with-body -H 'accept: application/json' || \
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases' \
           --fail \
