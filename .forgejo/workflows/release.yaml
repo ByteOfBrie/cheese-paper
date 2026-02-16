@@ -34,9 +34,9 @@ jobs:
           -H 'Content-Type: application/json' \
           -d '{
           "name": "${{ forgejo.ref_name }}",
-          "tag_name": "${{ forgejo.ref }}",
+          "tag_name": "${{ forgejo.ref_name }}",
           "draft": true,
-          "target_commitish": "${{ forgejo.ref }}"
+          "target_commitish": "${{ forgejo.ref_name }}"
         }'
 
   build-and-create-release:
@@ -79,7 +79,7 @@ jobs:
       shell: bash
       run: |
         export RELEASE_ID=$(curl -X 'GET' \
-          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/0.3.0' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
           -s -H 'accept: application/json' | jq .id)
 
         curl -X 'POST' \
