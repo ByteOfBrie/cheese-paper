@@ -82,9 +82,12 @@ jobs:
     - name: Upload artifacts to release
       shell: bash
       run: |
+        # find python version. we need to use python3 on macos and python on windows :)
+        export PYTHON_BINARY=$(if [[ $(python -V) ]]; then echo "python"; else echo "python3"; fi)
+        # find the id of the release we created above
         export RELEASE_ID=$(curl -X 'GET' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' --no-progress-meter \
-          --fail-with-body -H 'accept: application/json' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          --fail-with-body -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])')
 
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}' \
