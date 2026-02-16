@@ -44,7 +44,8 @@ jobs:
           "target_commitish": "${{ forgejo.ref_name }}"
         }'
 
-  build-and-create-release:
+  build-and-upload-release:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
