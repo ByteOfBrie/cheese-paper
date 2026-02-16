@@ -78,7 +78,9 @@ jobs:
       run: |
         cargo install cargo-bundle
         cargo bundle --release
-        zip -r target/release/${{ matrix.archive_name }} target/release/${{ matrix.build_name }}
+        # we also have to zip it, cd into the directory first to have the zip paths correct
+        cd "$(dirname "target/release/${{ matrix.build_name }}")"
+        zip -r "$(basename "${{ matrix.archive_name }}")" "$(basename "${{ matrix.build_name }}")"
 
     - name: Upload artifacts to release
       shell: bash
