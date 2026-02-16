@@ -95,8 +95,6 @@ jobs:
           -H 'Authorization: token ${{ forgejo.token }}' \
           -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])' | tr -d '\r')
 
-        echo "release id: ${RELEASE_ID}"
-
         curl -X 'POST' \
           "https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}" \
           --fail-with-body --no-progress-meter \
