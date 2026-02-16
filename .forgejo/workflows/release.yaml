@@ -9,25 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-and-create-release:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: linux-x86_64
-            name: linux-x86_64
-            build_name: cheese-paper
-            archive_name: cheese-paper
-          - os: windows-x86_64
-            name: windows.exe
-            build_name: cheese-paper.exe
-            archive_name: cheese-paper.exe
-          - os: macos-arm64
-            name: macos.app.zip
-            build_name: bundle/osx/cheese-paper.app
-            archive_name: bundle/osx/cheese-paper.app.zip
-
-    runs-on: ${{ matrix.os }}
+  create-release:
+    runs-on: linux-x86_64
 
     steps:
     - uses: actions/checkout@v4
@@ -41,6 +24,49 @@ jobs:
     - name: Compare the version in cargo.toml to the tag
       if: ${{ forgejo.ref_name != env.CARGO_TOML_VERSION }}
       run: echo "ref name '${{ forgejo.ref_name }}' does not match cargo toml version '${{ env.CARGO_TOML_VERSION }}'"; exit 1
+    - name: publish release
+      shell: bash
+      # if the tag already exists, we accept that as a success for the job, allowing re-runs of the entire release
+      run: |
+        curl -X 'GET' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' --no-progress-meter \
+          --fail-with-body -H 'accept: application/json' || \
+        curl -X 'POST' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases' \
+          --fail-with-body \
+          -H 'accept: application/json' \
+          -H 'Authorization: token ${{ forgejo.token }}' \
+          -H 'Content-Type: application/json' \
+          -d '{
+          "name": "${{ forgejo.ref_name }}",
+          "tag_name": "${{ forgejo.ref_name }}",
+          "draft": true
+        }'
+
+  build-and-create-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-x86_64
+            name: cheese-paper-linux-x86_64
+            build_name: cheese-paper
+            archive_name: cheese-paper
+          - os: windows-x86_64
+            name: cheese-paper-windows.exe
+            build_name: cheese-paper.exe
+            archive_name: cheese-paper.exe
+          - os: macos-arm64
+            name: cheese-paper-macos-arm64.app.zip
+            build_name: bundle/osx/cheese-paper.app
+            archive_name: bundle/osx/cheese-paper.app.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
     - name: Build
       run: cargo build --release
     - name: Run tests
@@ -53,14 +79,18 @@ jobs:
         cargo bundle --release
         zip -r target/release/${{ matrix.archive_name }} target/release/${{ matrix.build_name }}
 
-    - name: move artifacts to release folder
+    - name: Upload artifacts to release
       shell: bash
       run: |
-        mkdir release
-        cp -a target/release/${{ matrix.archive_name }} release/cheese-paper-${{ matrix.name }}
+        export RELEASE_ID=$(curl -X 'GET' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' --no-progress-meter \
+          --fail-with-body -H 'accept: application/json' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
 
-    - name: publish release
-      uses: https://github.com/ncipollo/release-action@v1
-      with:
-        artifacts: "release/cheese-paper-${{ matrix.name }}"
-        tag: "${{ forgejo.ref_name }}"
+        curl -X 'POST' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}' \
+          --fail-with-body --no-progress-meter \
+          -H 'accept: application/json' \
+          -H 'Authorization: token ${{ forgejo.token }}' \
+          -H 'Content-Type: multipart/form-data' \
+          -F 'attachment=@target/release/${{ matrix.archive_name }};type=application/octet-stream'
+
