@@ -29,6 +29,7 @@ jobs:
       run: |
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases' \
+          --fail \
           -H 'accept: application/json' \
           -H 'Authorization: token ${{ forgejo.token }}' \
           -H 'Content-Type: application/json' \
@@ -79,13 +80,14 @@ jobs:
       shell: bash
       run: |
         export RELEASE_ID=$(curl -X 'GET' \
-          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
-          -s -H 'accept: application/json' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' --no-progress-meter \
+          --fail -H 'accept: application/json' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
 
         echo "release id: ${RELEASE_ID}"
 
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}' \
+          --fail --no-progress-meter \
           -H 'accept: application/json' \
           -H 'Authorization: token ${{ forgejo.token }}' \
           -H 'Content-Type: multipart/form-data' \
