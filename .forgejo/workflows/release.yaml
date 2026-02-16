@@ -80,7 +80,7 @@ jobs:
       run: |
         export RELEASE_ID=$(curl -X 'GET' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
-          -s -H 'accept: application/json' | jq .id)
+          -s -H 'accept: application/json' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
 
         echo "release id: ${RELEASE_ID}"
 
