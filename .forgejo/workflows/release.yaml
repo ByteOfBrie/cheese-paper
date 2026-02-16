@@ -30,7 +30,7 @@ jobs:
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases' \
           -H 'accept: application/json' \
-          -H 'Authorization: token ${{ FORGEJO_TOKEN }}' \
+          -H 'Authorization: token ${{ forgejo.token }}' \
           -H 'Content-Type: application/json' \
           -d '{
           "name": "${{ forgejo.ref_name }}",
@@ -85,7 +85,7 @@ jobs:
         curl -X 'POST' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}' \
           -H 'accept: application/json' \
-          -H 'Authorization: token ${{ FORGEJO_TOKEN }}' \
+          -H 'Authorization: token ${{ forgejo.token }}' \
           -H 'Content-Type: multipart/form-data' \
           -F 'attachment=@target/release/${{ matrix.archive_name }};type=application/octet-stream'
 
