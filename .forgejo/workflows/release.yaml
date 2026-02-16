@@ -41,7 +41,6 @@ jobs:
           "name": "${{ forgejo.ref_name }}",
           "tag_name": "${{ forgejo.ref_name }}",
           "draft": true,
-          "target_commitish": "${{ forgejo.ref_name }}"
         }'
 
   build-and-upload-release:
