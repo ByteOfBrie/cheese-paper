@@ -140,24 +140,25 @@ impl SettingsPage {
             ui.label(RichText::new(err).color(Color32::RED));
         }
 
-        ui.label("Indent Line Start");
-
-        let response = ui.checkbox(&mut self.indent_line_start_config, "");
+        let response = ui.checkbox(&mut self.indent_line_start_config, "Indent Line Start");
         cheese_response.process_response(&response, true);
 
-        ui.label("Highlight Multiple Spaces (in a Row)");
-
-        let response = ui.checkbox(&mut self.highlight_multiple_spaces, "");
+        let response = ui.checkbox(
+            &mut self.highlight_multiple_spaces,
+            "Highlight Multiple Spaces (in a Row)",
+        );
         cheese_response.process_response(&response, true);
 
-        ui.label("Highlight Spaces Between a Word and Punctuation");
-
-        let response = ui.checkbox(&mut self.highlight_spaces_before_punctuation, "");
+        let response = ui.checkbox(
+            &mut self.highlight_spaces_before_punctuation,
+            "Highlight Spaces Between a Word and Punctuation",
+        );
         cheese_response.process_response(&response, true);
 
-        ui.label("Reopen Last Project on Launch");
-
-        let response = ui.checkbox(&mut self.reopen_last_config, "");
+        let response = ui.checkbox(
+            &mut self.reopen_last_config,
+            "Reopen Last Project on Launch",
+        );
         cheese_response.process_response(&response, true);
 
         ui.label("Dictionary Location");
