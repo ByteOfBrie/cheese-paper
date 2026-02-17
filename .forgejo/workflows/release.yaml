@@ -40,7 +40,7 @@ jobs:
           -d '{
           "name": "${{ forgejo.ref_name }}",
           "tag_name": "${{ forgejo.ref_name }}",
-          "draft": true,
+          "draft": true
         }'
 
   build-and-upload-release:
