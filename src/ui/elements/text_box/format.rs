@@ -242,13 +242,38 @@ fn format_rule_spellcheck(text: &str, ctx: &EditorContext) -> Vec<StyleMarker> {
 }
 
 /// Finds multiple spaces in a row that are not at the start of the line
-fn format_rule_spaces(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
+fn format_rule_multiple_spaces(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
     let mut res = Vec::new();
 
     static MULTIPLE_SPACES_REGEX: SavedRegex =
         SavedRegex::new(|| Regex::new(r#"[^ \n](  +)"#).unwrap());
 
     for ag in MULTIPLE_SPACES_REGEX.captures_iter(text) {
+        let ag = ag.get(1).unwrap();
+
+        res.push(StyleMarker {
+            idx: ag.start(),
+            style: StyleOption::Spaces,
+            on: true,
+        });
+        res.push(StyleMarker {
+            idx: ag.end(),
+            style: StyleOption::Spaces,
+            on: false,
+        });
+    }
+
+    res
+}
+
+/// Finds multiple spaces in a row before a punctuation marker
+fn format_rule_spaces_before_punctuation(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
+    let mut res = Vec::new();
+
+    static SPACES_BEFORE_PUNCTUATION_REGEX: SavedRegex =
+        SavedRegex::new(|| Regex::new(r#"[^ \n]( +)[.,?!]"#).unwrap());
+
+    for ag in SPACES_BEFORE_PUNCTUATION_REGEX.captures_iter(text) {
         let ag = ag.get(1).unwrap();
 
         res.push(StyleMarker {
@@ -317,7 +342,10 @@ pub fn compute_layout_job(
     applied_rules.push(format_rule_newlines(text, ctx));
     applied_rules.push(format_rule_spellcheck(text, ctx));
     if ctx.settings.highlight_multiple_spaces() {
-        applied_rules.push(format_rule_spaces(text, ctx));
+        applied_rules.push(format_rule_multiple_spaces(text, ctx));
+    }
+    if ctx.settings.highlight_spaces_before_punctuation() {
+        applied_rules.push(format_rule_spaces_before_punctuation(text, ctx));
     }
     if let Some(search_result) = search_result {
         applied_rules.push(format_rule_search(text, search_result));

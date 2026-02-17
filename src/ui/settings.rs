@@ -68,6 +68,9 @@ struct SettingsData {
     /// highlight multiple spaces in a row
     highlight_multiple_spaces: bool,
 
+    /// highlight things like "word ."
+    highlight_spaces_before_punctuation: bool,
+
     /// re-open the last project when launching the app
     reopen_last: bool,
 
@@ -93,6 +96,7 @@ impl SettingsData {
             reopen_last: true,
             indent_line_start: false,
             highlight_multiple_spaces: true,
+            highlight_spaces_before_punctuation: true,
             dictionary_location: PathBuf::from("/usr/share/hunspell/en_US"),
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -135,6 +139,16 @@ impl SettingsData {
             None => self.modified = true,
         }
 
+        match table
+            .get("highlight_spaces_before_punctuation")
+            .and_then(|val| val.as_bool())
+        {
+            Some(highlight_spaces_before_punctuation) => {
+                self.highlight_spaces_before_punctuation = highlight_spaces_before_punctuation
+            }
+            None => self.modified = true,
+        }
+
         if let Some(dictionary_location) = table
             .get("dictionary_location")
             .and_then(|location| location.as_str())
@@ -162,6 +176,10 @@ impl SettingsData {
         table.insert(
             "highlight_multiple_spaces",
             value(self.highlight_multiple_spaces),
+        );
+        table.insert(
+            "highlight_spaces_before_punctuation",
+            value(self.highlight_spaces_before_punctuation),
         );
         table.insert("selected_theme", value(self.selected_theme));
     }
@@ -288,6 +306,10 @@ impl Settings {
 
     pub fn highlight_multiple_spaces(&self) -> bool {
         self.0.borrow().highlight_multiple_spaces
+    }
+
+    pub fn highlight_spaces_before_punctuation(&self) -> bool {
+        self.0.borrow().highlight_spaces_before_punctuation
     }
 
     pub fn dictionary_location(&self) -> PathBuf {
