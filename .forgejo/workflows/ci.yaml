@@ -5,6 +5,12 @@ on:
     branches:
       - '**'
 
+# allow concurrent builds, but only one build per pull request
+# from ziglang: https://codeberg.org/ziglang/zig/src/commit/0e3c6514a4d1f89498bf411b58131d129218807f/.forgejo/workflows/ci.yaml#L10-L14
+concurrency:
+  group: ${{ forgejo.workflow }}-${{ forgejo.event.pull_request.number || forgejo.sha }}
+  cancel-in-progress: ${{ forgejo.event_name == 'pull_request' }}
+
 env:
   CARGO_TERM_COLOR: always
 
