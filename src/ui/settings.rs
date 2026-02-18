@@ -74,6 +74,10 @@ struct SettingsData {
     /// re-open the last project when launching the app
     reopen_last: bool,
 
+    /// Check against the latest released version, we should not do
+    /// network calls if this is false
+    check_for_updates: bool,
+
     /// Location of the Dictionary
     dictionary_location: PathBuf,
 
@@ -97,6 +101,7 @@ impl SettingsData {
             indent_line_start: false,
             highlight_multiple_spaces: true,
             highlight_spaces_before_punctuation: true,
+            check_for_updates: true,
             dictionary_location: PathBuf::from("/usr/share/hunspell/en_US"),
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -149,6 +154,11 @@ impl SettingsData {
             None => self.modified = true,
         }
 
+        match table.get("check_for_updates").and_then(|val| val.as_bool()) {
+            Some(check_for_updates) => self.check_for_updates = check_for_updates,
+            None => self.modified = true,
+        }
+
         if let Some(dictionary_location) = table
             .get("dictionary_location")
             .and_then(|location| location.as_str())
@@ -181,6 +191,7 @@ impl SettingsData {
             "highlight_spaces_before_punctuation",
             value(self.highlight_spaces_before_punctuation),
         );
+        table.insert("check_for_updates", value(self.check_for_updates));
         table.insert("selected_theme", value(self.selected_theme));
     }
 
@@ -310,6 +321,10 @@ impl Settings {
 
     pub fn highlight_spaces_before_punctuation(&self) -> bool {
         self.0.borrow().highlight_spaces_before_punctuation
+    }
+
+    pub fn check_for_updates(&self) -> bool {
+        self.0.borrow().check_for_updates
     }
 
     pub fn dictionary_location(&self) -> PathBuf {

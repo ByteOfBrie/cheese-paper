@@ -19,6 +19,8 @@ pub struct SettingsPage {
 
     highlight_spaces_before_punctuation: bool,
 
+    check_for_updates: bool,
+
     reopen_last_config: bool,
 
     dictionary_location_config: String,
@@ -45,6 +47,8 @@ impl SettingsPage {
         let highlight_multiple_spaces = data.highlight_multiple_spaces;
         let highlight_spaces_before_punctuation = data.highlight_spaces_before_punctuation;
 
+        let check_for_updates = data.check_for_updates;
+
         let reopen_last_config = data.reopen_last;
 
         let dictionary_location_config = match data.dictionary_location.to_str() {
@@ -58,6 +62,7 @@ impl SettingsPage {
             indent_line_start_config,
             highlight_multiple_spaces,
             highlight_spaces_before_punctuation,
+            check_for_updates,
             reopen_last_config,
             dictionary_location_config,
             dictionary_location_error: None,
@@ -86,6 +91,7 @@ impl SettingsPage {
         settings_data.highlight_multiple_spaces = self.highlight_multiple_spaces;
         settings_data.highlight_spaces_before_punctuation =
             self.highlight_spaces_before_punctuation;
+        settings_data.check_for_updates = self.check_for_updates;
         settings_data.reopen_last = self.reopen_last_config;
 
         match self.dictionary_location_config.parse::<PathBuf>() {
@@ -153,6 +159,9 @@ impl SettingsPage {
             &mut self.highlight_spaces_before_punctuation,
             "Highlight Spaces Between a Word and Punctuation",
         );
+        cheese_response.process_response(&response, true);
+
+        let response = ui.checkbox(&mut self.check_for_updates, "Check for Updates");
         cheese_response.process_response(&response, true);
 
         let response = ui.checkbox(

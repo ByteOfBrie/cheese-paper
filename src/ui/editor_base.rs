@@ -1,4 +1,11 @@
-use crate::{schemas::DEFAULT_SCHEMA, schemas::SCHEMA_LIST, ui::prelude::*};
+use crate::{
+    schemas::{DEFAULT_SCHEMA, SCHEMA_LIST},
+    ui::{
+        message::{GenericMessage, Message},
+        prelude::*,
+    },
+    util::{self, version},
+};
 use spellbook::Dictionary;
 
 use crate::components::file_objects::utils::{create_dir_if_missing, write_with_temp_file};
@@ -26,6 +33,7 @@ pub struct Data {
     pub last_export_folder: PathBuf,
     pub last_open_file_ids: HashMap<String, OpenFileIds>,
 
+    pub update_ignore_version: String,
     /// Words that have been ignored by the user. Maybe should be in a separate file, but they're here for
     /// now
     pub custom_dictionary: Vec<String>,
@@ -45,6 +53,7 @@ impl Data {
                 .home_dir()
                 .to_path_buf(),
             last_open_file_ids: HashMap::new(),
+            update_ignore_version: String::new(),
             custom_dictionary: Vec::new(),
         }
     }
@@ -81,6 +90,12 @@ impl Data {
             && let Some(last_export_folder) = last_export_folder_value.as_str()
         {
             self.last_export_folder = PathBuf::from(last_export_folder)
+        }
+
+        if let Some(update_ignore_version_value) = table.get("update_ignore_version")
+            && let Some(update_ignore_version) = update_ignore_version_value.as_str()
+        {
+            self.update_ignore_version = update_ignore_version.to_owned();
         }
 
         if let Some(last_open_file_ids) = table
@@ -142,6 +157,11 @@ impl Data {
         );
 
         table.insert(
+            "update_ignore_version",
+            value(self.update_ignore_version.clone()),
+        );
+
+        table.insert(
             "last_export_folder",
             value(self.last_export_folder.to_string_lossy().to_string()),
         );
@@ -179,6 +199,9 @@ pub struct EditorState {
     /// Hacky (?) variable to get around borrows (set in the state rather than close directly)
     pub closing_project: bool,
     pub next_project: Option<PathBuf>,
+
+    /// If we've done the update check and displayed a message to the user as necessary
+    finished_update_check: bool,
 }
 
 impl std::fmt::Debug for EditorState {
@@ -199,6 +222,9 @@ impl EditorState {
             log::error!("{err}");
             panic!("{err}");
         });
+
+        // If we're not supposed to check for updates, we're also already done
+        let finished_update_check = !settings.check_for_updates();
 
         let mut data = Data::new(project_dirs.data_dir().to_path_buf());
 
@@ -228,6 +254,7 @@ impl EditorState {
             new_project_schema: &DEFAULT_SCHEMA,
             closing_project: false,
             next_project: None,
+            finished_update_check,
         }
     }
 }
@@ -322,6 +349,70 @@ impl eframe::App for CheesePaperApp {
                     project_editor.editor_context.version += 1;
 
                     self.last_dictionary_update = current_time;
+                }
+
+                // We check for updates inside of this loop so we can directly add them to the message queue
+                // This should eventually be moved further out, along with the message queue, but I haven't
+                // gotten around to that
+                if !self.state.finished_update_check
+                    && let Some(version_result) = version::latest()
+                {
+                    // We only ever run this code once per program, so we're already done with this
+                    self.state.finished_update_check = true;
+                    match version_result {
+                        Ok(release_info) => {
+                            let current_version = semver::Version::parse(version::current())
+                                .unwrap_or_else(|_| {
+                                    log::warn!(
+                                        "we failed to parse our own version, this shouldn't be possible"
+                                    );
+                                    semver::Version::new(0, 0, 0)
+                                });
+
+                            let compare_version = if self
+                                .state
+                                .data
+                                .update_ignore_version
+                                .is_empty()
+                            {
+                                // we don't have an ignore version, we only need to compare against the current version
+                                current_version
+                            } else {
+                                match semver::Version::parse(&self.state.data.update_ignore_version)
+                                {
+                                    Ok(update_ignore_version) => {
+                                        std::cmp::max(update_ignore_version, current_version)
+                                    }
+                                    Err(err) => {
+                                        log::debug!(
+                                            "Could not parse saved version in data: {}, err: {err}",
+                                            self.state.data.update_ignore_version
+                                        );
+                                        current_version
+                                    }
+                                }
+                            };
+
+                            match semver::Version::parse(&release_info.tag_name) {
+                                Ok(release_tag) => {
+                                    if release_tag > compare_version {
+                                        project_editor.messages.push_back(Message::Generic(
+                                            GenericMessage {
+                                                message: format!("A newer version of cheese-paper is available: {}", release_info.name)}
+                                        ));
+                                    }
+                                }
+                                Err(err) => {
+                                    log::warn!(
+                                        "We processed a release but were not able to parse it as a semver tag: {release_info:?}: err: {err}"
+                                    );
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            log::debug!("Could not fetch version: {err}");
+                        }
+                    }
                 }
             }
             None => match self.state.new_project_dir.is_none() {
@@ -433,6 +524,10 @@ impl CheesePaperApp {
                 `dictionary_location` in settings to a path that contains the dictionary files or \
                 put the files in the proper location."
             );
+        }
+
+        if state.settings.check_for_updates() {
+            util::version::fetch_version();
         }
 
         // Load the actual app
