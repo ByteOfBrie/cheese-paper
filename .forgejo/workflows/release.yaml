@@ -35,7 +35,7 @@ jobs:
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases' \
           --fail-with-body \
           -H 'accept: application/json' \
-          -H 'Authorization: token ${{ forgejo.token }}' \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
           -H 'Content-Type: application/json' \
           -d '{
           "name": "${{ forgejo.ref_name }}",
@@ -91,14 +91,14 @@ jobs:
         export RELEASE_ID=$(curl -X 'GET' \
           'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
           --no-progress-meter --fail-with-body \
-          -H 'Authorization: token ${{ forgejo.token }}' \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
           -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])' | tr -d '\r')
 
         curl -X 'POST' \
           "https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=${{ matrix.name }}" \
           --fail-with-body --no-progress-meter \
           -H 'accept: application/json' \
-          -H 'Authorization: token ${{ forgejo.token }}' \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
           -H 'Content-Type: multipart/form-data' \
           -F 'attachment=@target/release/${{ matrix.archive_name }};type=application/octet-stream'
 
