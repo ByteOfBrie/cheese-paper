@@ -6,7 +6,7 @@ use crate::ui::prelude::*;
 
 static VERSION_RESULT: OnceLock<Result<CodebergRelease, CheeseError>> = OnceLock::new();
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CodebergRelease {
     pub tag_name: String,
     pub name: String,

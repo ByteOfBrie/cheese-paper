@@ -1,7 +1,7 @@
 use crate::{
     schemas::{DEFAULT_SCHEMA, SCHEMA_LIST},
     ui::{
-        message::{GenericMessage, Message},
+        message::{Message, UpdateMessage},
         prelude::*,
     },
     util::{self, version},
@@ -396,10 +396,14 @@ impl eframe::App for CheesePaperApp {
                             match semver::Version::parse(&release_info.tag_name) {
                                 Ok(release_tag) => {
                                     if release_tag > compare_version {
-                                        project_editor.messages.push_back(Message::Generic(
-                                            GenericMessage {
-                                                message: format!("A newer version of cheese-paper is available: {}", release_info.name)}
+                                        log::debug!("Found newer release: {release_tag}");
+                                        project_editor.messages.push_back(Message::Update(
+                                            UpdateMessage::new(release_info.clone()),
                                         ));
+                                    } else {
+                                        log::debug!(
+                                            "Found latest release {release_tag}, we have already seen it"
+                                        );
                                     }
                                 }
                                 Err(err) => {
@@ -834,6 +838,13 @@ impl CheesePaperApp {
                 .get_ignore_list()
                 .into_iter()
                 .collect();
+            self.state.data_modified = true;
+        }
+
+        if let Some(project_editor) = &self.project_editor
+            && let Some(ignored_version) = project_editor.editor_context.ignore_version.get()
+        {
+            self.state.data.update_ignore_version = ignored_version.clone();
             self.state.data_modified = true;
         }
 

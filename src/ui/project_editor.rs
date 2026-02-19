@@ -20,6 +20,7 @@ use action::Actions;
 use focus_jumper::FocusJumper;
 
 use core::f32;
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
@@ -267,6 +268,10 @@ pub struct EditorContext {
 
     /// version number. increment to trigger a project-wide formatting refresh
     pub version: usize,
+
+    /// If we suggest an update and the user clicks "skip this version", we will fill this,
+    /// otherwise it will be empty
+    pub ignore_version: OnceCell<String>,
 }
 
 #[derive(Debug, Default)]
@@ -754,6 +759,7 @@ impl ProjectEditor {
                 references,
                 last_export_folder,
                 version: 0,
+                ignore_version: OnceCell::new(),
             },
             messages: VecDeque::new(),
             tracker,
