@@ -796,15 +796,21 @@ impl CheesePaperApp {
 
     fn update_open_tabs(&mut self) {
         if let Some(project_editor) = &mut self.project_editor {
-            let open_tabs_ids = project_editor
+            let open_tabs_ids: Vec<String> = project_editor
                 .get_open_tabs()
                 .iter()
                 .map(|tab| tab.page.get_id().to_owned())
                 .collect();
 
-            let current_tab = project_editor
-                .get_current_tab()
-                .map(|tab| tab.page.get_id().to_owned());
+            // the underlying egui_dock calls can panic if there aren't any tabs, so we
+            // only call them if we got tabs back from the first call
+            let current_tab = if open_tabs_ids.is_empty() {
+                None
+            } else {
+                project_editor
+                    .get_current_tab()
+                    .map(|tab| tab.page.get_id().to_owned())
+            };
 
             let open_tab_info = (open_tabs_ids, current_tab);
 
