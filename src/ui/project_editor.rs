@@ -267,7 +267,7 @@ pub struct EditorContext {
     pub last_export_folder: PathBuf,
 
     /// version number. increment to trigger a project-wide formatting refresh
-    pub version: usize,
+    pub render_version: usize,
 
     /// If we suggest an update and the user clicks "skip this version", we will fill this,
     /// otherwise it will be empty
@@ -619,7 +619,7 @@ impl ProjectEditor {
 
     fn process_state(&mut self, ctx: &egui::Context) {
         if self.editor_context.search.exiting_search {
-            self.editor_context.version += 1;
+            self.editor_context.render_version += 1;
         }
 
         // This is kinda dumb but will ensure that the names are always up to date
@@ -758,7 +758,7 @@ impl ProjectEditor {
                 measurements: Measurements::default(),
                 references,
                 last_export_folder,
-                version: 0,
+                render_version: 0,
                 ignore_version: OnceCell::new(),
             },
             messages: VecDeque::new(),
@@ -772,7 +772,7 @@ impl ProjectEditor {
             .editor_context
             .dictionary_state
             .resync_file_names();
-        project_editor.editor_context.version += 1;
+        project_editor.editor_context.render_version += 1;
 
         project_editor
     }

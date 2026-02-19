@@ -58,7 +58,7 @@ pub fn ui(ui: &mut Ui, project: &Project, ctx: &mut EditorContext) -> Response {
                     ctx.search.goto_focus = true;
 
                     // trigger a formatting refresh
-                    ctx.version += 1;
+                    ctx.render_version += 1;
                 }
             }
         }

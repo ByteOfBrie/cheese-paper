@@ -125,7 +125,7 @@ impl ProjectEditor {
         self.editor_context.search.clear_focus();
 
         // trigger a formatting refresh
-        self.editor_context.version += 1;
+        self.editor_context.render_version += 1;
     }
 }
 

@@ -282,7 +282,7 @@ impl OpenPage {
                     || ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
                 {
                     page_data.search.active = false;
-                    ctx.version += 1;
+                    ctx.render_version += 1;
                 }
             });
 
@@ -293,7 +293,7 @@ impl OpenPage {
                     searchable.search(&self.page, &mut page_data.search);
                 }
 
-                ctx.version += 1;
+                ctx.render_version += 1;
                 page_data.search.redo_search = false;
             }
         }

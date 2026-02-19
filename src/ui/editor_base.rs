@@ -346,7 +346,7 @@ impl eframe::App for CheesePaperApp {
                         .editor_context
                         .dictionary_state
                         .resync_file_names();
-                    project_editor.editor_context.version += 1;
+                    project_editor.editor_context.render_version += 1;
 
                     self.last_dictionary_update = current_time;
                 }

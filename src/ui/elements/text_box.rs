@@ -40,8 +40,8 @@ impl TextBox {
             self.redo_layout = true;
         }
 
-        if ctx.version != self.editor_signature {
-            self.editor_signature = ctx.version;
+        if ctx.render_version != self.editor_signature {
+            self.editor_signature = ctx.render_version;
             self.redo_layout = true;
         }
 
@@ -319,7 +319,7 @@ impl Text {
                 if ui.button("Add to Dictionary").clicked() {
                     ctx.dictionary_state
                         .add_ignored(&ctx.spellcheck_status.selected_word);
-                    ctx.version += 1;
+                    ctx.render_version += 1;
                 }
             }
         });
