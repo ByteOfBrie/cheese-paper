@@ -106,6 +106,8 @@ impl SettingsPage {
             }
         }
 
+        ctx.render_version += 1;
+
         settings_data.modified = true;
     }
 
