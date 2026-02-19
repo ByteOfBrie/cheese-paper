@@ -34,6 +34,7 @@ impl Page {
         match id {
             Self::PROJECT_METADATA_ID => Self::ProjectMetadata,
             Self::EXPORT_ID => Self::Export,
+            Self::SETTINGS_ID => Self::Settings,
             _ => Self::FileObject(FileID::new(id.to_owned())),
         }
     }
