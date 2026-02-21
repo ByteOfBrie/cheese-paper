@@ -43,10 +43,16 @@ impl UpdateMessage {
 
     pub fn ui(&self, ui: &mut Ui, _project: &Project, ctx: &mut EditorContext) -> bool {
         let update_text = self.message.get_or_init(|| {
-            format!(
-                "A new version of cheese-paper is available: {}",
-                self.release.tag_name
-            )
+            if let Some((_, update_message)) =
+                self.release.body.split_once("UPDATE_MESSAGE_OVERRIDE")
+            {
+                update_message.trim().to_owned()
+            } else {
+                format!(
+                    "A new version of cheese-paper is available: {}",
+                    self.release.tag_name
+                )
+            }
         });
         ui.horizontal(|ui| {
             ui.label(update_text);
