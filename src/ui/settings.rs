@@ -164,6 +164,10 @@ impl SettingsData {
             value(self.highlight_multiple_spaces),
         );
         table.insert("selected_theme", value(self.selected_theme));
+        table.insert(
+            "dictionary_location",
+            value(self.dictionary_location.to_string_lossy().to_string()),
+        );
     }
 
     fn config_file_path(&self) -> PathBuf {
