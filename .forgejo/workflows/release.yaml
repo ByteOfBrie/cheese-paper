@@ -54,7 +54,7 @@ jobs:
             build_name: cheese-paper
             archive_name: cheese-paper
           - os: windows-x86_64
-            name: cheese-paper-windows.exe
+            name: cheese-paper-windows-x86_64.exe
             build_name: cheese-paper.exe
             archive_name: cheese-paper.exe
           - os: macos-arm64
@@ -102,3 +102,26 @@ jobs:
           -H 'Content-Type: multipart/form-data' \
           -F 'attachment=@target/release/${{ matrix.archive_name }};type=application/octet-stream'
 
+    - name: Create and upload windows installer bundle
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        cargo install cargo wix
+        cargo wix --no-build
+
+        # find python version.
+        export PYTHON_BINARY=$(if [[ $(python -V) ]]; then echo "python"; else echo "python3"; fi)
+        # find the id of the release we created above
+        export RELEASE_ID=$(curl -X 'GET' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
+          --no-progress-meter --fail-with-body \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
+          -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])' | tr -d '\r')
+
+        curl -X 'POST' \
+          "https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=cheese-paper-windows-installer-x86_64.msi" \
+          --fail-with-body --no-progress-meter \
+          -H 'accept: application/json' \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
+          -H 'Content-Type: multipart/form-data' \
+          -F 'attachment=@target/wix/cheese-paper-${{ forgejo.ref_name }}-x86_64;type=application/octet-stream'
