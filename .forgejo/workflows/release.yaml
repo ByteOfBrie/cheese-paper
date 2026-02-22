@@ -106,7 +106,7 @@ jobs:
       if: runner.os == 'Windows'
       shell: bash
       run: |
-        cargo install cargo wix
+        cargo install cargo-wix
         cargo wix --no-build
 
         # find python version.
