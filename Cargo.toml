@@ -6,6 +6,9 @@ description = "Organized writing tool with easy syncing and a simple file format
 repository = "https://codeberg.org/ByteOfBrie/cheese-paper"
 license = "GPL-3.0-or-later"
 
+# for wix
+authors = ["Brie <brie@brie.gay>", "Eve <new-years-evening@proton.me>"]
+
 # from `cargo msrv find`
 rust-version = "1.91.1"
 
