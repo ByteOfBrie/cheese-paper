@@ -704,8 +704,9 @@ impl ProjectEditor {
         settings: Settings,
         last_export_folder: PathBuf,
         ignored_words: impl IntoIterator<Item: AsRef<str>>,
+        data_directory: PathBuf,
     ) -> Self {
-        let tracker = match ProjectTracker::new(&project.get_path()) {
+        let tracker = match ProjectTracker::new(&project, data_directory) {
             Ok(mut tracker) => {
                 if let Err(err) = tracker.snapshot("Startup") {
                     log::warn!("Failed to snapshot tracker: {err}");

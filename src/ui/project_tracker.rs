@@ -1,7 +1,10 @@
-use git2::{Repository, Signature};
+use git2::{Repository, RepositoryInitOptions, Signature};
 use std::fmt::{Debug, Formatter};
-use std::path::Path;
+use std::fs::create_dir;
+use std::path::PathBuf;
 use std::time::Instant;
+
+use crate::ui::prelude::Project;
 
 const COMMITTER_NAME: &str = "Cheese Paper Autosave";
 const COMMITTER_EMAIL: &str = "\".\"";
@@ -27,14 +30,35 @@ impl Debug for ProjectTracker {
 }
 
 impl ProjectTracker {
-    pub fn new(path: &Path) -> Result<Self, String> {
-        let repo = if path.join(".git").exists() {
-            match Repository::open(path) {
-                Ok(repo) => repo,
+    pub fn new(project: &Project, data_directory: PathBuf) -> Result<Self, String> {
+        let tracker_path = data_directory.join("git_repos");
+        // Create data_dir/git_repos/ if it doesn't already exist
+        if !tracker_path.exists()
+            && let Err(err) = create_dir(tracker_path.as_path())
+        {
+            return Err(format!(
+                "could not create tracker path in data: {tracker_path:?}: {err}"
+            ));
+        }
+
+        let repo_path = tracker_path.join(format!("{}.git", project.base_metadata.id));
+
+        let repo = if repo_path.exists() {
+            match Repository::open(repo_path) {
+                Ok(repo) => {
+                    if let Err(err) = repo.set_workdir(&project.get_path(), false) {
+                        return Err(format!("could not load workdir: {err}"));
+                    }
+                    repo
+                }
                 Err(err) => return Err(err.to_string()),
             }
         } else {
-            match Repository::init(path) {
+            let mut options = RepositoryInitOptions::new();
+            options.workdir_path(&project.get_path());
+            options.no_dotgit_dir(true);
+
+            match Repository::init_opts(repo_path, &options) {
                 Ok(repo) => repo,
                 Err(err) => return Err(err.to_string()),
             }

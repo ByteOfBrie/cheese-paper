@@ -696,6 +696,7 @@ impl CheesePaperApp {
                                         self.state.settings.clone(),
                                         self.state.data.last_export_folder.clone(),
                                         &self.state.data.custom_dictionary,
+                                        self.state.data.data_directory.clone(),
                                     ));
                                 }
                                 Err(err) => {
@@ -779,6 +780,7 @@ impl CheesePaperApp {
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,
+            self.state.data.data_directory.clone(),
         );
 
         // bit of a dirty hack to get the theme initialized properly
