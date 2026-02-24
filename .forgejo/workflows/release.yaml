@@ -124,4 +124,4 @@ jobs:
           -H 'accept: application/json' \
           -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
           -H 'Content-Type: multipart/form-data' \
-          -F 'attachment=@target/wix/cheese-paper-${{ forgejo.ref_name }}-x86_64;type=application/octet-stream'
+          -F 'attachment=@target/wix/cheese-paper-${{ forgejo.ref_name }}-x86_64.msi;type=application/octet-stream'
