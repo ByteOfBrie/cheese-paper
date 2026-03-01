@@ -260,6 +260,7 @@ impl EditorState {
 }
 
 impl EditorState {
+    // TODO: call this more often
     fn save(&mut self) -> Result<(), CheeseError> {
         if self.data_modified {
             self.data.save(&mut self.data_toml);
@@ -270,9 +271,8 @@ impl EditorState {
             .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
         }
 
-        if self.settings.modified() {
-            self.settings.save()?;
-        }
+        // Attempt to save settings, will be a no-op if there aren't any changes
+        self.settings.save()?;
 
         Ok(())
     }

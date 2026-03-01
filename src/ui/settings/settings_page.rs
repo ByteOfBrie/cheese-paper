@@ -1,7 +1,5 @@
 use crate::ui::prelude::*;
-
-use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
+use crate::ui::settings::Setting;
 
 use egui::{Color32, RichText};
 
@@ -9,106 +7,30 @@ use super::ThemeSelection;
 
 #[derive(Debug)]
 pub struct SettingsPage {
-    font_size_config: String,
-
-    font_size_error: Option<String>,
-
-    indent_line_start_config: bool,
-
-    highlight_multiple_spaces: bool,
-
-    highlight_spaces_before_punctuation: bool,
-
-    check_for_updates: bool,
-
-    reopen_last_config: bool,
-
-    dictionary_location_config: String,
-
-    dictionary_location_error: Option<String>,
-
     random_theme_name: String,
 
     random_theme_save_error: Option<CheeseError>,
+}
 
-    next_update: Option<SystemTime>,
+impl Setting<bool> {
+    fn ui<'a>(&'a mut self, ui: &mut egui::Ui, atoms: impl egui::IntoAtoms<'a>) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
+        let response = ui.checkbox(&mut self.user_editable, atoms);
+        if response.changed() {
+            self.modified_entry = true;
+        }
+        cheese_response.process_response(&response, true);
+        cheese_response
+    }
 }
 
 impl SettingsPage {
-    const UPDATE_DELAY: Duration = Duration::from_millis(400);
-
-    pub fn load(ctx: &mut EditorContext) -> Self {
-        let data = ctx.settings.0.borrow();
-
-        let font_size_config = format!("{}", data.font_size);
-
-        let indent_line_start_config = data.indent_line_start;
-
-        let highlight_multiple_spaces = data.highlight_multiple_spaces;
-        let highlight_spaces_before_punctuation = data.highlight_spaces_before_punctuation;
-
-        let check_for_updates = data.check_for_updates;
-
-        let reopen_last_config = data.reopen_last;
-
-        let dictionary_location_config = match data.dictionary_location.to_str() {
-            Some(s) => s.into(),
-            None => String::new(),
-        };
-
+    // TODO: maybe get rid of this
+    pub fn load(_ctx: &mut EditorContext) -> Self {
         Self {
-            font_size_config,
-            font_size_error: None,
-            indent_line_start_config,
-            highlight_multiple_spaces,
-            highlight_spaces_before_punctuation,
-            check_for_updates,
-            reopen_last_config,
-            dictionary_location_config,
-            dictionary_location_error: None,
             random_theme_name: String::new(),
             random_theme_save_error: None,
-            next_update: None,
         }
-    }
-
-    // validate the entered data and propagate it to the settings
-    fn validate_and_update(&mut self, ctx: &mut EditorContext) {
-        let mut settings_data = ctx.settings.0.borrow_mut();
-
-        match self.font_size_config.parse::<f32>() {
-            Ok(val) => {
-                // todo! check range
-                settings_data.font_size = val;
-                self.font_size_error = None;
-            }
-            Err(_) => {
-                self.font_size_error = Some("Font Size must be an integer".to_string());
-            }
-        }
-
-        settings_data.indent_line_start = self.indent_line_start_config;
-        settings_data.highlight_multiple_spaces = self.highlight_multiple_spaces;
-        settings_data.highlight_spaces_before_punctuation =
-            self.highlight_spaces_before_punctuation;
-        settings_data.check_for_updates = self.check_for_updates;
-        settings_data.reopen_last = self.reopen_last_config;
-
-        match self.dictionary_location_config.parse::<PathBuf>() {
-            Ok(val) => {
-                // todo! check range
-                settings_data.dictionary_location = val;
-                self.dictionary_location_error = None;
-            }
-            Err(_) => {
-                self.dictionary_location_error =
-                    Some("Dictionary Location must be a valid path".to_string());
-            }
-        }
-
-        ctx.render_version += 1;
-
-        settings_data.modified = true;
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
@@ -124,72 +46,63 @@ impl SettingsPage {
 
         cheese_response.extend(self.themes_ui(ui, ctx));
 
-        if cheese_response.modified {
-            let next_update = SystemTime::now() + Self::UPDATE_DELAY;
-            if let Some(prev_ne) = self.next_update {
-                self.next_update = Some(std::cmp::max(next_update, prev_ne));
-            } else {
-                self.next_update = Some(next_update);
-            }
-        }
+        // TODO: maybe parse cheese response here? might need to make sure themes are good
 
         cheese_response
     }
 
     fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+        let mut settings_data = ctx.settings.0.borrow_mut();
+
         let mut cheese_response = CheeseResponse::default();
 
         ui.label("Font Size");
 
-        let response = ui.text_edit_singleline(&mut self.font_size_config);
+        let response = ui.text_edit_singleline(&mut settings_data.font_size.user_entry);
+        if response.changed() {
+            settings_data.font_size.modified_entry = true;
+        }
         cheese_response.process_response(&response, true);
 
-        if let Some(err) = &self.font_size_error {
+        if let Some(err) = &settings_data.font_size.error_message {
             ui.label(RichText::new(err).color(Color32::RED));
         }
 
-        let response = ui.checkbox(&mut self.indent_line_start_config, "Indent Line Start");
-        cheese_response.process_response(&response, true);
+        let response = settings_data.indent_line_start.ui(ui, "Indent Line Start");
+        cheese_response.extend(response);
 
-        let response = ui.checkbox(
-            &mut self.highlight_multiple_spaces,
-            "Highlight Multiple Spaces (in a Row)",
-        );
-        cheese_response.process_response(&response, true);
+        let response = settings_data
+            .highlight_multiple_spaces
+            .ui(ui, "Highlight Multiple Spaces (in a Row)");
+        cheese_response.extend(response);
 
-        let response = ui.checkbox(
-            &mut self.highlight_spaces_before_punctuation,
-            "Highlight Spaces Between a Word and Punctuation",
-        );
-        cheese_response.process_response(&response, true);
+        let response = settings_data
+            .highlight_spaces_before_punctuation
+            .ui(ui, "Highlight Spaces Between a Word and Punctuation");
+        cheese_response.extend(response);
 
-        let response = ui.checkbox(&mut self.check_for_updates, "Check for Updates");
-        cheese_response.process_response(&response, true);
+        let response = settings_data.check_for_updates.ui(ui, "Check for Updates");
+        cheese_response.extend(response);
 
-        let response = ui.checkbox(
-            &mut self.reopen_last_config,
-            "Reopen Last Project on Launch",
-        );
-        cheese_response.process_response(&response, true);
+        let response = settings_data
+            .reopen_last
+            .ui(ui, "Reopen Last Project on Launch");
+        cheese_response.extend(response);
 
         ui.label("Dictionary Location");
 
-        let response = ui.text_edit_singleline(&mut self.dictionary_location_config);
+        let response = ui.text_edit_singleline(&mut settings_data.dictionary_location.user_entry);
+        if response.changed() {
+            settings_data.dictionary_location.modified_entry = true;
+        }
         cheese_response.process_response(&response, true);
 
-        if let Some(err) = &self.dictionary_location_error {
+        if let Some(err) = &settings_data.dictionary_location.error_message {
             ui.label(RichText::new(err).color(Color32::RED));
         }
 
-        if let Some(next_update) = self.next_update {
-            let now = SystemTime::now();
-            if now >= next_update {
-                self.next_update = None;
-                self.validate_and_update(ctx);
-            } else {
-                ui.ctx()
-                    .request_repaint_after(next_update.duration_since(now).unwrap());
-            }
+        if cheese_response.modified {
+            ctx.render_version += 1;
         }
 
         cheese_response
