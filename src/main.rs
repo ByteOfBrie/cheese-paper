@@ -19,8 +19,15 @@ fn main() -> eframe::Result {
 
     let egui_data_path = project_dirs.data_dir().join("egui");
 
+    let icon_data =
+        eframe::icon_data::from_png_bytes(include_bytes!("../resources/cheese-paper-icon.png"))
+            .unwrap();
+
     let native_options = NativeOptions {
         persistence_path: Some(egui_data_path),
+        viewport: egui::ViewportBuilder::default()
+            .with_icon(icon_data)
+            .with_app_id("cheese-paper"),
         ..Default::default()
     };
 
