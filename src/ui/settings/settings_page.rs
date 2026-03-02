@@ -15,11 +15,28 @@ pub struct SettingsPage {
 impl Setting<bool> {
     fn ui<'a>(&'a mut self, ui: &mut egui::Ui, atoms: impl egui::IntoAtoms<'a>) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
-        let response = ui.checkbox(&mut self.user_editable, atoms);
-        if response.changed() {
-            self.modified_entry = true;
-        }
-        cheese_response.process_response(&response, true);
+        ui.horizontal(|ui| {
+            let response = ui.button("⟲");
+            if response.clicked() && self.value.is_some() {
+                self.value = None;
+                self.modified_entry = false;
+                self.modified_value = true;
+                self.user_editable = self.default;
+            }
+            cheese_response.process_response(&response, true);
+
+            if self.value.is_none() {
+                ui.set_opacity(0.5);
+            } else {
+                ui.set_opacity(1.0);
+            }
+
+            let response = ui.checkbox(&mut self.user_editable, atoms);
+            if response.changed() {
+                self.modified_entry = true;
+            }
+            cheese_response.process_response(&response, true);
+        });
         cheese_response
     }
 }

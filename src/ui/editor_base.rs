@@ -290,6 +290,10 @@ pub struct CheesePaperApp {
     /// to propagate the event downwards
     last_save: Instant,
 
+    /// Anything that we want to do regularly, but not necessarily every frame
+    /// (e.g., compute settings)
+    last_update: Instant,
+
     /// We want to keep track of this separately from the save logic (probably?)
     last_dictionary_update: Instant,
 
@@ -316,25 +320,12 @@ impl eframe::App for CheesePaperApp {
             }
         }
 
+        let current_time = Instant::now();
+
         match &mut self.project_editor {
             Some(project_editor) => {
                 project_editor.panels(ctx, &mut self.state);
 
-                let current_time = Instant::now();
-                if current_time.duration_since(self.last_save) > Duration::from_secs(5) {
-                    // Slightly hacky, but write the data back into the editor state with every
-                    // autosave. The settings object was put into a refcell and actually included in
-                    // the ctx, but this is easy and good enough for now
-                    if self.state.data.last_export_folder
-                        != project_editor.editor_context.last_export_folder
-                    {
-                        self.state.data.last_export_folder =
-                            project_editor.editor_context.last_export_folder.clone()
-                    }
-
-                    project_editor.save();
-                    self.last_save = current_time;
-                }
                 // is it better to have a potential lag spike happen during a save (making the lag worse,
                 // or separately, making it smaller but separate)? not sure if this will even be an issue
                 // so I'm not thinking too hard about it right now
@@ -423,6 +414,35 @@ impl eframe::App for CheesePaperApp {
                 true => self.choose_project_ui(ctx),
                 false => self.new_project_name_ui(ctx),
             },
+        }
+
+        if current_time.duration_since(self.last_update) > Duration::from_millis(250) {
+            // TODO: update data as well
+            self.state.settings.update();
+
+            self.last_update = current_time;
+        }
+
+        if current_time.duration_since(self.last_save) > Duration::from_secs(5) {
+            if let Some(project_editor) = &mut self.project_editor {
+                // Slightly hacky, but write the data back into the editor state with every
+                // autosave. The settings object was put into a refcell and actually included in
+                // the ctx, but this is easy and good enough for now
+                if self.state.data.last_export_folder
+                    != project_editor.editor_context.last_export_folder
+                {
+                    self.state.data.last_export_folder =
+                        project_editor.editor_context.last_export_folder.clone()
+                }
+
+                project_editor.save();
+            }
+
+            if let Err(err) = self.state.settings.save() {
+                log::error!("Encountered error while saving editor settings: {err}");
+            }
+
+            self.last_save = current_time;
         }
 
         #[cfg(feature = "metrics")]
@@ -539,6 +559,7 @@ impl CheesePaperApp {
             project_editor: None,
             state,
             last_save: Instant::now(),
+            last_update: Instant::now(),
             last_dictionary_update: Instant::now(),
             dictionary,
 

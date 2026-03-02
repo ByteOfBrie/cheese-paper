@@ -160,7 +160,7 @@ pub fn validate_pathbuf(path_str: &str) -> Result<PathBuf, String> {
 pub fn validate_f32(float_str: &str) -> Result<f32, String> {
     float_str
         .parse::<f32>()
-        .map_err(|float_err| format!("Could not parse number: {float_err}"))
+        .map_err(|float_err| format!("Could not parse '{float_str}' as number: {float_err}"))
 }
 
 #[derive(Debug)]
@@ -233,7 +233,7 @@ impl SettingsData {
                     Some(format!("Could not parse as float: {font_size_item}"));
             };
 
-            self.font_size.user_entry = font_size_item.to_string();
+            self.font_size.user_entry = font_size_item.to_string().trim().to_string();
         }
 
         if let Some(reopen_last_item) = table.get("reopen_last")
@@ -368,7 +368,7 @@ impl SettingsData {
         modified
     }
 
-    /// Call every validate_update function, moving the data from the UI into
+    /// Call every [`Setting::validate_update`] function, moving the data from the UI into
     /// the values, should be called on a regular basis
     pub fn update_values(&mut self) {
         self.font_size.validate_update(validate_f32);
@@ -490,6 +490,10 @@ impl Settings {
         }
 
         Ok(())
+    }
+
+    pub fn update(&mut self) {
+        self.0.borrow_mut().update_values();
     }
 
     pub fn font_size(&self) -> f32 {
