@@ -93,9 +93,27 @@ jobs:
           "target/release/Cheese-Paper Installer.dmg" target/release/bundle/osx/
 
         codesign --options runtime --timestamp -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" "target/release/Cheese-Paper Installer.dmg"
+        # submit the zip for notarization as well, but don't wait for it (or try to staple)
+        xcrun notarytool submit "target/release/${{ matrix.archive_name }}" --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
         xcrun notarytool submit "target/release/Cheese-Paper Installer.dmg" --wait --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
         xcrun stapler staple "target/release/Cheese-Paper Installer.dmg"
 
+        # find python version. we need to use python3 on macos and python on windows :)
+        export PYTHON_BINARY=$(if [[ $(python -V) ]]; then echo "python"; else echo "python3"; fi)
+        # find the id of the release we created above
+        export RELEASE_ID=$(curl -X 'GET' \
+          'https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/tags/${{ forgejo.ref_name }}' \
+          --no-progress-meter --fail-with-body \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
+          -H 'accept: application/json' | ${PYTHON_BINARY} -c 'import json,sys; print(json.load(sys.stdin)["id"])' | tr -d '\r')
+
+        curl -X 'POST' \
+          "https://codeberg.org/api/v1/repos/${{ forgejo.repository }}/releases/${RELEASE_ID}/assets?name=Cheese-Paper%20Installer.dmg" \
+          --fail-with-body --no-progress-meter \
+          -H 'accept: application/json' \
+          -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
+          -H 'Content-Type: multipart/form-data' \
+          -F 'attachment=@target/release/Cheese-Paper Installer.dmg;type=application/octet-stream'
 
     - name: Upload artifacts to release
       shell: bash
