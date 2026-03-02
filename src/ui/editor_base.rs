@@ -1,5 +1,5 @@
 use crate::{
-    schemas::{DEFAULT_SCHEMA, SCHEMA_LIST},
+    schemas::DEFAULT_SCHEMA,
     ui::{
         message::{Message, UpdateMessage},
         prelude::*,
@@ -666,30 +666,36 @@ impl CheesePaperApp {
                 ui.label("Project Name:");
                 ui.text_edit_singleline(&mut self.state.new_project_name);
 
-                ui.label("Project Schema:");
-                egui::ComboBox::from_id_salt("schema selection dropdown")
-                    .selected_text(self.state.new_project_schema.get_schema_name())
-                    .show_ui(ui, |ui| {
-                        for schema in SCHEMA_LIST {
-                            ui.selectable_value(
-                                &mut self.state.new_project_schema,
-                                schema,
-                                schema.get_schema_name(),
-                            );
+                #[cfg(feature = "schema_selection_dialogue")]
+                {
+                    // Project schemas are still somewhat of a work in progress, so we don't want to show
+                    // the selection dialogue to the users in release builds. Release builds will still
+                    // be able to load these projectss without any issues
+                    ui.label("Project Schema:");
+                    egui::ComboBox::from_id_salt("schema selection dropdown")
+                        .selected_text(self.state.new_project_schema.get_schema_name())
+                        .show_ui(ui, |ui| {
+                            for schema in crate::schemas::SCHEMA_LIST {
+                                ui.selectable_value(
+                                    &mut self.state.new_project_schema,
+                                    schema,
+                                    schema.get_schema_name(),
+                                );
+                            }
+                        });
+
+                    ui.separator();
+
+                    ui.heading("Schema Preview:");
+                    egui::Grid::new("schema preview grid").show(ui, |ui| {
+                        for file_type in self.state.new_project_schema.get_all_file_types() {
+                            ui.label(file_type.type_name());
+                            ui.label(" : ");
+                            ui.label(file_type.description());
+                            ui.end_row();
                         }
                     });
-
-                ui.separator();
-
-                ui.heading("Schema Preview:");
-                egui::Grid::new("schema preview grid").show(ui, |ui| {
-                    for file_type in self.state.new_project_schema.get_all_file_types() {
-                        ui.label(file_type.type_name());
-                        ui.label(" : ");
-                        ui.label(file_type.description());
-                        ui.end_row();
-                    }
-                });
+                }
 
                 egui::Sides::new().show(
                     ui,

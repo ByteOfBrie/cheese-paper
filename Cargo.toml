@@ -21,6 +21,7 @@ lto = "fat"
 
 [features]
 metrics = []
+schema_selection_dialogue = []
 
 [dependencies]
 # file components
