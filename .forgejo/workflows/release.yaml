@@ -60,7 +60,7 @@ jobs:
           - os: macos-arm64
             name: cheese-paper-macos-arm64.app.zip
             build_name: bundle/osx/cheese-paper.app
-            archive_name: bundle/osx/cheese-paper.app.zip
+            archive_name: cheese-paper.app.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -84,7 +84,7 @@ jobs:
         codesign --options runtime --timestamp --deep -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" target/release/bundle/osx/cheese-paper.app/
 
         # we also have to zip it, cd into the directory first to have the zip paths correct
-        (cd "$(dirname "target/release/${{ matrix.build_name }}")" && zip -r "$(basename "${{ matrix.archive_name }}")" "$(basename "${{ matrix.build_name }}")")
+        (cd "$(dirname "target/release/${{ matrix.build_name }}")" && zip -r "$(basename "${{ matrix.archive_name }}")" "$(basename "${{ matrix.build_name }}")" && mv "$(basename "${{ matrix.archive_name }}")" ../..)
 
         # create the dmg installer
         create-dmg --skip-jenkins --volname "Cheese-Paper Installer" --window-pos 200 120 \
