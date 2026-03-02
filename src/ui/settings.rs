@@ -115,14 +115,16 @@ impl<T: PartialEq + Clone> Setting<T> {
     }
 
     pub fn update_entry(&mut self) {
-        self.modified_entry = false;
-        if self
-            .value
-            .as_ref()
-            .is_none_or(|self_value| *self_value != self.user_editable)
-        {
-            self.value = Some(self.user_editable.clone());
-            self.modified_value = true;
+        if self.modified_entry {
+            self.modified_entry = false;
+            if self
+                .value
+                .as_ref()
+                .is_none_or(|self_value| *self_value != self.user_editable)
+            {
+                self.value = Some(self.user_editable.clone());
+                self.modified_value = true;
+            }
         }
     }
 
@@ -132,21 +134,23 @@ impl<T: PartialEq + Clone> Setting<T> {
     where
         F: Fn(&str) -> Result<T, String>,
     {
-        self.modified_entry = false;
-        match validation_function(&self.user_entry) {
-            Ok(value) => {
-                if self
-                    .value
-                    .as_ref()
-                    .is_none_or(|self_value| *self_value != value)
-                {
-                    self.value = Some(value);
-                    self.modified_value = true;
+        if self.modified_entry {
+            self.modified_entry = false;
+            match validation_function(&self.user_entry) {
+                Ok(value) => {
+                    if self
+                        .value
+                        .as_ref()
+                        .is_none_or(|self_value| *self_value != value)
+                    {
+                        self.value = Some(value);
+                        self.modified_value = true;
+                    }
+                    self.error_message = None;
                 }
-                self.error_message = None;
-            }
-            Err(err) => {
-                self.error_message = Some(err);
+                Err(err) => {
+                    self.error_message = Some(err);
+                }
             }
         }
     }
@@ -240,18 +244,21 @@ impl SettingsData {
             && let Some(reopen_last) = reopen_last_item.as_bool()
         {
             self.reopen_last.value = Some(reopen_last);
+            self.reopen_last.user_editable = reopen_last;
         }
 
         if let Some(indent_line_start_item) = table.get("indent_line_start")
             && let Some(indent_line_start) = indent_line_start_item.as_bool()
         {
             self.indent_line_start.value = Some(indent_line_start);
+            self.indent_line_start.user_editable = indent_line_start;
         }
 
         if let Some(highlight_multiple_spaces_item) = table.get("highlight_multiple_spaces")
             && let Some(highlight_multiple_spaces) = highlight_multiple_spaces_item.as_bool()
         {
             self.highlight_multiple_spaces.value = Some(highlight_multiple_spaces);
+            self.highlight_multiple_spaces.user_editable = highlight_multiple_spaces;
         }
 
         if let Some(highlight_spaces_before_punctuation_item) =
@@ -261,12 +268,15 @@ impl SettingsData {
         {
             self.highlight_spaces_before_punctuation.value =
                 Some(highlight_spaces_before_punctuation);
+            self.highlight_spaces_before_punctuation.user_editable =
+                highlight_spaces_before_punctuation;
         }
 
         if let Some(check_for_updates_item) = table.get("check_for_updates")
             && let Some(check_for_updates) = check_for_updates_item.as_bool()
         {
             self.check_for_updates.value = Some(check_for_updates);
+            self.check_for_updates.user_editable = check_for_updates;
         }
 
         if let Some(dictionary_location) = table
@@ -480,7 +490,7 @@ impl Settings {
 
         data.update_values();
 
-        // If we have chan
+        // Only write if we have changes
         if data.save(&mut self.1) {
             write_with_temp_file(
                 create_dir_if_missing(&data.config_file_path())?,
@@ -502,11 +512,6 @@ impl Settings {
 
     pub fn reopen_last(&self) -> bool {
         *self.0.borrow().reopen_last.get_value()
-    }
-
-    pub fn set_reopen_last(&mut self, reopen_last: bool) {
-        // TODO: look at usage of this function and maybe do better
-        self.0.borrow_mut().reopen_last.value = Some(reopen_last);
     }
 
     pub fn indent_line_start(&self) -> bool {
