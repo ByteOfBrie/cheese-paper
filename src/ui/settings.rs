@@ -375,6 +375,16 @@ impl SettingsData {
             table.insert("selected_theme", value(self.selected_theme));
         }
 
+        self.dictionary_location.modified_value = false;
+        if let Some(dictionary_location) = &self.dictionary_location.value {
+            table.insert(
+                "dictionary_location",
+                value(dictionary_location.to_string_lossy().to_string()),
+            );
+        } else {
+            table.remove("dictionary_location");
+        }
+
         modified
     }
 
