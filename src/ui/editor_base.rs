@@ -628,10 +628,8 @@ impl CheesePaperApp {
                     cols[0].vertical_centered_justified(|_ui| {});
                     cols[1].vertical_centered_justified(|ui| {
                         if ui.button("new project").clicked() {
-                            self.state.new_project_dir = FileDialog::new()
-                                .set_title("New Project Parent Folder")
-                                .set_directory(&self.state.data.last_project_parent_folder)
-                                .pick_folder();
+                            self.state.new_project_dir =
+                                Some(self.state.data.last_project_parent_folder.clone());
                         }
                     });
                     cols[2].vertical_centered_justified(|_ui| {});
@@ -663,6 +661,25 @@ impl CheesePaperApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Modal::new(egui::Id::new("new project name")).show(ui.ctx(), |ui| {
                 ui.heading("New Project");
+
+                if let Some(current_dir) = &self.state.new_project_dir {
+                    ui.label(format!("Parent Folder: {}", current_dir.to_string_lossy()));
+                } else {
+                    log::error!("Could not get current folder in new project dialogue");
+                }
+                if ui.button("Select").clicked() {
+                    let selected_dir = FileDialog::new()
+                        .set_title("Project Parent Folder")
+                        .set_directory(self.state.new_project_dir.clone().unwrap_or_default())
+                        .pick_folder();
+
+                    if selected_dir.is_some() {
+                        self.state.new_project_dir = selected_dir;
+                    }
+                }
+
+                ui.separator();
+
                 ui.label("Project Name:");
                 ui.text_edit_singleline(&mut self.state.new_project_name);
 
@@ -695,6 +712,18 @@ impl CheesePaperApp {
                             ui.end_row();
                         }
                     });
+                }
+
+                if let Some(parent_folder) = &self.state.new_project_dir {
+                    let project_name = if self.state.new_project_name.is_empty() {
+                        "..."
+                    } else {
+                        self.state.new_project_name.as_ref()
+                    };
+                    ui.small(format!(
+                        "Project will be created as {:?}",
+                        parent_folder.join(project_name)
+                    ));
                 }
 
                 egui::Sides::new().show(
