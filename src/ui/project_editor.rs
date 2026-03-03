@@ -379,10 +379,8 @@ impl ProjectEditor {
 
         // Before rendering the tab view, clear out any deleted scenes
         self.dock_state.retain_tabs(|tab| match &tab.page {
-            Page::ProjectMetadata => true,
-            Page::Export => true,
-            Page::Settings => true,
             Page::FileObject(tab_id) => self.project.objects.contains_key(tab_id),
+            _ => true,
         });
 
         // render the tab view
@@ -583,6 +581,10 @@ impl ProjectEditor {
                     ui.menu_button("View", |ui| {
                         if ui.button("Close All Tabs").clicked() {
                             self.close_all_tabs();
+                        }
+
+                        if ui.button("Help").clicked() {
+                            self.set_editor_tab(&Page::Help, true);
                         }
                     });
                 });

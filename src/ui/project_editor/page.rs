@@ -1,11 +1,13 @@
 mod export_selection;
 pub mod file_object_editor;
+mod help;
 mod project_metadata_editor;
 
 use crate::ui::prelude::*;
 
 use crate::ui::settings::settings_page::SettingsPage;
 pub use file_object_editor::FileObjectEditor;
+use help::HelpPage;
 
 use egui::{Id, Key, Modifiers};
 
@@ -21,12 +23,14 @@ pub enum Page {
     FileObject(FileID),
     Settings,
     Export,
+    Help,
 }
 
 impl Page {
     const PROJECT_METADATA_ID: &str = "project_metadata";
     const EXPORT_ID: &str = "export";
     const SETTINGS_ID: &str = "settings";
+    const HELP_ID: &str = "help";
 
     /// Get an id from a string. This (and its reverse, `get_id`) could be replaced by `From`
     /// (and `Into`), but this seems like it might be more explicit?
@@ -44,6 +48,7 @@ impl Page {
             Self::ProjectMetadata => Self::PROJECT_METADATA_ID,
             Self::Export => Self::EXPORT_ID,
             Self::Settings => Self::SETTINGS_ID,
+            Self::Help => Self::HELP_ID,
             Self::FileObject(id) => id,
         }
     }
@@ -62,6 +67,7 @@ impl Page {
             Self::Settings => false,
             Self::FileObject(_) => true,
             Self::ProjectMetadata => true,
+            Self::Help => false,
         }
     }
 
@@ -99,6 +105,7 @@ pub struct PageData {
     last_selected_id: Option<Id>,
 
     settings_page: Option<SettingsPage>,
+    help_page: HelpPage,
 }
 
 pub type Store = RenderDataStore<Page, PageData>;
@@ -132,6 +139,7 @@ impl OpenPage {
             }
             Page::Export => "Export".into(),
             Page::Settings => "Settings".into(),
+            Page::Help => "Help".into(),
         };
 
         let text = if self.keep { text } else { text.italics() };
@@ -179,6 +187,7 @@ impl OpenPage {
                 let settings_page = page_data.settings_page.as_mut().unwrap();
                 settings_page.ui(ui, ctx)
             }
+            Page::Help => page_data.help_page.ui(ui, ctx),
         };
 
         self.keep |= modified;
