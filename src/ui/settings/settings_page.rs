@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use crate::ui::prelude::*;
 use crate::ui::settings::Setting;
 
@@ -41,6 +43,8 @@ impl Setting<bool> {
     }
 }
 
+static GLOBAL_SETTINGS_LOCATION: OnceLock<String> = OnceLock::new();
+
 impl SettingsPage {
     // TODO: maybe get rid of this
     pub fn load(_ctx: &mut EditorContext) -> Self {
@@ -70,6 +74,15 @@ impl SettingsPage {
 
     fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let mut settings_data = ctx.settings.0.borrow_mut();
+
+        let settings_location = GLOBAL_SETTINGS_LOCATION.get_or_init(|| {
+            format!(
+                "global settings file: {:?}",
+                settings_data.config_file_path()
+            )
+        });
+
+        ui.small(settings_location);
 
         let mut cheese_response = CheeseResponse::default();
 
