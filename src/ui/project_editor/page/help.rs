@@ -5,9 +5,7 @@ pub struct HelpPage {
     rendered_text: Option<RenderedText>,
 }
 
-const HELP_TEXT: &str = "This is test text
-for testing
-the text";
+const HELP_TEXT: &str = include_str!("../../../../manual.md");
 
 impl HelpPage {
     pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
