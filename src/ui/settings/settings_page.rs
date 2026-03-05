@@ -55,21 +55,23 @@ impl SettingsPage {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
-        let mut cheese_response = CheeseResponse::default();
+        layout::margin_box(ui, |ui| {
+            let mut cheese_response = CheeseResponse::default();
 
-        ui.heading("Settings");
+            layout::heading(ui, "Settings");
 
-        cheese_response.extend(self.settings_ui(ui, ctx));
+            cheese_response.extend(self.settings_ui(ui, ctx));
 
-        ui.separator();
+            ui.separator();
 
-        ui.heading("Themes");
+            layout::heading(ui, "Themes");
 
-        cheese_response.extend(self.themes_ui(ui, ctx));
+            cheese_response.extend(self.themes_ui(ui, ctx));
 
-        // TODO: maybe parse cheese response here? might need to make sure themes are good
+            // TODO: maybe parse cheese response here? might need to make sure themes are good
 
-        cheese_response
+            cheese_response
+        })
     }
 
     fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
@@ -188,8 +190,8 @@ impl SettingsPage {
             cheese_response.tabable_ids.push(response.id);
         });
 
-        ui.horizontal(|ui| {
-            ui.heading("Available Presets");
+        layout::horizontal_heading(ui, |ui| {
+            layout::heading(ui, "Available Presets");
             if ui.button("reload").clicked() {
                 ctx.actions.schedule(move |project_editor, ctx| {
                     project_editor

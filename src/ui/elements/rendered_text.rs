@@ -31,17 +31,16 @@ impl RenderedText {
         if redo_layout {
             let style = ui.style().as_ref();
             self.layout_job = Some((
-                compute_layout_job(&self.text, ctx, style, ui.available_width() - 10.0),
+                compute_layout_job(&self.text, ctx, style, ui.available_width()),
                 ctx.render_version,
                 style.clone(),
             ))
         }
 
-        let top_left = ui.next_widget_position() + egui::Vec2 { x: 10.0, y: 5.0 };
-
         let galley = ui.fonts(|f| f.layout_job(self.layout_job.as_ref().unwrap().0.clone()));
 
-        ui.painter().galley(top_left, galley, Color32::BLACK);
+        ui.painter()
+            .galley(ui.next_widget_position(), galley, Color32::BLACK);
     }
 }
 

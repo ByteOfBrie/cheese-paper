@@ -1,4 +1,5 @@
 mod cheese_response;
+pub mod layout;
 mod name_box;
 mod rendered_text;
 pub mod text_box;
