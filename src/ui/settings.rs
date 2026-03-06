@@ -1,3 +1,4 @@
+mod apply;
 mod dictionaries;
 pub mod settings_page;
 pub mod theme;
@@ -12,6 +13,7 @@ use crate::components::file_objects::utils::{
 };
 
 use std::fs::read_dir;
+use std::time::SystemTime;
 use std::{fs::read_to_string, path::PathBuf};
 
 use toml_edit::{DocumentMut, Item, Value, value};
@@ -62,33 +64,29 @@ impl TryFrom<&Item> for ThemeSelection {
 /// instance of a setting. All UIs should expose [`Self::user_editable`]
 /// or [`Self::user_entry`]
 #[derive(Debug, Clone)]
-pub struct Setting<T: std::cmp::PartialEq> {
+pub struct Setting<T, U = T>
+where
+    T: PartialEq,
+{
     /// The value itself, if it has been defined
     value: Option<T>,
 
     /// The default value for this setting
     default: T,
 
-    /// For types (like bools) that have no system for validation, this is
-    /// something that can be exposed
-    pub user_editable: T,
+    /// The value currently entered in the user in the settings interface
+    pub interface_value: U,
 
-    /// Any text entry in progress, only useful for types that have
-    /// a way to convert a string to a value
-    pub user_entry: String,
-
-    /// Has this entry been modified since the last attempted save to value.
-    /// This should be set to true whenever user_entry is modified (by the
-    /// function that modifies it). [`Self::validate_update`] will set this
-    /// to false
-    pub modified_entry: bool,
-
-    /// Has this value been modified since the last time it was written to disk.
-    /// Should be set to false whenever this is saved.
+    /// Has this value been modified
     ///
-    // We could keep track of this without this bool (in the calling functions),
-    // but that sounds annoying to manage
-    pub modified_value: bool,
+    /// Set to true when the interface value overrides the selected value
+    /// Set to false when the Settings are processed and saved
+    modified: bool,
+
+    convert: fn(T) -> U,
+
+    /// function for convertingt the user selected value into the selected setting
+    validate: fn(&U) -> Result<T, &'static str>,
 
     /// an error message, if any
     ///
@@ -97,19 +95,42 @@ pub struct Setting<T: std::cmp::PartialEq> {
 }
 
 impl<T: PartialEq + Clone> Setting<T> {
-    pub fn new(default: T) -> Self {
-        Self::new_with_value(None, default)
+    /// A setting in which the Ui interface is a transparant representation of the setting value
+    pub fn transparent(default: T) -> Self {
+        fn validate<T: Clone>(t: &T) -> Result<T, &'static str> {
+            Ok(t.clone())
+        }
+
+        Self {
+            value: None,
+            interface_value: default.clone(),
+            default,
+            modified: false,
+            convert: std::convert::identity,
+            validate,
+            error_message: None,
+        }
     }
 
-    pub fn new_with_value(value: Option<T>, default: T) -> Self {
-        let user_editable = value.as_ref().unwrap_or_else(|| &default).clone();
+}
+
+impl<T, U> Setting<T, U>
+where
+    T: PartialEq + Clone,
+    U: Clone,
+{
+    fn with_validation_fn(
+        default: T,
+        convert: fn(T) -> U,
+        validate: fn(&U) -> Result<T, &'static str>,
+    ) -> Self {
         Self {
-            value,
+            value: None,
+            interface_value: convert(default.clone()),
             default,
-            user_editable,
-            user_entry: String::new(),
-            modified_entry: false,
-            modified_value: false,
+            modified: false,
+            convert,
+            validate,
             error_message: None,
         }
     }
@@ -119,56 +140,27 @@ impl<T: PartialEq + Clone> Setting<T> {
     }
 
     pub fn set_value(&mut self, value: Option<T>) {
-        self.user_editable = value.as_ref().unwrap_or_else(|| &self.default).clone();
+        self.interface_value =
+            (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
         self.value = value;
     }
 
-    pub fn update_entry(&mut self) {
-        if self.modified_entry {
-            self.modified_entry = false;
-            if self
-                .value
-                .as_ref()
-                .is_none_or(|self_value| *self_value != self.user_editable)
-            {
-                self.value = Some(self.user_editable.clone());
-                self.modified_value = true;
-            }
+    pub fn update_value(&mut self) {
+        let new_value = (self.validate)(&self.interface_value);
+
+        if let Ok(new_value) = new_value
+            && new_value != *self.get_value()
+        {
+            self.value = Some(new_value);
+            self.modified = true;
         }
     }
 
-    /// Given a conversion function, try to convert from the string value
-    /// to the underlying type
-    pub fn validate_update<F>(&mut self, validation_function: F)
-    where
-        F: Fn(&str) -> Result<T, String>,
-    {
-        if self.modified_entry {
-            self.modified_entry = false;
-            match validation_function(&self.user_entry) {
-                Ok(value) => {
-                    if self
-                        .value
-                        .as_ref()
-                        .is_none_or(|self_value| *self_value != value)
-                    {
-                        self.value = Some(value);
-                        self.modified_value = true;
-                    }
-                    self.error_message = None;
-                }
-                Err(err) => {
-                    self.error_message = Some(err);
-                }
-            }
-        }
+    pub fn reset_value(&mut self) {
+        self.value = None;
+        self.interface_value = (self.convert)(self.default.clone());
+        self.modified = true;
     }
-}
-
-pub fn validate_f32(float_str: &str) -> Result<f32, String> {
-    float_str
-        .parse::<f32>()
-        .map_err(|float_err| format!("Could not parse '{float_str}' as number: {float_err}"))
 }
 
 #[derive(Debug)]
@@ -176,7 +168,7 @@ struct SettingsData {
     settings_path: PathBuf,
 
     /// size of the text font
-    font_size: Setting<f32>,
+    font_size: Setting<f32, String>,
 
     /// visual indentation at the start of lines (buggy)
     indent_line_start: Setting<bool>,
@@ -198,8 +190,6 @@ struct SettingsData {
 
     selected_dictionary: Setting<String>,
 
-    dictionary_load_error: Option<String>,
-
     theme_settings_modified: bool,
 
     /// theming for visuals.
@@ -209,41 +199,60 @@ struct SettingsData {
 
     // theme_selection: ThemeSelection,
     available_themes: Rc<Vec<(String, Theme)>>,
+
+    next_apply: Option<SystemTime>,
+}
+
+fn convert_font(font: f32) -> String {
+    format!("{font}")
+}
+
+#[allow(clippy::ptr_arg)]
+fn validate_font(input: &String) -> Result<f32, &'static str> {
+    let f = input
+        .parse::<f32>()
+        .map_err(|_| "Could not parse text as float");
+
+    if let Ok(value) = f
+        && value < 5.0
+    {
+        return Err("Value too small to use as a font size");
+    }
+
+    f
 }
 
 impl SettingsData {
     pub fn new(settings_path: PathBuf) -> Self {
         Self {
             settings_path,
-            font_size: Setting::new(18.0),
-            reopen_last: Setting::new(true),
-            indent_line_start: Setting::new(false),
-            highlight_multiple_spaces: Setting::new(true),
-            highlight_spaces_before_punctuation: Setting::new(true),
-            check_for_updates: Setting::new(true),
+            font_size: Setting::with_validation_fn(18.0, convert_font, validate_font),
+            reopen_last: Setting::transparent(true),
+            indent_line_start: Setting::transparent(false),
+            highlight_multiple_spaces: Setting::transparent(true),
+            highlight_spaces_before_punctuation: Setting::transparent(true),
+            check_for_updates: Setting::transparent(true),
             available_dict: Vec::new(),
-            selected_dictionary: Setting::new("en_US".to_owned()),
-            dictionary_load_error: None,
+            selected_dictionary: Setting::transparent("en_US".to_owned()),
             theme_settings_modified: false,
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
             available_themes: Rc::new(Vec::new()),
+            next_apply: None,
         }
     }
 
     pub fn load(&mut self, table: &DocumentMut) {
         if let Some(font_size_item) = table.get("font_size") {
             if let Some(font_size) = font_size_item.as_float() {
-                self.font_size.value = Some(font_size as f32);
+                self.font_size.set_value(Some(font_size as f32));
             } else if let Some(font_size) = font_size_item.as_integer() {
-                self.font_size.value = Some(font_size as f32);
+                self.font_size.set_value(Some(font_size as f32));
             } else {
                 log::debug!("Found font size setting but could not parse: {font_size_item:?}");
                 self.font_size.error_message =
                     Some(format!("Could not parse as float: {font_size_item}"));
             };
-
-            self.font_size.user_entry = font_size_item.to_string().trim().to_string();
         }
 
         if let Some(reopen_last_item) = table.get("reopen_last")
@@ -307,36 +316,36 @@ impl SettingsData {
     pub fn save(&mut self, table: &mut DocumentMut) -> bool {
         // We always try to update the entire document
         // or if any of the sub-values have been modified
-        let modified = self.font_size.modified_value
-            || self.reopen_last.modified_value
-            || self.indent_line_start.modified_value
-            || self.highlight_multiple_spaces.modified_value
-            || self.highlight_spaces_before_punctuation.modified_value
-            || self.check_for_updates.modified_value
+        let modified = self.font_size.modified
+            || self.reopen_last.modified
+            || self.indent_line_start.modified
+            || self.highlight_multiple_spaces.modified
+            || self.highlight_spaces_before_punctuation.modified
+            || self.check_for_updates.modified
             || self.theme_settings_modified;
 
-        self.font_size.modified_value = false;
+        self.font_size.modified = false;
         if let Some(font_size) = self.font_size.value {
             table.insert("font_size", value(font_size as f64));
         } else {
             table.remove("font_size");
         }
 
-        self.reopen_last.modified_value = false;
+        self.reopen_last.modified = false;
         if let Some(reopen_last) = self.reopen_last.value {
             table.insert("reopen_last", value(reopen_last));
         } else {
             table.remove("reopen_last");
         }
 
-        self.indent_line_start.modified_value = false;
+        self.indent_line_start.modified = false;
         if let Some(indent_line_start) = self.indent_line_start.value {
             table.insert("indent_line_start", value(indent_line_start));
         } else {
             table.remove("indent_line_start");
         }
 
-        self.highlight_multiple_spaces.modified_value = false;
+        self.highlight_multiple_spaces.modified = false;
         if let Some(highlight_multiple_spaces) = self.highlight_multiple_spaces.value {
             table.insert(
                 "highlight_multiple_spaces",
@@ -346,7 +355,7 @@ impl SettingsData {
             table.remove("highlight_multiple_spaces");
         }
 
-        self.highlight_spaces_before_punctuation.modified_value = false;
+        self.highlight_spaces_before_punctuation.modified = false;
         if let Some(highlight_spaces_before_punctuation) =
             self.highlight_spaces_before_punctuation.value
         {
@@ -358,14 +367,14 @@ impl SettingsData {
             table.remove("highlight_spaces_before_punctuation");
         }
 
-        self.check_for_updates.modified_value = false;
+        self.check_for_updates.modified = false;
         if let Some(check_for_updates) = self.check_for_updates.value {
             table.insert("check_for_updates", value(check_for_updates));
         } else {
             table.remove("check_for_updates");
         }
 
-        self.selected_dictionary.modified_value = false;
+        self.selected_dictionary.modified = false;
         if let Some(selected_dictionary) = &self.selected_dictionary.value {
             table.insert("selected_dictionary", value(selected_dictionary));
         } else {
@@ -384,15 +393,44 @@ impl SettingsData {
         modified
     }
 
-    /// Call every [`Setting::validate_update`] function, moving the data from the UI into
+    /// Call every [`Setting::update_value`] function, moving the data from the UI into
     /// the values, should be called on a regular basis
     pub fn update_values(&mut self) {
-        self.font_size.validate_update(validate_f32);
-        self.indent_line_start.update_entry();
-        self.highlight_multiple_spaces.update_entry();
-        self.highlight_spaces_before_punctuation.update_entry();
-        self.reopen_last.update_entry();
-        self.check_for_updates.update_entry();
+        self.font_size.update_value();
+        self.indent_line_start.update_value();
+        self.highlight_multiple_spaces.update_value();
+        self.highlight_spaces_before_punctuation.update_value();
+        self.reopen_last.update_value();
+        self.check_for_updates.update_value();
+        self.selected_dictionary.update_value();
+    }
+
+    /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
+    pub fn load_dictionary(&mut self) -> Option<Dictionary> {
+        self.selected_dictionary.error_message = None;
+
+        let selection = self.selected_dictionary.get_value();
+        if selection.is_empty() {
+            return None;
+        }
+
+        let dict_selection = self
+            .available_dict
+            .iter()
+            .find(|dict| dict.name == *selection)?;
+
+        dict_selection
+            .load()
+            .map_err(|err| {
+                format!(
+                    "An error was encountered loading the dictionary from {dict_selection:?}: {err}"
+                )
+            }) // chained map_err for lifetime reasons
+            .map_err(|error_msg| {
+                log::error!("{}", error_msg);
+                self.selected_dictionary.error_message = Some(error_msg);
+            })
+            .ok()
     }
 
     fn config_file_path(&self) -> PathBuf {
@@ -490,21 +528,27 @@ impl Settings {
         Ok(())
     }
 
-    pub fn save(&mut self) -> Result<(), CheeseError> {
+    // pub fn save(&mut self) -> Result<(), CheeseError> {
+    //     let mut data = self.0.borrow_mut();
+
+    //     Ok(())
+    // }
+
+    pub fn need_processing(&self, ctx: &egui::Context) -> bool {
         let mut data = self.0.borrow_mut();
 
-        data.update_values();
+        let now = SystemTime::now();
 
-        // Only write if we have changes
-        if data.save(&mut self.1) {
-            write_with_temp_file(
-                create_dir_if_missing(&data.config_file_path())?,
-                self.1.to_string(),
-            )
-            .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
+        if let Some(next_apply) = data.next_apply {
+            if now >= next_apply {
+                data.next_apply = None;
+                return true;
+            } else {
+                ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
+            }
         }
 
-        Ok(())
+        false
     }
 
     pub fn update(&mut self) {
@@ -543,30 +587,7 @@ impl Settings {
     pub fn load_dictionary(&self) -> Option<Dictionary> {
         let mut data = self.0.borrow_mut();
 
-        data.dictionary_load_error = None;
-
-        let selection = data.selected_dictionary.get_value();
-        if selection.is_empty() {
-            return None;
-        }
-
-        let dict_selection = data
-            .available_dict
-            .iter()
-            .find(|dict| dict.name == *selection)?;
-
-        dict_selection
-            .load()
-            .map_err(|err| {
-                format!(
-                    "An error was encountered loading the dictionary from {dict_selection:?}: {err}"
-                )
-            }) // chained map_err for lifetime reasons
-            .map_err(|error_msg| {
-                log::error!("{}", error_msg);
-                data.dictionary_load_error = Some(error_msg);
-            })
-            .ok()
+        data.load_dictionary()
     }
 
     pub fn theme(&self) -> Theme {

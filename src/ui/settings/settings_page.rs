@@ -1,7 +1,11 @@
-use std::sync::OnceLock;
+use std::{
+    collections::VecDeque,
+    sync::OnceLock,
+    time::{Duration, SystemTime},
+};
 
-use crate::ui::prelude::*;
 use crate::ui::settings::Setting;
+use crate::ui::{prelude::*, settings::dictionaries};
 
 use egui::{Color32, RichText};
 
@@ -19,11 +23,8 @@ impl Setting<bool> {
         let mut cheese_response = CheeseResponse::default();
         ui.horizontal(|ui| {
             let response = ui.button("⟲");
-            if response.clicked() && self.value.is_some() {
-                self.value = None;
-                self.modified_entry = false;
-                self.modified_value = true;
-                self.user_editable = self.default;
+            if response.clicked() {
+                self.reset_value();
             }
             cheese_response.process_response(&response, true);
 
@@ -33,10 +34,7 @@ impl Setting<bool> {
                 ui.set_opacity(1.0);
             }
 
-            let response = ui.checkbox(&mut self.user_editable, atoms);
-            if response.changed() {
-                self.modified_entry = true;
-            }
+            let response = ui.checkbox(&mut self.interface_value, atoms);
             cheese_response.process_response(&response, true);
         });
         cheese_response
@@ -50,27 +48,19 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
         id_salt: &'static str,
         options: impl Iterator<Item = T>,
     ) -> CheeseResponse {
+        let mut cheese_response = CheeseResponse::default();
         egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(self.user_editable.as_ref())
+            .selected_text(self.interface_value.as_ref())
             .show_ui(ui, |ui| {
                 for option in options {
                     let response = ui.selectable_value(
-                        &mut self.user_editable,
+                        &mut self.interface_value,
                         option.clone(),
                         option.as_ref(),
                     );
-                    if response.clicked() {
-                        self.modified_entry = true;
-                    }
+                    cheese_response.process_response(&response, false);
                 }
-            })
-            .response;
-
-        let cheese_response = CheeseResponse {
-            modified: self.modified_entry,
-            tabable_ids: Vec::new(),
-        };
-        self.update_entry();
+            });
 
         cheese_response
     }
@@ -123,10 +113,7 @@ impl SettingsPage {
 
         ui.label("Font Size");
 
-        let response = ui.text_edit_singleline(&mut settings_data.font_size.user_entry);
-        if response.changed() {
-            settings_data.font_size.modified_entry = true;
-        }
+        let response = ui.text_edit_singleline(&mut settings_data.font_size.interface_value);
         cheese_response.process_response(&response, true);
 
         if let Some(err) = &settings_data.font_size.error_message {
@@ -156,11 +143,13 @@ impl SettingsPage {
 
         ui.label("Dictionary");
 
-        let options: Vec<_> = settings_data
+        let mut options: VecDeque<_> = settings_data
             .available_dict
             .iter()
             .map(|entry| entry.name.clone())
             .collect();
+
+        options.push_front(dictionaries::SELECTED_NONE.to_owned());
 
         cheese_response.extend(settings_data.selected_dictionary.dropdown(
             ui,
@@ -168,12 +157,18 @@ impl SettingsPage {
             options.into_iter(),
         ));
 
-        if let Some(err_msg) = &settings_data.dictionary_load_error {
+        if let Some(err_msg) = &settings_data.selected_dictionary.error_message {
             ui.label(RichText::new(err_msg).color(Color32::RED));
         }
 
         if cheese_response.modified {
-            ctx.render_version += 1;
+            // I'm changing this duration back to 400
+            // you can change it back to 250 if you want
+            // your move
+            const APPLY_DELAY: Duration = Duration::from_millis(400);
+
+            settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
+            ui.ctx().request_repaint_after(APPLY_DELAY);
         }
 
         cheese_response

@@ -271,9 +271,6 @@ impl EditorState {
             .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
         }
 
-        // Attempt to save settings, will be a no-op if there aren't any changes
-        self.settings.save()?;
-
         Ok(())
     }
 }
@@ -281,7 +278,7 @@ impl EditorState {
 pub struct CheesePaperApp {
     pub project_editor: Option<ProjectEditor>,
 
-    state: EditorState,
+    pub state: EditorState,
 
     /// Time for autosaves
     ///
@@ -289,10 +286,6 @@ pub struct CheesePaperApp {
     ///`ProjectEditor`), since we'll eventually want to save editor configs as well, and it's better
     /// to propagate the event downwards
     last_save: Instant,
-
-    /// Anything that we want to do regularly, but not necessarily every frame
-    /// (e.g., compute settings)
-    last_update: Instant,
 
     /// We want to keep track of this separately from the save logic (probably?)
     last_dictionary_update: Instant,
@@ -318,6 +311,10 @@ impl eframe::App for CheesePaperApp {
             {
                 log::error!("Could not load project: {err}");
             }
+        }
+
+        if let Err(err) = self.process_settings_changes(ctx) {
+            log::error!("Encountered error while processing settings: {err}");
         }
 
         let current_time = Instant::now();
@@ -416,12 +413,12 @@ impl eframe::App for CheesePaperApp {
             },
         }
 
-        if current_time.duration_since(self.last_update) > Duration::from_millis(250) {
-            // TODO: update data as well
-            self.state.settings.update();
+        // if current_time.duration_since(self.last_update) > Duration::from_millis(250) {
+        //     // TODO: update data as well
+        //     self.state.settings.update();
 
-            self.last_update = current_time;
-        }
+        //     self.last_update = current_time;
+        // }
 
         if current_time.duration_since(self.last_save) > Duration::from_secs(5) {
             if let Some(project_editor) = &mut self.project_editor {
@@ -436,10 +433,6 @@ impl eframe::App for CheesePaperApp {
                 }
 
                 project_editor.save();
-            }
-
-            if let Err(err) = self.state.settings.save() {
-                log::error!("Encountered error while saving editor settings: {err}");
             }
 
             self.last_save = current_time;
@@ -477,7 +470,7 @@ impl Drop for CheesePaperApp {
     }
 }
 
-fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
+pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
     use FontFamily::{Monospace, Proportional};
 
     let scalar = (font_size / 10.0).ceil();
@@ -521,7 +514,6 @@ impl CheesePaperApp {
             project_editor: None,
             state,
             last_save: Instant::now(),
-            last_update: Instant::now(),
             last_dictionary_update: Instant::now(),
             dictionary,
 

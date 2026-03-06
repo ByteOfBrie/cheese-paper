@@ -1,6 +1,5 @@
 //! A few useful functions for a neater layout
 //!
-use std::f32::INFINITY;
 
 use egui::{RichText, UiBuilder, epaint::MarginF32};
 
@@ -19,7 +18,7 @@ const MARGIN: MarginF32 = MarginF32 {
 /// A simple box with a nice margin for making pages
 pub fn margin_box<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let mut max_rect = ui.max_rect() - MARGIN;
-    max_rect.extend_with_y(INFINITY);
+    max_rect.extend_with_y(f32::INFINITY);
 
     let ui_builder = UiBuilder {
         max_rect: Some(max_rect),
