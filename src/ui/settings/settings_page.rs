@@ -123,16 +123,6 @@ impl SettingsPage {
 
         ui.label("Dictionary Location");
 
-        let response = ui.text_edit_singleline(&mut settings_data.dictionary_location.user_entry);
-        if response.changed() {
-            settings_data.dictionary_location.modified_entry = true;
-        }
-        cheese_response.process_response(&response, true);
-
-        if let Some(err) = &settings_data.dictionary_location.error_message {
-            ui.label(RichText::new(err).color(Color32::RED));
-        }
-
         if cheese_response.modified {
             ctx.render_version += 1;
         }

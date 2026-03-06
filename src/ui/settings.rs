@@ -1,7 +1,11 @@
+mod dictionaries;
 pub mod settings_page;
 pub mod theme;
 
 use crate::ui::prelude::*;
+
+use dictionaries::AvailableDictionary;
+use spellbook::Dictionary;
 
 use crate::components::file_objects::utils::{
     create_dir_if_missing, process_name_for_filename, write_with_temp_file,
@@ -156,11 +160,6 @@ impl<T: PartialEq + Clone> Setting<T> {
     }
 }
 
-// String to PathBuf conversion cannot fail, maybe we should get rid of this
-pub fn validate_pathbuf(path_str: &str) -> Result<PathBuf, String> {
-    path_str.parse::<PathBuf>().map_err(|_| String::new())
-}
-
 pub fn validate_f32(float_str: &str) -> Result<f32, String> {
     float_str
         .parse::<f32>()
@@ -190,8 +189,9 @@ struct SettingsData {
     /// network calls if this is false
     check_for_updates: Setting<bool>,
 
-    /// Location of the Dictionary
-    dictionary_location: Setting<PathBuf>,
+    available_dict: Vec<AvailableDictionary>,
+
+    selected_dictionary: Setting<String>,
 
     theme_settings_modified: bool,
 
@@ -206,9 +206,6 @@ struct SettingsData {
 
 impl SettingsData {
     pub fn new(settings_path: PathBuf) -> Self {
-        // TODO: #235: do better about this per-platform
-        let default_dictionary_location = PathBuf::from("/usr/share/hunspell/en_US");
-
         Self {
             settings_path,
             font_size: Setting::new(18.0),
@@ -217,7 +214,8 @@ impl SettingsData {
             highlight_multiple_spaces: Setting::new(true),
             highlight_spaces_before_punctuation: Setting::new(true),
             check_for_updates: Setting::new(true),
-            dictionary_location: Setting::new(default_dictionary_location),
+            available_dict: Vec::new(),
+            selected_dictionary: Setting::new("en_US".to_owned()),
             theme_settings_modified: false,
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -279,16 +277,10 @@ impl SettingsData {
             self.check_for_updates.user_editable = check_for_updates;
         }
 
-        if let Some(dictionary_location) = table
-            .get("dictionary_location")
-            .and_then(|location| location.as_str())
+        if let Some(selected_dictionary) = table.get("selected_dictionary")
+            && let Some(selected_dictionary) = selected_dictionary.as_str()
         {
-            // Just put the dictionary location into the user input and try to parse it
-            self.dictionary_location.user_entry = dictionary_location.to_owned();
-            self.dictionary_location.validate_update(validate_pathbuf);
-
-            // We just read this from disk, so the value isn't actually modified
-            self.dictionary_location.modified_value = false;
+            self.selected_dictionary.value = Some(selected_dictionary.to_owned());
         }
 
         if let Some(theme_table) = table
@@ -302,6 +294,9 @@ impl SettingsData {
         {
             self.selected_theme = selected_theme;
         }
+
+        self.load_available_dictionaries()
+            .unwrap_or_else(|err| log::error!("Error loading availabel dictionaries: {err}"));
     }
 
     /// Write from settings *values* to a toml table
@@ -366,6 +361,13 @@ impl SettingsData {
             table.remove("check_for_updates");
         }
 
+        self.selected_dictionary.modified_value = false;
+        if let Some(selected_dictionary) = &self.selected_dictionary.value {
+            table.insert("selected_dictionary", value(selected_dictionary));
+        } else {
+            table.remove("selected_dictionary");
+        }
+
         // TODO: this is somewhat hack-y as we change settings around, this
         // should get looked at again later
         self.theme_settings_modified = false;
@@ -373,16 +375,6 @@ impl SettingsData {
             table.remove("selected_theme");
         } else {
             table.insert("selected_theme", value(self.selected_theme));
-        }
-
-        self.dictionary_location.modified_value = false;
-        if let Some(dictionary_location) = &self.dictionary_location.value {
-            table.insert(
-                "dictionary_location",
-                value(dictionary_location.to_string_lossy().to_string()),
-            );
-        } else {
-            table.remove("dictionary_location");
         }
 
         modified
@@ -397,7 +389,6 @@ impl SettingsData {
         self.highlight_spaces_before_punctuation.update_entry();
         self.reopen_last.update_entry();
         self.check_for_updates.update_entry();
-        self.dictionary_location.update_entry();
     }
 
     fn config_file_path(&self) -> PathBuf {
@@ -544,8 +535,24 @@ impl Settings {
         *self.0.borrow().check_for_updates.get_value()
     }
 
-    pub fn dictionary_location(&self) -> PathBuf {
-        self.0.borrow().dictionary_location.get_value().clone()
+    /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
+    pub fn load_dictionary(&self) -> Option<Dictionary> {
+        let data = self.0.borrow();
+
+        let selection = data.selected_dictionary.get_value();
+        if selection.is_empty() {
+            return None;
+        }
+
+        let dict_selection = data
+            .available_dict
+            .iter()
+            .find(|dict| dict.name == *selection)?;
+
+        dict_selection
+            .load()
+            .map_err(|err| log::error!("An error was encountered loading the dictionary: {err}"))
+            .ok()
     }
 
     pub fn theme(&self) -> Theme {

@@ -698,6 +698,7 @@ impl ProjectEditor {
 
     // last_export_folder probably should be wrapped in another object but I don't have a good object
     // to wrap it in, so it's here for now
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         project: Project,
         open_tab_ids: Vec<String>,

@@ -510,45 +510,7 @@ impl CheesePaperApp {
 
         configure_text_styles(&cc.egui_ctx, state.settings.font_size());
 
-        let mut dictionary = None;
-
-        // Attempt to load dictionary:
-        let mut aff_path = state.settings.dictionary_location();
-        aff_path.set_extension("aff");
-        let mut dic_path = state.settings.dictionary_location();
-        dic_path.set_extension("dic");
-
-        if aff_path.exists() && dic_path.exists() {
-            match (
-                std::fs::read_to_string(aff_path),
-                std::fs::read_to_string(dic_path),
-            ) {
-                (Ok(aff), Ok(dic)) => match Dictionary::new(&aff, &dic) {
-                    Ok(dict) => dictionary = Some(dict),
-                    Err(err) => {
-                        log::warn!("Encountered error while trying to load dictionary: {err}")
-                    }
-                },
-                (Err(aff_err), _) => {
-                    log::warn!(
-                        "Error while trying to read aff in {:?}: {aff_err}",
-                        state.settings.dictionary_location()
-                    )
-                }
-                (_, Err(dic_err)) => {
-                    log::warn!(
-                        "Error while trying to read dic in {:?}: {dic_err}",
-                        state.settings.dictionary_location()
-                    )
-                }
-            }
-        } else {
-            log::info!(
-                "Unable to load at least one dictionary file ({aff_path:?}, {dic_path:?}, set \
-                `dictionary_location` in settings to a path that contains the dictionary files or \
-                put the files in the proper location."
-            );
-        }
+        let dictionary = state.settings.load_dictionary();
 
         if state.settings.check_for_updates() {
             util::version::fetch_version();
