@@ -102,7 +102,7 @@ impl<T: PartialEq + Clone> Setting<T> {
     }
 
     pub fn new_with_value(value: Option<T>, default: T) -> Self {
-        let user_editable = default.clone();
+        let user_editable = value.as_ref().unwrap_or_else(|| &default).clone();
         Self {
             value,
             default,
@@ -116,6 +116,11 @@ impl<T: PartialEq + Clone> Setting<T> {
 
     pub fn get_value(&self) -> &T {
         self.value.as_ref().unwrap_or(&self.default)
+    }
+
+    pub fn set_value(&mut self, value: Option<T>) {
+        self.user_editable = value.as_ref().unwrap_or_else(|| &self.default).clone();
+        self.value = value;
     }
 
     pub fn update_entry(&mut self) {
@@ -193,6 +198,8 @@ struct SettingsData {
 
     selected_dictionary: Setting<String>,
 
+    dictionary_load_error: Option<String>,
+
     theme_settings_modified: bool,
 
     /// theming for visuals.
@@ -216,6 +223,7 @@ impl SettingsData {
             check_for_updates: Setting::new(true),
             available_dict: Vec::new(),
             selected_dictionary: Setting::new("en_US".to_owned()),
+            dictionary_load_error: None,
             theme_settings_modified: false,
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -241,22 +249,20 @@ impl SettingsData {
         if let Some(reopen_last_item) = table.get("reopen_last")
             && let Some(reopen_last) = reopen_last_item.as_bool()
         {
-            self.reopen_last.value = Some(reopen_last);
-            self.reopen_last.user_editable = reopen_last;
+            self.reopen_last.set_value(Some(reopen_last));
         }
 
         if let Some(indent_line_start_item) = table.get("indent_line_start")
             && let Some(indent_line_start) = indent_line_start_item.as_bool()
         {
-            self.indent_line_start.value = Some(indent_line_start);
-            self.indent_line_start.user_editable = indent_line_start;
+            self.indent_line_start.set_value(Some(indent_line_start));
         }
 
         if let Some(highlight_multiple_spaces_item) = table.get("highlight_multiple_spaces")
             && let Some(highlight_multiple_spaces) = highlight_multiple_spaces_item.as_bool()
         {
-            self.highlight_multiple_spaces.value = Some(highlight_multiple_spaces);
-            self.highlight_multiple_spaces.user_editable = highlight_multiple_spaces;
+            self.highlight_multiple_spaces
+                .set_value(Some(highlight_multiple_spaces));
         }
 
         if let Some(highlight_spaces_before_punctuation_item) =
@@ -264,23 +270,21 @@ impl SettingsData {
             && let Some(highlight_spaces_before_punctuation) =
                 highlight_spaces_before_punctuation_item.as_bool()
         {
-            self.highlight_spaces_before_punctuation.value =
-                Some(highlight_spaces_before_punctuation);
-            self.highlight_spaces_before_punctuation.user_editable =
-                highlight_spaces_before_punctuation;
+            self.highlight_spaces_before_punctuation
+                .set_value(Some(highlight_spaces_before_punctuation));
         }
 
         if let Some(check_for_updates_item) = table.get("check_for_updates")
             && let Some(check_for_updates) = check_for_updates_item.as_bool()
         {
-            self.check_for_updates.value = Some(check_for_updates);
-            self.check_for_updates.user_editable = check_for_updates;
+            self.check_for_updates.set_value(Some(check_for_updates));
         }
 
         if let Some(selected_dictionary) = table.get("selected_dictionary")
             && let Some(selected_dictionary) = selected_dictionary.as_str()
         {
-            self.selected_dictionary.value = Some(selected_dictionary.to_owned());
+            self.selected_dictionary
+                .set_value(Some(selected_dictionary.to_owned()));
         }
 
         if let Some(theme_table) = table
@@ -537,7 +541,9 @@ impl Settings {
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
     pub fn load_dictionary(&self) -> Option<Dictionary> {
-        let data = self.0.borrow();
+        let mut data = self.0.borrow_mut();
+
+        data.dictionary_load_error = None;
 
         let selection = data.selected_dictionary.get_value();
         if selection.is_empty() {
@@ -551,7 +557,15 @@ impl Settings {
 
         dict_selection
             .load()
-            .map_err(|err| log::error!("An error was encountered loading the dictionary: {err}"))
+            .map_err(|err| {
+                format!(
+                    "An error was encountered loading the dictionary from {dict_selection:?}: {err}"
+                )
+            }) // chained map_err for lifetime reasons
+            .map_err(|error_msg| {
+                log::error!("{}", error_msg);
+                data.dictionary_load_error = Some(error_msg);
+            })
             .ok()
     }
 

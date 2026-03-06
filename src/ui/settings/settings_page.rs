@@ -15,7 +15,7 @@ pub struct SettingsPage {
 }
 
 impl Setting<bool> {
-    fn ui<'a>(&'a mut self, ui: &mut egui::Ui, atoms: impl egui::IntoAtoms<'a>) -> CheeseResponse {
+    fn ui<'a>(&'a mut self, ui: &mut Ui, atoms: impl egui::IntoAtoms<'a>) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
         ui.horizontal(|ui| {
             let response = ui.button("⟲");
@@ -39,6 +39,39 @@ impl Setting<bool> {
             }
             cheese_response.process_response(&response, true);
         });
+        cheese_response
+    }
+}
+
+impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
+    fn dropdown(
+        &mut self,
+        ui: &mut Ui,
+        id_salt: &'static str,
+        options: impl Iterator<Item = T>,
+    ) -> CheeseResponse {
+        egui::ComboBox::from_id_salt(id_salt)
+            .selected_text(self.user_editable.as_ref())
+            .show_ui(ui, |ui| {
+                for option in options {
+                    let response = ui.selectable_value(
+                        &mut self.user_editable,
+                        option.clone(),
+                        option.as_ref(),
+                    );
+                    if response.clicked() {
+                        self.modified_entry = true;
+                    }
+                }
+            })
+            .response;
+
+        let cheese_response = CheeseResponse {
+            modified: self.modified_entry,
+            tabable_ids: Vec::new(),
+        };
+        self.update_entry();
+
         cheese_response
     }
 }
@@ -121,7 +154,23 @@ impl SettingsPage {
             .ui(ui, "Reopen Last Project on Launch");
         cheese_response.extend(response);
 
-        ui.label("Dictionary Location");
+        ui.label("Dictionary");
+
+        let options: Vec<_> = settings_data
+            .available_dict
+            .iter()
+            .map(|entry| entry.name.clone())
+            .collect();
+
+        cheese_response.extend(settings_data.selected_dictionary.dropdown(
+            ui,
+            "Dictionary Selection Dropdown",
+            options.into_iter(),
+        ));
+
+        if let Some(err_msg) = &settings_data.dictionary_load_error {
+            ui.label(RichText::new(err_msg).color(Color32::RED));
+        }
 
         if cheese_response.modified {
             ctx.render_version += 1;

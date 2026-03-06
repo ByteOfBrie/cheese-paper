@@ -20,6 +20,8 @@ impl PartialEq for AvailableDictionary {
     }
 }
 
+pub const SELECTED_NONE: &str = "<None>";
+
 impl TryFrom<PathBuf> for AvailableDictionary {
     type Error = ();
 
