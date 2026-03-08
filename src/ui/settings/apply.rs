@@ -5,24 +5,41 @@ use crate::ui::{CheesePaperApp, prelude::*, settings::SettingsData};
 
 impl CheesePaperApp {
     pub fn process_settings_changes(&mut self, ctx: &egui::Context) -> Result<(), CheeseError> {
-        if !self.state.settings.need_processing(ctx) {
+        let (needs_processing, project_local) = self.state.settings.need_processing(ctx);
+
+        if !needs_processing {
             return Ok(());
         }
 
         let mut settings = self.state.settings.clone();
         let mut data = settings.0.borrow_mut();
 
-        data.update_values();
+        data.update_values(project_local);
 
         self.apply_settings(&mut data, ctx);
 
-        // Only write if we have changes
-        if data.save(&mut settings.1) {
-            write_with_temp_file(
-                create_dir_if_missing(&data.config_file_path())?,
-                settings.1.to_string(),
-            )
-            .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
+        if project_local {
+            if let Some(project_editor) = &mut self.project_editor {
+                // Save functions will not touch the TOML keys that they don't know.
+                // This lets us share a TOML file with the project save function without worrying about it
+
+                if data.save(&mut project_editor.project.toml_header, false) {
+                    write_with_temp_file(
+                        project_editor.project.get_project_info_file(),
+                        project_editor.project.toml_header.to_string(),
+                    )
+                    .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
+                }
+            }
+        } else {
+            // Only write if we have changes
+            if data.save(&mut settings.1, false) {
+                write_with_temp_file(
+                    create_dir_if_missing(&data.config_file_path())?,
+                    settings.1.to_string(),
+                )
+                .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
+            }
         }
 
         Ok(())

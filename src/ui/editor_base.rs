@@ -801,6 +801,10 @@ impl CheesePaperApp {
                 project_editor.update_theme(ctx);
             });
 
+        self.state
+            .settings
+            .load_project_local(&project_editor.project.toml_header);
+
         self.project_editor = Some(project_editor);
 
         Ok(())

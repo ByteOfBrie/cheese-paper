@@ -19,22 +19,28 @@ pub struct SettingsPage {
 }
 
 impl Setting<bool> {
-    fn ui<'a>(&'a mut self, ui: &mut Ui, atoms: impl egui::IntoAtoms<'a>) -> CheeseResponse {
+    fn ui<'a>(
+        &'a mut self,
+        ui: &mut Ui,
+        atoms: impl egui::IntoAtoms<'a>,
+        project_local: bool,
+    ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
+
         ui.horizontal(|ui| {
             let response = ui.button("⟲");
             if response.clicked() {
-                self.reset_value();
+                self.reset_value(project_local);
             }
             cheese_response.process_response(&response, true);
 
-            if self.value.is_none() {
+            if self.value(project_local).is_none() {
                 ui.set_opacity(0.5);
             } else {
                 ui.set_opacity(1.0);
             }
 
-            let response = ui.checkbox(&mut self.interface_value, atoms);
+            let response = ui.checkbox(self.interface_value(project_local), atoms);
             cheese_response.process_response(&response, true);
         });
         cheese_response
@@ -47,14 +53,15 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
         ui: &mut Ui,
         id_salt: &'static str,
         options: impl Iterator<Item = T>,
+        project_local: bool,
     ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
         egui::ComboBox::from_id_salt(id_salt)
-            .selected_text(self.interface_value.as_ref())
+            .selected_text(self.interface_value(project_local).as_ref())
             .show_ui(ui, |ui| {
                 for option in options {
                     let response = ui.selectable_value(
-                        &mut self.interface_value,
+                        self.interface_value(project_local),
                         option.clone(),
                         option.as_ref(),
                     );
@@ -120,25 +127,33 @@ impl SettingsPage {
             ui.label(RichText::new(err).color(Color32::RED));
         }
 
-        let response = settings_data.indent_line_start.ui(ui, "Indent Line Start");
+        let response = settings_data
+            .indent_line_start
+            .ui(ui, "Indent Line Start", false);
+        cheese_response.extend(response);
+
+        let response = settings_data.highlight_multiple_spaces.ui(
+            ui,
+            "Highlight Multiple Spaces (in a Row)",
+            false,
+        );
+        cheese_response.extend(response);
+
+        let response = settings_data.highlight_spaces_before_punctuation.ui(
+            ui,
+            "Highlight Spaces Between a Word and Punctuation",
+            false,
+        );
         cheese_response.extend(response);
 
         let response = settings_data
-            .highlight_multiple_spaces
-            .ui(ui, "Highlight Multiple Spaces (in a Row)");
-        cheese_response.extend(response);
-
-        let response = settings_data
-            .highlight_spaces_before_punctuation
-            .ui(ui, "Highlight Spaces Between a Word and Punctuation");
-        cheese_response.extend(response);
-
-        let response = settings_data.check_for_updates.ui(ui, "Check for Updates");
+            .check_for_updates
+            .ui(ui, "Check for Updates", false);
         cheese_response.extend(response);
 
         let response = settings_data
             .reopen_last
-            .ui(ui, "Reopen Last Project on Launch");
+            .ui(ui, "Reopen Last Project on Launch", false);
         cheese_response.extend(response);
 
         ui.label("Dictionary");
@@ -155,6 +170,7 @@ impl SettingsPage {
             ui,
             "Dictionary Selection Dropdown",
             options.into_iter(),
+            false,
         ));
 
         if let Some(err_msg) = &settings_data.selected_dictionary.error_message {

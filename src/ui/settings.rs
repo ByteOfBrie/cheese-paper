@@ -71,11 +71,17 @@ where
     /// The value itself, if it has been defined
     value: Option<T>,
 
+    // override for the value in the project-local settings
+    pl_value: Option<T>,
+
     /// The default value for this setting
     default: T,
 
     /// The value currently entered in the user in the settings interface
     pub interface_value: U,
+
+    /// Same, for project-local interface
+    pub pl_interface_value: U,
 
     /// Has this value been modified
     ///
@@ -101,17 +107,8 @@ impl<T: PartialEq + Clone> Setting<T> {
             Ok(t.clone())
         }
 
-        Self {
-            value: None,
-            interface_value: default.clone(),
-            default,
-            modified: false,
-            convert: std::convert::identity,
-            validate,
-            error_message: None,
-        }
+        Self::with_validation_fn(default, std::convert::identity, validate)
     }
-
 }
 
 impl<T, U> Setting<T, U>
@@ -126,7 +123,9 @@ where
     ) -> Self {
         Self {
             value: None,
+            pl_value: None,
             interface_value: convert(default.clone()),
+            pl_interface_value: convert(default.clone()),
             default,
             modified: false,
             convert,
@@ -136,30 +135,65 @@ where
     }
 
     pub fn get_value(&self) -> &T {
-        self.value.as_ref().unwrap_or(&self.default)
+        if let Some(v) = &self.pl_value {
+            v
+        } else if let Some(v) = &self.value {
+            v
+        } else {
+            &self.default
+        }
     }
 
-    pub fn set_value(&mut self, value: Option<T>) {
-        self.interface_value =
-            (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
-        self.value = value;
+    pub fn set_value(&mut self, value: Option<T>, project_local: bool) {
+        self.pl_interface_value = (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
+        self.interface_value = (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
+        if project_local {
+            self.pl_value = value;
+        } else {
+            self.value = value;
+        }
     }
 
-    pub fn update_value(&mut self) {
-        let new_value = (self.validate)(&self.interface_value);
+    pub fn update_value(&mut self, project_local: bool) {
+        let new_value = (self.validate)(if project_local {
+            &self.pl_interface_value
+        } else {
+            &self.interface_value
+        });
 
         if let Ok(new_value) = new_value
             && new_value != *self.get_value()
         {
-            self.value = Some(new_value);
+            self.set_value(Some(new_value), project_local);
             self.modified = true;
         }
     }
 
-    pub fn reset_value(&mut self) {
-        self.value = None;
-        self.interface_value = (self.convert)(self.default.clone());
+    pub fn reset_value(&mut self, project_local: bool) {
+        if project_local {
+            self.pl_value = None;
+            self.pl_interface_value = (self.convert)(self.default.clone());
+        } else {
+            self.value = None;
+            self.interface_value = (self.convert)(self.default.clone());
+        }
         self.modified = true;
+    }
+
+    fn value(&mut self, project_local: bool) -> &mut Option<T> {
+        if project_local {
+            &mut self.pl_value
+        } else {
+            &mut self.value
+        }
+    }
+
+    fn interface_value(&mut self, project_local: bool) -> &mut U {
+        if project_local {
+            &mut self.pl_interface_value
+        } else {
+            &mut self.interface_value
+        }
     }
 }
 
@@ -201,6 +235,8 @@ struct SettingsData {
     available_themes: Rc<Vec<(String, Theme)>>,
 
     next_apply: Option<SystemTime>,
+
+    pl_next_apply: Option<SystemTime>,
 }
 
 fn convert_font(font: f32) -> String {
@@ -239,15 +275,18 @@ impl SettingsData {
             selected_theme: ThemeSelection::Default,
             available_themes: Rc::new(Vec::new()),
             next_apply: None,
+            pl_next_apply: None,
         }
     }
 
-    pub fn load(&mut self, table: &DocumentMut) {
+    pub fn load(&mut self, table: &DocumentMut, project_local: bool) {
         if let Some(font_size_item) = table.get("font_size") {
             if let Some(font_size) = font_size_item.as_float() {
-                self.font_size.set_value(Some(font_size as f32));
+                self.font_size
+                    .set_value(Some(font_size as f32), project_local);
             } else if let Some(font_size) = font_size_item.as_integer() {
-                self.font_size.set_value(Some(font_size as f32));
+                self.font_size
+                    .set_value(Some(font_size as f32), project_local);
             } else {
                 log::debug!("Found font size setting but could not parse: {font_size_item:?}");
                 self.font_size.error_message =
@@ -258,20 +297,21 @@ impl SettingsData {
         if let Some(reopen_last_item) = table.get("reopen_last")
             && let Some(reopen_last) = reopen_last_item.as_bool()
         {
-            self.reopen_last.set_value(Some(reopen_last));
+            self.reopen_last.set_value(Some(reopen_last), project_local);
         }
 
         if let Some(indent_line_start_item) = table.get("indent_line_start")
             && let Some(indent_line_start) = indent_line_start_item.as_bool()
         {
-            self.indent_line_start.set_value(Some(indent_line_start));
+            self.indent_line_start
+                .set_value(Some(indent_line_start), project_local);
         }
 
         if let Some(highlight_multiple_spaces_item) = table.get("highlight_multiple_spaces")
             && let Some(highlight_multiple_spaces) = highlight_multiple_spaces_item.as_bool()
         {
             self.highlight_multiple_spaces
-                .set_value(Some(highlight_multiple_spaces));
+                .set_value(Some(highlight_multiple_spaces), project_local);
         }
 
         if let Some(highlight_spaces_before_punctuation_item) =
@@ -280,20 +320,21 @@ impl SettingsData {
                 highlight_spaces_before_punctuation_item.as_bool()
         {
             self.highlight_spaces_before_punctuation
-                .set_value(Some(highlight_spaces_before_punctuation));
+                .set_value(Some(highlight_spaces_before_punctuation), project_local);
         }
 
         if let Some(check_for_updates_item) = table.get("check_for_updates")
             && let Some(check_for_updates) = check_for_updates_item.as_bool()
         {
-            self.check_for_updates.set_value(Some(check_for_updates));
+            self.check_for_updates
+                .set_value(Some(check_for_updates), project_local);
         }
 
         if let Some(selected_dictionary) = table.get("selected_dictionary")
             && let Some(selected_dictionary) = selected_dictionary.as_str()
         {
             self.selected_dictionary
-                .set_value(Some(selected_dictionary.to_owned()));
+                .set_value(Some(selected_dictionary.to_owned()), project_local);
         }
 
         if let Some(theme_table) = table
@@ -313,7 +354,7 @@ impl SettingsData {
     }
 
     /// Write from settings *values* to a toml table
-    pub fn save(&mut self, table: &mut DocumentMut) -> bool {
+    pub fn save(&mut self, table: &mut DocumentMut, project_local: bool) -> bool {
         // We always try to update the entire document
         // or if any of the sub-values have been modified
         let modified = self.font_size.modified
@@ -325,28 +366,30 @@ impl SettingsData {
             || self.theme_settings_modified;
 
         self.font_size.modified = false;
-        if let Some(font_size) = self.font_size.value {
+        if let Some(font_size) = *self.font_size.value(project_local) {
             table.insert("font_size", value(font_size as f64));
         } else {
             table.remove("font_size");
         }
 
         self.reopen_last.modified = false;
-        if let Some(reopen_last) = self.reopen_last.value {
+        if let Some(reopen_last) = *self.reopen_last.value(project_local) {
             table.insert("reopen_last", value(reopen_last));
         } else {
             table.remove("reopen_last");
         }
 
         self.indent_line_start.modified = false;
-        if let Some(indent_line_start) = self.indent_line_start.value {
+        if let Some(indent_line_start) = *self.indent_line_start.value(project_local) {
             table.insert("indent_line_start", value(indent_line_start));
         } else {
             table.remove("indent_line_start");
         }
 
         self.highlight_multiple_spaces.modified = false;
-        if let Some(highlight_multiple_spaces) = self.highlight_multiple_spaces.value {
+        if let Some(highlight_multiple_spaces) =
+            *self.highlight_multiple_spaces.value(project_local)
+        {
             table.insert(
                 "highlight_multiple_spaces",
                 value(highlight_multiple_spaces),
@@ -368,26 +411,28 @@ impl SettingsData {
         }
 
         self.check_for_updates.modified = false;
-        if let Some(check_for_updates) = self.check_for_updates.value {
+        if let Some(check_for_updates) = *self.check_for_updates.value(project_local) {
             table.insert("check_for_updates", value(check_for_updates));
         } else {
             table.remove("check_for_updates");
         }
 
         self.selected_dictionary.modified = false;
-        if let Some(selected_dictionary) = &self.selected_dictionary.value {
+        if let Some(selected_dictionary) = &self.selected_dictionary.value(project_local) {
             table.insert("selected_dictionary", value(selected_dictionary));
         } else {
             table.remove("selected_dictionary");
         }
 
-        // TODO: this is somewhat hack-y as we change settings around, this
-        // should get looked at again later
-        self.theme_settings_modified = false;
-        if self.selected_theme == ThemeSelection::Default {
-            table.remove("selected_theme");
-        } else {
-            table.insert("selected_theme", value(self.selected_theme));
+        if !project_local {
+            // TODO: this is somewhat hack-y as we change settings around, this
+            // should get looked at again later
+            self.theme_settings_modified = false;
+            if self.selected_theme == ThemeSelection::Default {
+                table.remove("selected_theme");
+            } else {
+                table.insert("selected_theme", value(self.selected_theme));
+            }
         }
 
         modified
@@ -395,14 +440,15 @@ impl SettingsData {
 
     /// Call every [`Setting::update_value`] function, moving the data from the UI into
     /// the values, should be called on a regular basis
-    pub fn update_values(&mut self) {
-        self.font_size.update_value();
-        self.indent_line_start.update_value();
-        self.highlight_multiple_spaces.update_value();
-        self.highlight_spaces_before_punctuation.update_value();
-        self.reopen_last.update_value();
-        self.check_for_updates.update_value();
-        self.selected_dictionary.update_value();
+    pub fn update_values(&mut self, project_local: bool) {
+        self.font_size.update_value(project_local);
+        self.indent_line_start.update_value(project_local);
+        self.highlight_multiple_spaces.update_value(project_local);
+        self.highlight_spaces_before_punctuation
+            .update_value(project_local);
+        self.reopen_last.update_value(project_local);
+        self.check_for_updates.update_value(project_local);
+        self.selected_dictionary.update_value(project_local);
     }
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
@@ -473,7 +519,7 @@ impl Settings {
             DocumentMut::new()
         };
 
-        data.load(&settings_toml);
+        data.load(&settings_toml, false);
 
         self.1 = settings_toml;
 
@@ -528,13 +574,12 @@ impl Settings {
         Ok(())
     }
 
-    // pub fn save(&mut self) -> Result<(), CheeseError> {
-    //     let mut data = self.0.borrow_mut();
+    pub fn load_project_local(&mut self, project_metadata: &DocumentMut) {
+        let mut data = self.0.borrow_mut();
+        data.load(project_metadata, true);
+    }
 
-    //     Ok(())
-    // }
-
-    pub fn need_processing(&self, ctx: &egui::Context) -> bool {
+    pub fn need_processing(&self, ctx: &egui::Context) -> (bool, bool) {
         let mut data = self.0.borrow_mut();
 
         let now = SystemTime::now();
@@ -542,17 +587,26 @@ impl Settings {
         if let Some(next_apply) = data.next_apply {
             if now >= next_apply {
                 data.next_apply = None;
-                return true;
+                return (true, false);
             } else {
                 ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
             }
         }
 
-        false
+        if let Some(next_apply) = data.pl_next_apply {
+            if now >= next_apply {
+                data.next_apply = None;
+                return (true, true);
+            } else {
+                ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
+            }
+        }
+
+        (false, false)
     }
 
-    pub fn update(&mut self) {
-        self.0.borrow_mut().update_values();
+    pub fn update(&mut self, project_local: bool) {
+        self.0.borrow_mut().update_values(project_local);
     }
 
     pub fn font_size(&self) -> f32 {

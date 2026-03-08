@@ -41,7 +41,7 @@ pub struct Project {
     /// The list of top level folders. The order is hardcoded for now but this can be relaxed later
     pub top_level_folders: Vec<FileID>,
     pub objects: FileObjectStore,
-    toml_header: DocumentMut,
+    pub toml_header: DocumentMut,
 
     last_added_event: Option<Instant>,
     event_queue: VecDeque<DebouncedEvent>,
