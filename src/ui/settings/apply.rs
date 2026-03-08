@@ -23,7 +23,7 @@ impl CheesePaperApp {
                 // Save functions will not touch the TOML keys that they don't know.
                 // This lets us share a TOML file with the project save function without worrying about it
 
-                if data.save(&mut project_editor.project.toml_header, false) {
+                if data.save(&mut project_editor.project.toml_header, project_local) {
                     write_with_temp_file(
                         project_editor.project.get_project_info_file(),
                         project_editor.project.toml_header.to_string(),
@@ -33,7 +33,7 @@ impl CheesePaperApp {
             }
         } else {
             // Only write if we have changes
-            if data.save(&mut settings.1, false) {
+            if data.save(&mut settings.1, project_local) {
                 write_with_temp_file(
                     create_dir_if_missing(&data.config_file_path())?,
                     settings.1.to_string(),

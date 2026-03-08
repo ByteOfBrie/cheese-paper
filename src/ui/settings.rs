@@ -576,6 +576,13 @@ impl Settings {
 
     pub fn load_project_local(&mut self, project_metadata: &DocumentMut) {
         let mut data = self.0.borrow_mut();
+
+        data.font_size.reset_value(true);
+        data.indent_line_start.reset_value(true);
+        data.highlight_multiple_spaces.reset_value(true);
+        data.highlight_spaces_before_punctuation.reset_value(true);
+        data.selected_dictionary.reset_value(true);
+
         data.load(project_metadata, true);
     }
 

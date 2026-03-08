@@ -21,7 +21,7 @@ use egui::{Id, Key, Modifiers};
 pub enum Page {
     ProjectMetadata,
     FileObject(FileID),
-    Settings,
+    Settings(bool), // bool for is it project-local
     Export,
     Help,
 }
@@ -30,6 +30,7 @@ impl Page {
     const PROJECT_METADATA_ID: &str = "project_metadata";
     const EXPORT_ID: &str = "export";
     const SETTINGS_ID: &str = "settings";
+    const PL_SETTINGS_ID: &str = "project_local_settings";
     const HELP_ID: &str = "help";
 
     /// Get an id from a string. This (and its reverse, `get_id`) could be replaced by `From`
@@ -38,7 +39,8 @@ impl Page {
         match id {
             Self::PROJECT_METADATA_ID => Self::ProjectMetadata,
             Self::EXPORT_ID => Self::Export,
-            Self::SETTINGS_ID => Self::Settings,
+            Self::SETTINGS_ID => Self::Settings(false),
+            Self::PL_SETTINGS_ID => Self::Settings(true),
             _ => Self::FileObject(FileID::new(id.to_owned())),
         }
     }
@@ -47,7 +49,8 @@ impl Page {
         match self {
             Self::ProjectMetadata => Self::PROJECT_METADATA_ID,
             Self::Export => Self::EXPORT_ID,
-            Self::Settings => Self::SETTINGS_ID,
+            Self::Settings(false) => Self::SETTINGS_ID,
+            Self::Settings(true) => Self::PL_SETTINGS_ID,
             Self::Help => Self::HELP_ID,
             Self::FileObject(id) => id,
         }
@@ -64,7 +67,7 @@ impl Page {
     pub fn is_searchable(&self) -> bool {
         match self {
             Self::Export => false,
-            Self::Settings => false,
+            Self::Settings(_) => false,
             Self::FileObject(_) => true,
             Self::ProjectMetadata => true,
             Self::Help => false,
@@ -138,7 +141,8 @@ impl OpenPage {
                 }
             }
             Page::Export => "Export".into(),
-            Page::Settings => "Settings".into(),
+            Page::Settings(false) => "Settings".into(),
+            Page::Settings(true) => "Project Settings".into(),
             Page::Help => "Help".into(),
         };
 
@@ -180,12 +184,12 @@ impl OpenPage {
                 }
             }
             Page::Export => project.export_ui(ui, ctx),
-            Page::Settings => {
+            Page::Settings(project_local) => {
                 if page_data.settings_page.is_none() {
                     page_data.settings_page = Some(SettingsPage::load(ctx));
                 }
                 let settings_page = page_data.settings_page.as_mut().unwrap();
-                settings_page.ui(ui, ctx)
+                settings_page.ui(ui, ctx, *project_local)
             }
             Page::Help => page_data.help_page.ui(ui, ctx),
         };

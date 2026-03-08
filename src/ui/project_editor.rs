@@ -525,6 +525,14 @@ impl ProjectEditor {
                             }
                         });
 
+                        if ui.button("Settings").clicked() {
+                            self.set_editor_tab(&Page::Settings(false), true);
+                        }
+
+                        if ui.button("Project Settings").clicked() {
+                            self.set_editor_tab(&Page::Settings(true), true);
+                        }
+
                         if ui.button("Export Story Text").clicked() {
                             self.set_editor_tab(&Page::Export, true);
                         }
@@ -561,10 +569,6 @@ impl ProjectEditor {
                     ui.menu_button("Edit", |ui| {
                         if ui.button("Find (Global)").clicked() {
                             self.editor_context.search.show();
-                        }
-
-                        if ui.button("Settings").clicked() {
-                            self.set_editor_tab(&Page::Settings, true);
                         }
 
                         if ui.button("Randomize Theme").clicked() {

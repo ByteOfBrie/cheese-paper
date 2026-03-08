@@ -84,19 +84,30 @@ impl SettingsPage {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+        project_local: bool,
+    ) -> CheeseResponse {
         layout::margin_box(ui, |ui| {
             let mut cheese_response = CheeseResponse::default();
 
-            layout::heading(ui, "Settings");
+            if project_local {
+                layout::heading(ui, "Project Settings");
 
-            cheese_response.extend(self.settings_ui(ui, ctx));
+                cheese_response.extend(self.project_local_settings_ui(ui, ctx));
+            } else {
+                layout::heading(ui, "Settings");
 
-            ui.separator();
+                cheese_response.extend(self.settings_ui(ui, ctx));
 
-            layout::heading(ui, "Themes");
+                ui.separator();
 
-            cheese_response.extend(self.themes_ui(ui, ctx));
+                layout::heading(ui, "Themes");
+
+                cheese_response.extend(self.themes_ui(ui, ctx));
+            }
 
             // TODO: maybe parse cheese response here? might need to make sure themes are good
 
@@ -184,6 +195,60 @@ impl SettingsPage {
             const APPLY_DELAY: Duration = Duration::from_millis(400);
 
             settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
+            ui.ctx().request_repaint_after(APPLY_DELAY);
+        }
+
+        cheese_response
+    }
+
+    fn project_local_settings_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+    ) -> CheeseResponse {
+        let mut settings_data = ctx.settings.0.borrow_mut();
+
+        let mut cheese_response = CheeseResponse::default();
+
+        let response = settings_data.highlight_multiple_spaces.ui(
+            ui,
+            "Highlight Multiple Spaces (in a Row)",
+            true,
+        );
+        cheese_response.extend(response);
+
+        let response = settings_data.highlight_spaces_before_punctuation.ui(
+            ui,
+            "Highlight Spaces Between a Word and Punctuation",
+            true,
+        );
+        cheese_response.extend(response);
+
+        ui.label("Dictionary");
+
+        let mut options: VecDeque<_> = settings_data
+            .available_dict
+            .iter()
+            .map(|entry| entry.name.clone())
+            .collect();
+
+        options.push_front(dictionaries::SELECTED_NONE.to_owned());
+
+        cheese_response.extend(settings_data.selected_dictionary.dropdown(
+            ui,
+            "Dictionary Selection Dropdown",
+            options.into_iter(),
+            true,
+        ));
+
+        if let Some(err_msg) = &settings_data.selected_dictionary.error_message {
+            ui.label(RichText::new(err_msg).color(Color32::RED));
+        }
+
+        if cheese_response.modified {
+            const APPLY_DELAY: Duration = Duration::from_millis(400);
+
+            settings_data.pl_next_apply = Some(SystemTime::now() + APPLY_DELAY);
             ui.ctx().request_repaint_after(APPLY_DELAY);
         }
 
