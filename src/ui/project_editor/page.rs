@@ -268,7 +268,7 @@ impl OpenPage {
         // check for ctrl-f for page search
         if ui.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut {
-                modifiers: Modifiers::CTRL,
+                modifiers: Modifiers::COMMAND,
                 logical_key: Key::F,
             })
         }) {

@@ -6,7 +6,7 @@ pub mod page;
 pub mod search;
 mod util;
 
-use crate::ui::message::{GenericMessage, Message};
+use crate::ui::message::Message;
 use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
@@ -312,7 +312,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         // check for ctrl-shift-f for search
         if ui.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut {
-                modifiers: Modifiers::CTRL | Modifiers::SHIFT,
+                modifiers: Modifiers::COMMAND | Modifiers::SHIFT,
                 logical_key: Key::F,
             })
         }) {
@@ -418,7 +418,7 @@ impl ProjectEditor {
         // close current tab if ctrl-w is pressed
         if ctx.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut {
-                modifiers: Modifiers::CTRL,
+                modifiers: Modifiers::COMMAND,
                 logical_key: Key::W,
             })
         }) && let Some((_, current_tab_ref)) = self.dock_state.find_active_focused()
@@ -427,21 +427,6 @@ impl ProjectEditor {
             let current_tab = current_tab_ref.clone();
             let tab_position = self.dock_state.find_tab(&current_tab).unwrap();
             self.dock_state.remove_tab(tab_position);
-        }
-
-        if ctx.input_mut(|i| {
-            i.consume_shortcut(&egui::KeyboardShortcut {
-                modifiers: Modifiers::CTRL,
-                logical_key: Key::K,
-            })
-        }) {
-            self.messages.push_back(Message::Generic(GenericMessage {
-                message: format!(
-                    "Test message from {} generated at {:?}",
-                    env!("CARGO_PKG_VERSION"),
-                    std::time::SystemTime::now()
-                ),
-            }));
         }
 
         // Move between tabs (ctrl-tab or ctrl-shift-tab)
