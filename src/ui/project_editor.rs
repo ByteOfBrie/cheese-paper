@@ -12,7 +12,7 @@ use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
 
 use crate::components::file_objects::utils::process_name_for_filename;
-use crate::ui::editor_base::EditorState;
+use crate::ui::editor_base::{EditorState, configure_text_styles};
 use crate::ui::project_editor::search::global_search;
 use crate::ui::project_tracker::ProjectTracker;
 
@@ -735,6 +735,16 @@ impl ProjectEditor {
         let mut actions = Actions::default();
 
         actions.schedule(|editor, ctx| update_title(&editor.project.base_metadata.name, ctx));
+
+        // For some weird reason we do not see font size getting applied on Macs
+        // during `CheesePaperApp::new`, so we just set it again here. This is
+        // hacky but should not be harmful, since the "usual" case is that we'll
+        // just set font size back to what it already was. Will be addressed in
+        // #254
+        let font_size = settings.font_size();
+        actions.schedule(move |_editor, ctx| {
+            configure_text_styles(ctx, font_size);
+        });
 
         let mut project_editor = Self {
             project,
