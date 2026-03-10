@@ -10,9 +10,14 @@ use crate::ui::CheesePaperApp;
 
 use directories::ProjectDirs;
 use eframe::NativeOptions;
+use log::LevelFilter;
 
 fn main() -> eframe::Result {
-    env_logger::init();
+    env_logger::Builder::new()
+        .filter_module("tracing::span", LevelFilter::Warn)
+        .filter_module("winit::window", LevelFilter::Warn)
+        .parse_default_env()
+        .init();
 
     let project_dirs =
         ProjectDirs::from("", "", "cheese-paper").expect("home directories should always exist");
