@@ -87,7 +87,12 @@ impl SettingsData {
         dict_search_paths.push(app_dict_folder_path);
 
         if env::consts::OS == "linux" {
-            dict_search_paths.push(PathBuf::from("/usr/share/hunspell/"))
+            dict_search_paths.push(PathBuf::from("/usr/share/hunspell/"));
+        } else if env::consts::OS == "macos"
+            && let Ok(exe_path) = std::env::current_exe()
+            && let Some(exe_folder) = exe_path.parent()
+        {
+            dict_search_paths.push(exe_folder.join("../Resources/resources/spellcheck/en_US/"));
         }
 
         // TODO add more system-dependant search paths

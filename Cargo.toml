@@ -18,6 +18,7 @@ categories = ["text-editors", "filesystem"]
 identifier = "gay.brie.cheese-paper"
 category = "Productivity"
 icon = ["resources/cheese-paper-icon.png"]
+resources = ["resources/spellcheck/*"]
 
 [profile.release]
 lto = "fat"
