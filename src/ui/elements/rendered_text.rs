@@ -37,7 +37,8 @@ impl RenderedText {
             ))
         }
 
-        let galley = ui.fonts(|f| f.layout_job(self.layout_job.as_ref().unwrap().0.clone()));
+        // TODO: determine if egui actually expects us to use fonts_mut here
+        let galley = ui.fonts_mut(|f| f.layout_job(self.layout_job.as_ref().unwrap().0.clone()));
 
         ui.painter()
             .galley(ui.next_widget_position(), galley, Color32::BLACK);

@@ -117,7 +117,8 @@ impl Text {
         let mut layouter = |ui: &egui::Ui, text: &dyn TextBuffer, wrap_width: f32| {
             let mut layout_job = text_box.get_layout(ui, text, ctx);
             layout_job.wrap.max_width = wrap_width;
-            ui.fonts(|f| f.layout_job(layout_job))
+            // TODO: determine if egui actually expects us to use fonts_mut here
+            ui.fonts_mut(|f| f.layout_job(layout_job))
         };
 
         let text_box_id = self.struct_uid;

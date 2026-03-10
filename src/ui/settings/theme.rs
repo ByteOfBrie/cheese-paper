@@ -5,7 +5,7 @@ use crate::ui::prelude::*;
 
 use egui::{Color32, Visuals};
 use egui::{Style, style::WidgetVisuals};
-use rand::{Rng, rngs::ThreadRng};
+use rand::{RngExt, rngs::ThreadRng};
 use toml_edit::{InlineTable, TableLike, value};
 
 #[derive(Debug, Clone)]
