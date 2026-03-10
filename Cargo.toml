@@ -34,7 +34,7 @@ toml = "1.0"
 toml_edit = "0.25"
 regex = "1.11.1"
 uuid = { version = "1.17.0", features = ["v4"] }
-log = "0.4.27"
+log = "0.4"
 tempfile = "3.20.0"
 bitflags = "2.9.1"
 semver = "1.0.27"
@@ -44,11 +44,7 @@ egui = "0.33"
 eframe = { version = "0.33", features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
-
-env_logger = { version = "0.11", default-features = false, features = [
-    "auto-color",
-    "humantime",
-] }
+flexi_logger = "0.31"
 
 egui_ltreeview = { version = "0.6", features = ["persistence"] }
 egui_dock = "0.18"

@@ -10,19 +10,37 @@ use crate::ui::CheesePaperApp;
 
 use directories::ProjectDirs;
 use eframe::NativeOptions;
-use log::LevelFilter;
+use flexi_logger::{Duplicate, FileSpec, Logger, WriteMode, colored_opt_format, opt_format};
 
 fn main() -> eframe::Result {
-    env_logger::Builder::new()
-        .filter_module("tracing::span", LevelFilter::Warn)
-        .filter_module("winit::window", LevelFilter::Warn)
-        .parse_default_env()
-        .init();
-
     let project_dirs =
         ProjectDirs::from("", "", "cheese-paper").expect("home directories should always exist");
 
     let egui_data_path = project_dirs.data_dir().join("egui");
+
+    match Logger::try_with_env_or_str("info,cheese_paper=debug") {
+        Ok(logger) => {
+            if let Err(err) = logger
+                .log_to_file(FileSpec::default().directory(project_dirs.data_dir().join("logs")))
+                .append()
+                .duplicate_to_stdout(Duplicate::Debug)
+                .rotate(
+                    flexi_logger::Criterion::Size(100_000),
+                    flexi_logger::Naming::TimestampsDirect,
+                    flexi_logger::Cleanup::KeepForDays(14),
+                )
+                .write_mode(WriteMode::BufferAndFlush)
+                .format_for_files(opt_format)
+                .format_for_stdout(colored_opt_format)
+                .start()
+            {
+                eprintln!("Could not start logger: {err}");
+            }
+        }
+        Err(err) => {
+            eprintln!("Could not create logger: {err}");
+        }
+    };
 
     let icon_data =
         eframe::icon_data::from_png_bytes(include_bytes!("../resources/cheese-paper-icon.png"))
