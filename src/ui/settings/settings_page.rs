@@ -183,6 +183,13 @@ impl SettingsPage {
             ui.label(RichText::new(err_msg).color(Color32::RED));
         }
 
+        let app_dict_folder_path = settings_data.settings_path.join("dictionaries").clone();
+        if ui.button("Open Dictionary Folder").clicked()
+            && let Err(err) = open::that(app_dict_folder_path)
+        {
+            log::warn!("Could not open dictionary folder: {err}");
+        }
+
         if cheese_response.modified {
             // I'm changing this duration back to 400
             // you can change it back to 250 if you want
