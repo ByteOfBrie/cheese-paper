@@ -102,9 +102,19 @@ impl SettingsPage {
                 layout::heading(ui, "Themes");
 
                 cheese_response.extend(self.themes_ui(ui, ctx));
-            }
 
-            // TODO: maybe parse cheese response here? might need to make sure themes are good
+                if cheese_response.modified {
+                    let mut settings_data = ctx.settings.data.borrow_mut();
+
+                    // 400 is currently chosen as the correct delay for this
+                    // the decision was made through a rigorous design process known as "coding crimes chicken".
+                    // It may be altered in the future, if Brie chooses violence
+                    const APPLY_DELAY: Duration = Duration::from_millis(400);
+
+                    settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
+                    ui.ctx().request_repaint_after(APPLY_DELAY);
+                }
+            }
 
             cheese_response
         })
@@ -188,16 +198,6 @@ impl SettingsPage {
             && let Err(err) = open::that(app_dict_folder_path)
         {
             log::warn!("Could not open dictionary folder: {err}");
-        }
-
-        if cheese_response.modified {
-            // I'm changing this duration back to 400
-            // you can change it back to 250 if you want
-            // your move
-            const APPLY_DELAY: Duration = Duration::from_millis(400);
-
-            settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
-            ui.ctx().request_repaint_after(APPLY_DELAY);
         }
 
         cheese_response
@@ -383,6 +383,7 @@ impl SettingsPage {
             ctx.actions.schedule(|project_editor, ctx| {
                 project_editor.update_theme(ctx);
             });
+            cheese_response.modified = true;
         }
 
         cheese_response

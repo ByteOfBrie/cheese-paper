@@ -145,11 +145,12 @@ where
     }
 
     pub fn set_value(&mut self, value: Option<T>, project_local: bool) {
-        self.pl_interface_value = (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
-        self.interface_value = (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
         if project_local {
+            self.pl_interface_value =
+                (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
             self.pl_value = value;
         } else {
+            self.interface_value = (self.convert)(value.as_ref().unwrap_or(&self.default).clone());
             self.value = value;
         }
     }
@@ -161,8 +162,14 @@ where
             &self.interface_value
         });
 
+        let current_value = if project_local {
+            self.pl_value.as_ref()
+        } else {
+            self.value.as_ref()
+        };
+
         if let Ok(new_value) = new_value
-            && new_value != *self.get_value()
+            && *current_value.unwrap_or(&self.default) != new_value
         {
             self.set_value(Some(new_value), project_local);
             self.modified = true;
