@@ -244,7 +244,6 @@ impl Section {
         let mut cheese_response = CheeseResponse::default();
 
         // Tab selection
-        // TODO: make selectable_values here more subtle (e.g., different color gray)
         ui.horizontal(|ui| {
             ui.selectable_value(&mut rdata.tab, Tab::Notes, "Summary/Notes");
             ui.selectable_value(&mut rdata.tab, Tab::Export, "Export");

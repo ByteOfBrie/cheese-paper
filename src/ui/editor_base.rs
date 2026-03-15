@@ -413,13 +413,6 @@ impl eframe::App for CheesePaperApp {
             },
         }
 
-        // if current_time.duration_since(self.last_update) > Duration::from_millis(250) {
-        //     // TODO: update data as well
-        //     self.state.settings.update();
-
-        //     self.last_update = current_time;
-        // }
-
         if current_time.duration_since(self.last_save) > Duration::from_secs(5) {
             if let Some(project_editor) = &mut self.project_editor {
                 // Slightly hacky, but write the data back into the editor state with every
