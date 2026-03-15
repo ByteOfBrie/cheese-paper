@@ -455,6 +455,10 @@ impl ProjectEditor {
         {
             self.editor_context.focus_jumper.send(new_tab);
         }
+
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Comma)) {
+            self.set_editor_tab(&Page::Settings(false), true);
+        }
     }
 
     fn move_tab(&mut self, tab_move: TabMove) -> Option<OpenPage> {
