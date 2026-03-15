@@ -421,7 +421,8 @@ impl ProjectEditor {
                 modifiers: Modifiers::COMMAND,
                 logical_key: Key::W,
             })
-        }) && let Some((_, current_tab_ref)) = self.dock_state.find_active_focused()
+        }) && self.dock_state.iter_all_tabs().next().is_some()
+            && let Some((_, current_tab_ref)) = self.dock_state.find_active_focused()
         {
             // We get an &mut reference so we have to clone it ;)
             let current_tab = current_tab_ref.clone();
