@@ -12,7 +12,7 @@ impl CheesePaperApp {
         }
 
         let mut settings = self.state.settings.clone();
-        let mut data = settings.0.borrow_mut();
+        let mut data = settings.data.borrow_mut();
 
         data.update_values(project_local);
 
@@ -33,10 +33,10 @@ impl CheesePaperApp {
             }
         } else {
             // Only write if we have changes
-            if data.save(&mut settings.1, project_local) {
+            if data.save(&mut settings.toml, project_local) {
                 write_with_temp_file(
                     create_dir_if_missing(&data.config_file_path())?,
-                    settings.1.to_string(),
+                    settings.toml.to_string(),
                 )
                 .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
             }

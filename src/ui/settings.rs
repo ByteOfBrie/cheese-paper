@@ -488,20 +488,22 @@ impl SettingsData {
     }
 }
 
-// TODO: convert to named struct
 #[derive(Debug, Clone)]
-pub struct Settings(Rc<RefCell<SettingsData>>, DocumentMut);
+pub struct Settings {
+    data: Rc<RefCell<SettingsData>>,
+    toml: DocumentMut,
+}
 
 impl Settings {
     pub fn new(config_dir: PathBuf) -> Self {
-        Self(
-            Rc::new(RefCell::new(SettingsData::new(config_dir))),
-            DocumentMut::new(),
-        )
+        Self {
+            data: Rc::new(RefCell::new(SettingsData::new(config_dir))),
+            toml: DocumentMut::new(),
+        }
     }
 
     pub fn load(&mut self) -> Result<(), CheeseError> {
-        let mut data = self.0.borrow_mut();
+        let mut data = self.data.borrow_mut();
 
         let settings_toml = if data.config_file_path().exists() {
             match read_to_string(data.config_file_path()) {
@@ -521,7 +523,7 @@ impl Settings {
 
         data.load(&settings_toml, false);
 
-        self.1 = settings_toml;
+        self.toml = settings_toml;
 
         let mut available_themes = Vec::new();
 
@@ -575,7 +577,7 @@ impl Settings {
     }
 
     pub fn load_project_local(&mut self, project_metadata: &DocumentMut) {
-        let mut data = self.0.borrow_mut();
+        let mut data = self.data.borrow_mut();
 
         data.font_size.reset_value(true);
         data.indent_line_start.reset_value(true);
@@ -587,7 +589,7 @@ impl Settings {
     }
 
     pub fn need_processing(&self, ctx: &egui::Context) -> (bool, bool) {
-        let mut data = self.0.borrow_mut();
+        let mut data = self.data.borrow_mut();
 
         let now = SystemTime::now();
 
@@ -613,50 +615,50 @@ impl Settings {
     }
 
     pub fn update(&mut self, project_local: bool) {
-        self.0.borrow_mut().update_values(project_local);
+        self.data.borrow_mut().update_values(project_local);
     }
 
     pub fn font_size(&self) -> f32 {
-        *self.0.borrow().font_size.get_value()
+        *self.data.borrow().font_size.get_value()
     }
 
     pub fn reopen_last(&self) -> bool {
-        *self.0.borrow().reopen_last.get_value()
+        *self.data.borrow().reopen_last.get_value()
     }
 
     pub fn indent_line_start(&self) -> bool {
-        *self.0.borrow().indent_line_start.get_value()
+        *self.data.borrow().indent_line_start.get_value()
     }
 
     pub fn highlight_multiple_spaces(&self) -> bool {
-        *self.0.borrow().highlight_multiple_spaces.get_value()
+        *self.data.borrow().highlight_multiple_spaces.get_value()
     }
 
     pub fn highlight_spaces_before_punctuation(&self) -> bool {
         *self
-            .0
+            .data
             .borrow()
             .highlight_spaces_before_punctuation
             .get_value()
     }
 
     pub fn check_for_updates(&self) -> bool {
-        *self.0.borrow().check_for_updates.get_value()
+        *self.data.borrow().check_for_updates.get_value()
     }
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
     pub fn load_dictionary(&self) -> Option<Dictionary> {
-        let mut data = self.0.borrow_mut();
+        let mut data = self.data.borrow_mut();
 
         data.load_dictionary()
     }
 
     pub fn theme(&self) -> Theme {
-        self.0.borrow().theme.clone()
+        self.data.borrow().theme.clone()
     }
 
     pub fn select_theme(&self, selection: ThemeSelection) -> Result<(), CheeseError> {
-        let mut data = self.0.borrow_mut();
+        let mut data = self.data.borrow_mut();
         match selection {
             ThemeSelection::Default => {
                 data.theme = Theme::default();
@@ -685,16 +687,16 @@ impl Settings {
     }
 
     fn available_themes(&self) -> Rc<Vec<(String, Theme)>> {
-        let data = self.0.borrow();
+        let data = self.data.borrow();
         data.available_themes.clone()
     }
 
     fn selected_theme(&self) -> ThemeSelection {
-        self.0.borrow().selected_theme
+        self.data.borrow().selected_theme
     }
 
     fn save_current_theme(&self, name: &str) -> Result<(), CheeseError> {
-        let data = self.0.borrow();
+        let data = self.data.borrow();
 
         let file_name = process_name_for_filename(name);
 

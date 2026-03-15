@@ -116,7 +116,7 @@ impl SettingsPage {
     }
 
     fn settings_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
-        let mut settings_data = ctx.settings.0.borrow_mut();
+        let mut settings_data = ctx.settings.data.borrow_mut();
 
         let settings_location = GLOBAL_SETTINGS_LOCATION.get_or_init(|| {
             format!(
@@ -206,7 +206,7 @@ impl SettingsPage {
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
     ) -> CheeseResponse {
-        let mut settings_data = ctx.settings.0.borrow_mut();
+        let mut settings_data = ctx.settings.data.borrow_mut();
 
         let mut cheese_response = CheeseResponse::default();
 
