@@ -107,7 +107,7 @@ pub struct PageData {
     search: Search,
     last_selected_id: Option<Id>,
 
-    settings_page: Option<SettingsPage>,
+    settings_page: SettingsPage,
     help_page: HelpPage,
 }
 
@@ -184,13 +184,7 @@ impl OpenPage {
                 }
             }
             Page::Export => project.export_ui(ui, ctx),
-            Page::Settings(project_local) => {
-                if page_data.settings_page.is_none() {
-                    page_data.settings_page = Some(SettingsPage::load(ctx));
-                }
-                let settings_page = page_data.settings_page.as_mut().unwrap();
-                settings_page.ui(ui, ctx, *project_local)
-            }
+            Page::Settings(project_local) => page_data.settings_page.ui(ui, ctx, *project_local),
             Page::Help => page_data.help_page.ui(ui, ctx),
         };
 

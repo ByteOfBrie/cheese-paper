@@ -11,7 +11,10 @@ use egui::{Color32, RichText};
 
 use super::ThemeSelection;
 
-#[derive(Debug)]
+/// The only two things that are still stored in the settings page
+/// rather than the main settings option. We should eventually move these over,
+/// but this is generally fine
+#[derive(Debug, Default)]
 pub struct SettingsPage {
     random_theme_name: String,
 
@@ -76,14 +79,6 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
 static GLOBAL_SETTINGS_LOCATION: OnceLock<String> = OnceLock::new();
 
 impl SettingsPage {
-    // TODO: maybe get rid of this
-    pub fn load(_ctx: &mut EditorContext) -> Self {
-        Self {
-            random_theme_name: String::new(),
-            random_theme_save_error: None,
-        }
-    }
-
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
