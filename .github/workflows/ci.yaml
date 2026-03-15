@@ -38,6 +38,8 @@ jobs:
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions/checkout@v4
+      with:
+        lfs: true
     - name: Build
       run: cargo build --release
     - name: Run tests
