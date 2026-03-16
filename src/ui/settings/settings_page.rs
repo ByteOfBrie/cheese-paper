@@ -106,23 +106,30 @@ impl SettingsPage {
                 if cheese_response.modified {
                     let mut settings_data = ctx.settings.data.borrow_mut();
 
-                    // a reasonable compromise between 250 and 400 is the most correct delay
                     // the decision was made through a rigorous design process known as "coding crimes chicken".
-                    // It may be altered in the future, if Eve can come up with anything better
-                    // than this piece of art.
-                    // const_random does not support booleans directly :(
-                    const INITIAL_NUMBER: u8 = const_random::const_random!(u8);
-                    const USE_250: bool = INITIAL_NUMBER.is_multiple_of(2);
-                    const APPLY_DELAY: Duration = const {
-                        if USE_250 {
-                            Duration::from_millis(250)
-                        } else {
-                            Duration::from_millis(400)
-                        }
-                    };
+                    // a reasonable compromise between 250 and 400 was not good enough. this
+                    // had the unfortunate consequence of a particular binary being subpar
+                    // for 50% of the current active users at all times
+                    // thankfully, we can use basic heuristics to determine the optimal
+                    // APPLY_DELAY for all (current) users of cheese-paper.
+                    static APPLY_DELAY: std::sync::OnceLock<Duration> = std::sync::OnceLock::new();
 
-                    settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
-                    ui.ctx().request_repaint_after(APPLY_DELAY);
+                    settings_data.next_apply = Some(
+                        SystemTime::now()
+                            + *APPLY_DELAY.get_or_init(|| {
+                                if settings_data
+                                    .available_dict
+                                    .iter()
+                                    .any(|dict| dict.name.contains("fr"))
+                                {
+                                    Duration::from_millis(400)
+                                } else {
+                                    Duration::from_millis(250)
+                                }
+                            }),
+                    );
+
+                    ui.ctx().request_repaint_after(*APPLY_DELAY.get().unwrap());
                 }
             }
 

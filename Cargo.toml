@@ -40,7 +40,6 @@ tempfile = "3.20.0"
 bitflags = "2.9.1"
 semver = "1.0.27"
 open = "5"
-const-random = "0.1"
 
 # ui
 egui = "0.33"
