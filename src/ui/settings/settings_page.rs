@@ -106,10 +106,20 @@ impl SettingsPage {
                 if cheese_response.modified {
                     let mut settings_data = ctx.settings.data.borrow_mut();
 
-                    // 400 is currently chosen as the correct delay for this
+                    // a reasonable compromise between 250 and 400 is the most correct delay
                     // the decision was made through a rigorous design process known as "coding crimes chicken".
-                    // It may be altered in the future, if Brie chooses violence
-                    const APPLY_DELAY: Duration = Duration::from_millis(400);
+                    // It may be altered in the future, if Eve can come up with anything better
+                    // than this piece of art.
+                    // const_random does not support booleans directly :(
+                    const INITIAL_NUMBER: u8 = const_random::const_random!(u8);
+                    const USE_250: bool = INITIAL_NUMBER.is_multiple_of(2);
+                    const APPLY_DELAY: Duration = const {
+                        if USE_250 {
+                            Duration::from_millis(250)
+                        } else {
+                            Duration::from_millis(400)
+                        }
+                    };
 
                     settings_data.next_apply = Some(SystemTime::now() + APPLY_DELAY);
                     ui.ctx().request_repaint_after(APPLY_DELAY);
