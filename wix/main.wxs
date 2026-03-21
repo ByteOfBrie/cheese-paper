@@ -115,6 +115,31 @@
                                 KeyPath='yes'/>
                         </Component>
                     </Directory>
+
+                    <Directory Id='Resources' Name='resources'>
+                        <Directory Id='Spellcheck' Name='spellcheck'>
+                            <Directory Id='en_US' Name='en_US'>
+                                <Component Id='en_US_aff' Guid='*'>
+                                    <File Id='en_US_aff_file'
+                                        DiskId='1'
+                                        Source='resources\spellcheck\en_US\en_US.aff'
+                                        KeyPath='yes'/>
+                                </Component>
+                                <Component Id='en_US_dic' Guid='*'>
+                                    <File Id='en_US_dic_file'
+                                        DiskId='1'
+                                        Source='resources\spellcheck\en_US\en_US.dic'
+                                        KeyPath='yes'/>
+                                </Component>
+                                <Component Id='en_US_README' Guid='*'>
+                                    <File Id='en_US_README_file'
+                                        DiskId='1'
+                                        Source='resources\spellcheck\en_US\README_en_US-large.txt'
+                                        KeyPath='yes'/>
+                                </Component>
+                            </Directory>
+                        </Directory>
+                    </Directory>
                 </Directory>
             </Directory>
         </Directory>
@@ -149,6 +174,10 @@
             
             <ComponentRef Id='cheesepaper.exe'/>
             <ComponentRef Id="ApplicationShortcut" />
+
+            <ComponentRef Id="en_US_aff" />
+            <ComponentRef Id="en_US_dic" />
+            <ComponentRef Id="en_US_README" />
         </Feature>
 
         <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>

@@ -93,9 +93,11 @@ impl SettingsData {
             && let Some(exe_folder) = exe_path.parent()
         {
             dict_search_paths.push(exe_folder.join("../Resources/resources/spellcheck/en_US/"));
+        } else if env::consts::OS == "windows"
+            && let Ok(exe_path) = std::env::current_exe()
+            && let Some(exe_folder) = exe_path.parent() {
+            dict_search_paths.push(exe_folder.join("../resources/spellcheck/en_US/"));
         }
-
-        // TODO add more system-dependant search paths
 
         for search_path in &dict_search_paths {
             for entry in std::fs::read_dir(search_path)? {
