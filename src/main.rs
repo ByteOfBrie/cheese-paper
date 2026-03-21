@@ -42,15 +42,23 @@ fn main() -> eframe::Result {
         }
     };
 
-    let icon_data =
-        eframe::icon_data::from_png_bytes(include_bytes!("../resources/cheese-paper-icon.png"))
-            .unwrap();
+    let icon_data_res =
+        eframe::icon_data::from_png_bytes(include_bytes!("../resources/cheese-paper-icon.png"));
+
+    let viewport = if let Ok(icon_data) = icon_data_res {
+        egui::ViewportBuilder::default()
+            .with_icon(icon_data)
+            .with_app_id("cheese-paper")
+    } else {
+        // if you clone without setting up git lfs, we won't have a valid icon file.
+        // we just proceed without it for now
+        log::warn!("Could not load icon data: did this repo have git lfs set up?");
+        egui::ViewportBuilder::default().with_app_id("cheese-paper")
+    };
 
     let native_options = NativeOptions {
         persistence_path: Some(egui_data_path),
-        viewport: egui::ViewportBuilder::default()
-            .with_icon(icon_data)
-            .with_app_id("cheese-paper"),
+        viewport,
         ..Default::default()
     };
 
