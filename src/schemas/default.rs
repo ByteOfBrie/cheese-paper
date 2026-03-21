@@ -19,10 +19,10 @@ use place::Place;
 use scene::Scene;
 
 const FILE_TYPE_LIST: [FileType; 4] = [
-    &Character::TYPE_INFO,
-    &Folder::TYPE_INFO,
-    &Place::TYPE_INFO,
     &Scene::TYPE_INFO,
+    &Folder::TYPE_INFO,
+    &Character::TYPE_INFO,
+    &Place::TYPE_INFO,
 ];
 
 pub struct DefaultSchema {}
