@@ -291,7 +291,7 @@ impl Text {
 
             if !ctx.spellcheck_status.correct {
                 ui.separator();
-                for suggestion in ctx.spellcheck_status.suggestions.iter() {
+                for suggestion in ctx.spellcheck_status.suggestions.iter().take(10) {
                     if ui.button(suggestion).clicked() {
                         let drained_text: String = self
                             .text
