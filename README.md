@@ -2,19 +2,13 @@
 
 Cheese Paper is a text editor for writing long form prose, particularly fiction. Cheese Paper attempts to have metadata (especially notes and summaries) tied to individual scenes (or other objects). Unlike any other text editors, Cheese Paper does this while retaining a simple file format that can be easily synced and meaningfully modified outside the editor, including being reasonable to edit by hand on a phone.
 
-The underlying text is all Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, once again simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing - if you sync the files on disk, it will cleanly load them.
-
-For more complete similar projects, check out [Manuskript](https://github.com/olivierkes/manuskript) (FOSS) or [Scrivener](https://www.literatureandlatte.com/scrivener/overview) (closed source, paid). I've used both extensively, although neither of these quite met my use case, which is why Cheese Paper exists. 
-
-[Obsidian](https://obsidian.md/) is also often compared to Cheese Paper - it is wonderful for taking notes, but I did not find that it did what I wanted with keeping my chapter notes linked to my writing. If it had, I would also not have bothered writing Cheese Paper.
-
-Cheese Paper is not a perfect project, nor is it capable of every use case. If you do not care about any of the features that Cheese Paper prioritizes, one of the other projects may be a better fit.
+The underlying text is all Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, also simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing programs - if you sync the files on disk, it will happily load them.
 
 ## Features
 
 ### See your notes as you write
 
-Cheese Paper lets you see your notes as you're writing the scene
+Cheese Paper keeps your notes visible as you're writing the scene. This can be used to jot down something for later, to plan our where a scene will go before writing, or to summarize a scene after you've written it to get a better high level overview of your story.
 
 <img src="resources/screenshots/scene.png" alt="Screenshot of the Cheese Paper editor opened to a project titled 'Robot with Frustrated Mechanic'. There is a view of folders and scenes on the left, a main editor window with the text of the scene, and a summary and notes section on the sidebar" width="500">
 
@@ -106,6 +100,15 @@ git lfs pull
 ```
 
 # Other
+
+## Comparisons to other projects
+
+For more complete similar projects, check out [Manuskript](https://github.com/olivierkes/manuskript) (FOSS) or [Scrivener](https://www.literatureandlatte.com/scrivener/overview) (closed source, paid). I've used both extensively, although neither of these quite met my use case, which is why Cheese Paper exists.
+
+[Obsidian](https://obsidian.md/) is also often compared to Cheese Paper - it is wonderful for taking notes, but I did not find that it did what I wanted with keeping my chapter notes linked to my writing. If it had, I would also not have bothered writing Cheese Paper.
+
+Cheese Paper is not a perfect project, nor is it capable of every use case. If you do not care about any of the features that Cheese Paper prioritizes, one of the other projects may be a better fit.
+
 
 ## Rights/Ownership
 
