@@ -18,4 +18,6 @@ git push origin 0.3.0
 
 7. Click publish release button
 
-8. Bump version on Cargo.toml to expected next release (second digit bump/minor version, third digit is for patches)
+8. Publish on crates.io: run `cargo publish`. This is a manual step currently becaues we can run automation as many times as we want before fully publishing, but this can only happen once. It might get automated later, maybe in a separate action once we fully publish the release?
+
+9. Bump version on Cargo.toml to expected next release (second digit bump/minor version, third digit is for patches)
