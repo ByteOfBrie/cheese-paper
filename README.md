@@ -4,6 +4,8 @@ Cheese Paper is a text editor for writing long form prose, particularly fiction.
 
 The underlying text is all Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, also simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing programs - if you sync the files on disk, it will happily load them.
 
+Cheese Paper's home is on [Codeberg](https://codeberg.org/ByteOfBrie/cheese-paper), but also has [an official GitHub mirror](https://github.com/ByteOfBrie/cheese-paper) (at least for now). I am making no promises to keep up with GitHub in any way (although it might happen anyway).
+
 ## Features
 
 ### See your notes as you write
@@ -99,6 +101,15 @@ git lfs install
 git lfs pull
 ```
 
+Once you have all of the files, just use cargo to build and run:
+
+```
+cargo build
+cargo run
+```
+
+There are more complex commands to deal with packaging, but many of these are awful and complex and I don't think anyone else should suffer through that. If you also wish to suffer, look at the release workflow (but you brought this upon yourself)
+
 # Other
 
 ## Comparisons to other projects
@@ -123,3 +134,11 @@ Cheese Paper makes exactly one network request: if checking for updates is enabl
 ## AI
 
 Cheese Paper was written by humans without the assistance of AI/LLM tools. There are various concerns around the ehtics, quality, and copyright status of AI created code, so please avoid submitting any code authored/assisted by LLMs.
+
+## Contributing
+
+Cheese Paper welcomes contributions. If you are planning on making a larger change, especially one that is not already covered by an issue created by one of the main devs, please reach out (e.g., create an issue) before doing so -- there might be some other considerations, and I would feel bad if you did work that wasn't mergeable.
+
+## Missing feature? Need help? Found a bug?
+
+Please try searching [the issues](https://codeberg.org/ByteOfBrie/cheese-paper/issues), and then please feel free to open up a new one, providing as much detail as possible.
