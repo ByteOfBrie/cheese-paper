@@ -150,13 +150,13 @@ impl FileObject for Character {
     fn generate_outline(&self, depth: u64, export_string: &mut String, _objects: &FileObjectStore) {
         (self as &dyn FileObject).write_title(depth, export_string);
 
-        write_outline_property("summary", &self.metadata.summary, export_string);
-        write_outline_property("appearance", &self.metadata.appearance, export_string);
-        write_outline_property("personality", &self.metadata.personality, export_string);
-        write_outline_property("goal", &self.metadata.goal, export_string);
-        write_outline_property("conflict", &self.metadata.conflict, export_string);
-        write_outline_property("habits", &self.metadata.habits, export_string);
-        write_outline_property("notes", &self.metadata.notes, export_string);
+        write_outline_property("Summary", &self.metadata.summary, export_string);
+        write_outline_property("Appearance", &self.metadata.appearance, export_string);
+        write_outline_property("Personality", &self.metadata.personality, export_string);
+        write_outline_property("Goal", &self.metadata.goal, export_string);
+        write_outline_property("Conflict", &self.metadata.conflict, export_string);
+        write_outline_property("Habits", &self.metadata.habits, export_string);
+        write_outline_property("Notes", &self.metadata.notes, export_string);
     }
 
     fn as_editor(&self) -> &dyn crate::ui::FileObjectEditor {

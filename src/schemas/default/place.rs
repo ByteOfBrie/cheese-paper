@@ -136,11 +136,11 @@ impl FileObject for Place {
     fn generate_outline(&self, depth: u64, export_string: &mut String, objects: &FileObjectStore) {
         (self as &dyn FileObject).write_title(depth, export_string);
 
-        write_outline_property("connection", &self.metadata.connection, export_string);
-        write_outline_property("description", &self.metadata.description, export_string);
-        write_outline_property("appearance", &self.metadata.appearance, export_string);
-        write_outline_property("other_senses", &self.metadata.other_senses, export_string);
-        write_outline_property("notes", &self.metadata.notes, export_string);
+        write_outline_property("Connection", &self.metadata.connection, export_string);
+        write_outline_property("Description", &self.metadata.description, export_string);
+        write_outline_property("Appearance", &self.metadata.appearance, export_string);
+        write_outline_property("Other Senses", &self.metadata.other_senses, export_string);
+        write_outline_property("Notes", &self.metadata.notes, export_string);
 
         for child_id in self.get_base().children.iter() {
             objects.get(child_id).unwrap().borrow().generate_outline(

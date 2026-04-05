@@ -59,14 +59,14 @@ Cheese Paper projects split their contents over a lot of different files. This i
 > 
 > ## Visit 1
 > 
-> notes:
+> Notes:
 > 
 > > This is almost definitely going to be more than one chapter in reality
 > 
 > 
 > ### Initial falling
 > 
-> summary:
+> Summary:
 > 
 > > Amaryllis trips on something on the workshop floor and gets checked out by her mechanic, Rose. Rose says something that can be interpreted in a flirty way, which Amaryllis is super super normal about
 

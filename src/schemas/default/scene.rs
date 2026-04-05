@@ -162,16 +162,16 @@ impl FileObject for Scene {
     fn generate_outline(&self, depth: u64, export_string: &mut String, objects: &FileObjectStore) {
         (self as &dyn FileObject).write_title(depth, export_string);
 
-        write_outline_property("summary", &self.metadata.summary, export_string);
+        write_outline_property("Summary", &self.metadata.summary, export_string);
         let needs_pov = *self.metadata.pov.borrow() != ObjectReference::None;
         if needs_pov {
             write_outline_property(
-                "pov",
+                "POV",
                 &self.metadata.pov.borrow().to_string(objects),
                 export_string,
             );
         }
-        write_outline_property("notes", &self.metadata.notes, export_string);
+        write_outline_property("Notes", &self.metadata.notes, export_string);
     }
 
     fn generate_export(
