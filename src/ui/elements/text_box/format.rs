@@ -62,11 +62,7 @@ fn format_from_style(egui_style: &egui::Style, text_style: &Style) -> egui::text
         newline: _newline,
     } = *text_style;
 
-    let font_id = egui_style
-        .text_styles
-        .get(&egui::TextStyle::Body)
-        .unwrap()
-        .clone();
+    let font_id = egui::TextStyle::Body.resolve(egui_style);
 
     let mut format = TextFormat {
         font_id,

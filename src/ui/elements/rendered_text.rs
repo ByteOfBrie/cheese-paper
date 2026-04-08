@@ -51,11 +51,7 @@ fn compute_layout_job(
     egui_style: &egui::Style,
     wrap_width: f32,
 ) -> LayoutJob {
-    let font_id = egui_style
-        .text_styles
-        .get(&egui::TextStyle::Body)
-        .unwrap()
-        .clone();
+    let font_id = egui::TextStyle::Body.resolve(egui_style);
 
     let mut job = LayoutJob::simple(
         "".to_string(),

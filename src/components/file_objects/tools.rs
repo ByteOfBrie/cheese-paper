@@ -218,8 +218,7 @@ impl dyn FileObject {
                     .get(child_id)
                     .unwrap()
                     .borrow_mut()
-                    .set_index(i + 1, objects)
-                    .unwrap();
+                    .set_index(i + 1, objects)?;
             }
 
             log::debug!("created indexing gap in {self} at {index}");

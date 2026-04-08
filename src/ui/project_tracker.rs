@@ -156,7 +156,14 @@ impl ProjectTracker {
             }
         }
 
-        let head_tree = self.repo.head().unwrap().peel_to_tree().unwrap();
+        let head = self
+            .repo
+            .head()
+            .map_err(|err| format!("Could not get repo head: {err}"))?;
+
+        let head_tree = head
+            .peel_to_tree()
+            .map_err(|err| format!("Could not get tree head: {err}"))?;
 
         match self
             .repo
@@ -179,7 +186,10 @@ impl ProjectTracker {
             Err(err) => return Err(format!("failed to write tree: {err}")),
         };
 
-        let tree = self.repo.find_tree(tree_oid).unwrap();
+        let tree = self
+            .repo
+            .find_tree(tree_oid)
+            .map_err(|err| format!("Could not get tree oid: {err}"))?;
 
         let parent_commit = self
             .repo
