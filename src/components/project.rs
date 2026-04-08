@@ -1036,9 +1036,18 @@ impl Project {
             let file_object = file_object.borrow();
             for child in file_object.get_base().children.iter() {
                 if !dangling.remove(child) {
+                    log::error!(
+                        "Found two occurrences of child {child} in objects, unable to recover, exiting"
+                    );
+                    if let Some(duplicate_object) = self.objects.get(child) {
+                        log::error!(
+                            "Path of one of the duplicate: {:?}",
+                            duplicate_object.borrow().get_path()
+                        );
+                    }
                     // I might regret making this a panic instead of a log, but it
                     // shouldn't be possible (and I'm not sure how to recover)
-                    panic!("Found two occurances of child {child} in objects");
+                    panic!("Found two occurrences of child {child} in objects");
                 }
             }
             if file_object.get_base().index.is_none() && !self.is_top_level_folder(file_object.id())
