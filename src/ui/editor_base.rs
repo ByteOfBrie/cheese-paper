@@ -219,7 +219,12 @@ impl EditorState {
         let mut settings = Settings::new(project_dirs.config_dir().to_path_buf());
 
         settings.load().unwrap_or_else(|err| {
-            log::error!("error while loading settings: {err}");
+            // It seems like we could continue here, but then we'll overwrite the settings and maybe break things
+            // for future versions. We should just try to avoid this
+            log::error!(
+                "error while loading settings, intentionally crashing to avoid overwriting existing settings: {err}"
+            );
+            panic!("error while loading settings, intentionally crashing to avoid overwriting existing settings: {err}");
         });
 
         // If we're not supposed to check for updates, we're also already done
@@ -228,17 +233,22 @@ impl EditorState {
         let mut data = Data::new(project_dirs.data_dir().to_path_buf());
 
         let data_toml = match read_to_string(data.get_path()) {
-            Ok(config) => config
-                .parse::<DocumentMut>()
-                .expect("invalid toml data file"),
-            Err(err) => {
-                if err.kind() != std::io::ErrorKind::NotFound {
-                    log::error!(
-                        "Unknown error while reading editor settings, could not load: {err}"
-                    );
+            Ok(config) => match config.parse::<DocumentMut>() {
+                Ok(parsed_toml) => parsed_toml,
+                Err(err) => {
+                    log::error!("Exiting, could not parse toml data file: {err}");
+                    panic!("Could not parse toml data file: {err}");
                 }
-                DocumentMut::new()
-            }
+            },
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::NotFound => DocumentMut::new(),
+                _ => {
+                    // We have to panic here because an error means that we failed to load an existing
+                    // data file, so we can't overwrite it without losing data
+                    log::error!("Unknown error while reading editor data: {err}");
+                    panic!("Unknown error while reading editor data: {err}");
+                }
+            },
         };
 
         data.load(&data_toml);

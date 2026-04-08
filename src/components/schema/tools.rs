@@ -70,7 +70,7 @@ impl dyn Schema {
             ));
         }
 
-        // * can't move something without an index
+        // * can't move something without an index (cheese paper logic has failed if this ever panics)
         let moving = objects
             .get(moving_file_id)
             .expect("objects should contain moving file id");
@@ -133,7 +133,7 @@ impl dyn Schema {
             .create_index_gap(new_index, objects)
             .unwrap();
 
-        // Remove the moving object from it's current parent
+        // Remove the moving object from it's current parent (cheese paper logic has failed if this ever panics)
         let source = objects
             .get(source_file_id)
             .expect("objects should contain source file id");
@@ -360,7 +360,11 @@ impl dyn Schema {
 
             file_object.get_base_mut().index = index;
 
-            file_object.reload_file()?;
+            // call the reload: if we run into an error while reloading, we need to crash so we don't ever overwrite things
+            if let Err(err) = file_object.reload_file() {
+                log::error!("Fatal error while reloading file {file_object}: {err}");
+                panic!("Fatal error while reloading file {file_object}: {err}");
+            }
 
             Ok(existing_file_id)
         } else {

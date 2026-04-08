@@ -104,9 +104,14 @@ impl dyn FileObject {
 
         let (metadata_str, file_body) = read_file_contents(&file_to_read)?;
 
-        let new_toml_header = metadata_str
-            .parse::<DocumentMut>()
-            .expect("invalid file metadata header");
+        let new_toml_header = match metadata_str.parse::<DocumentMut>() {
+            Ok(toml_header) => toml_header,
+            Err(err) => {
+                return Err(cheese_error!(
+                    "Could not reload file: invalid file metadata header: {err}"
+                ));
+            }
+        };
 
         let base_file_object = self.get_base_mut();
 
@@ -467,9 +472,9 @@ impl dyn FileObject {
         write_with_temp_file(self.get_file(), final_str)?;
 
         let new_modtime = std::fs::metadata(self.get_file())
-            .expect("attempted to load file that does not exist")
+            .map_err(|err| format!("Could not load freshly saved file: {err}"))?
             .modified()
-            .expect("Modtime not available");
+            .map_err(|err| format!("Could not load modtime of freshly saved file: {err}"))?;
 
         // Update modtime based on what we just wrote
         self.get_base_mut().file.modtime = Some(new_modtime);
@@ -495,7 +500,7 @@ impl dyn FileObject {
 
         let parent = objects.get(parent_id).unwrap();
 
-        // Remove this from the list of children
+        // Remove this from the list of children (cheese paper logic for the except)
         let child_index = parent
             .borrow()
             .get_base()

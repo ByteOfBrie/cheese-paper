@@ -88,7 +88,12 @@ pub fn get_index_from_name(name: &str) -> Option<usize> {
 }
 
 pub fn create_dir_if_missing(dest_path: &Path) -> std::io::Result<&Path> {
-    let dirname = dest_path.parent().expect("Must pass a path with a parent");
+    let dirname = dest_path.parent().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidFilename,
+            "Must pass a path with a parent",
+        )
+    })?;
 
     if !std::fs::exists(dirname)? {
         std::fs::create_dir(dirname)?;
@@ -105,7 +110,7 @@ pub fn write_with_temp_file<P: AsRef<Path>>(
     let dirname = dest_path
         .as_ref()
         .parent()
-        .expect("Must pass a path with a parent");
+        .ok_or_else(|| cheese_error!("Must pass a path with a parent: {:?}", dest_path.as_ref()))?;
 
     let mut file = match Builder::new().suffix(".tmp").tempfile_in(dirname) {
         Ok(tempfile) => tempfile,

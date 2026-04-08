@@ -240,11 +240,11 @@ impl Project {
 
         // this might later get wrapped in an optional block or something but not worth it right now
         let (mut watcher, file_event_rx) =
-            create_watcher().expect("Should always be able to create a watcher");
+            create_watcher().map_err(|err| format!("Unable to create notify watcher: {err}"))?;
 
         watcher
             .watch(watcher_path, RecursiveMode::Recursive)
-            .unwrap();
+            .map_err(|err| format!("Unable watch with notify: {err}"))?;
 
         let mut toml_header = DocumentMut::new();
         toml_header["schema"] = toml_edit::value(schema.get_schema_identifier());
@@ -317,12 +317,19 @@ impl Project {
         let mut toml_header = if project_info_path.exists() {
             log::debug!("Found `project_info.toml`, loading project");
 
-            let project_info_data =
-                std::fs::read_to_string(project_info_path).expect("could not read file");
+            let project_info_data = match std::fs::read_to_string(project_info_path) {
+                Ok(data) => data,
+                Err(err) => return Err(cheese_error!("could not read project info: {err}")),
+            };
 
-            project_info_data
-                .parse::<DocumentMut>()
-                .expect("invalid file metadata header")
+            match project_info_data.parse::<DocumentMut>() {
+                Ok(parsed_data) => parsed_data,
+                Err(err) => {
+                    return Err(cheese_error!(
+                        "could not parse file metadata header as toml: {err}"
+                    ));
+                }
+            }
         } else {
             // If the `project.toml` doesn't exist, check for a `text/` folder so we don't accidentally
             // load and hijack another folder
@@ -378,11 +385,11 @@ impl Project {
 
         // this might later get wrapped in an optional block or something but not worth it right now
         let (mut watcher, file_event_rx) =
-            create_watcher().expect("Should always be able to create a watcher");
+            create_watcher().map_err(|err| format!("Unable to create notify watcher: {err}"))?;
 
         watcher
             .watch(watcher_path, RecursiveMode::Recursive)
-            .unwrap();
+            .map_err(|err| format!("Unable watch with notify: {err}"))?;
 
         let mut project = Self {
             schema,
@@ -443,9 +450,9 @@ impl Project {
             write_with_temp_file(self.get_project_info_file(), final_str)?;
 
             let new_modtime = std::fs::metadata(self.get_project_info_file())
-                .expect("attempted to load file that does not exist")
+                .map_err(|err| format!("Could not load file: {err}"))?
                 .modified()
-                .expect("Modtime not available");
+                .map_err(|err| format!("Could not load modtime of file: {err}"))?;
 
             // Update modtime based on what we just wrote
             self.file.modtime = Some(new_modtime);
@@ -460,6 +467,7 @@ impl Project {
     }
 
     fn write_metadata(&mut self) {
+        // `expect` is fine here, this is cheese paper internal logic
         assert_eq!(
             self.toml_header["schema"]
                 .as_str()
@@ -600,9 +608,9 @@ impl Project {
     /// Determine if the file should be loaded
     fn should_load(&mut self) -> Result<bool, CheeseError> {
         let current_modtime = std::fs::metadata(self.get_project_info_file())
-            .expect("attempted to load file that does not exist")
+            .map_err(|err| format!("Could not load file: {err}"))?
             .modified()
-            .expect("Modtime not available");
+            .map_err(|err| format!("Could not load modtime of file: {err}"))?;
 
         if let Some(old_modtime) = self.file.modtime
             && old_modtime == current_modtime
@@ -621,9 +629,10 @@ impl Project {
 
         let project_info_data = std::fs::read_to_string(self.get_project_info_file())?;
 
-        let new_toml_header = project_info_data
-            .parse::<DocumentMut>()
-            .expect("invalid file metadata header");
+        let new_toml_header = match project_info_data.parse::<DocumentMut>() {
+            Ok(toml_header) => toml_header,
+            Err(err) => return Err(cheese_error!("Invalid file metadata header: {err}")),
+        };
 
         self.toml_header = new_toml_header;
 
@@ -909,7 +918,7 @@ impl Project {
                     let delete_path = event
                         .paths
                         .first()
-                        .expect("Rename event should have source");
+                        .expect("Remove event should always have source");
 
                     if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
                         file_objects_needing_rescan.insert(parent_id);
@@ -1156,7 +1165,9 @@ impl Project {
     }
 }
 
+/// Get the parent of a path to a file object
 fn get_parent_path(object_path: &Path) -> &Path {
+    // This function has two `except`s, but both should always succeed by cheese paper logic
     let object_base = if object_path.ends_with("metadata.toml") {
         object_path.parent().expect("path should have a parent")
     } else {

@@ -473,10 +473,15 @@ impl ProjectEditor {
         if open_tabs.len() > 1
             && let Some((_, current_tab)) = self.dock_state.find_active_focused()
         {
-            let current_pos = open_tabs
-                .iter()
-                .position(|val| val == current_tab)
-                .expect("focused tab should be in list of tabs");
+            let current_pos = match open_tabs.iter().position(|val| val == current_tab) {
+                Some(current_pos) => current_pos,
+                None => {
+                    log::error!(
+                        "Could not move current tab: focused tab is not in the list of tabs (cheese paper logic error)"
+                    );
+                    return None;
+                }
+            };
 
             let new_pos = match tab_move {
                 TabMove::Next => (current_pos + 1) % open_tabs.len(),

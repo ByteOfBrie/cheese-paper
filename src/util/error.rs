@@ -31,6 +31,12 @@ impl From<std::io::Error> for CheeseError {
     }
 }
 
+impl From<String> for CheeseError {
+    fn from(value: String) -> Self {
+        CheeseError::new(value)
+    }
+}
+
 impl Display for CheeseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.msg)

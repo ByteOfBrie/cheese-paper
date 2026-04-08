@@ -139,7 +139,10 @@ impl ProjectTracker {
 
         let committer = Signature::now(COMMITTER_NAME, COMMITTER_EMAIL).unwrap();
 
-        let mut index = self.repo.index().expect("cannot get the Index file");
+        let mut index = self
+            .repo
+            .index()
+            .map_err(|base_err| format!("Cannot get the Index file: {base_err}"))?;
 
         if let Err(err) = index.add_all(["."], git2::IndexAddOption::DEFAULT, None) {
             return Err(format!("failed to add paths: {err}"));
@@ -181,9 +184,15 @@ impl ProjectTracker {
         let parent_commit = self
             .repo
             .head()
-            .expect("head should always exist")
+            .map_err(|base_err| {
+                format!("Error when loading parent commit: head does not exist: {base_err}")
+            })?
             .peel_to_commit()
-            .expect("head should always have commits");
+            .map_err(|base_err| {
+                format!(
+                    "Error when loading parent commit: head should always have commits: {base_err}"
+                )
+            })?;
 
         if let Err(err) = self.repo.commit(
             Some("HEAD"),
