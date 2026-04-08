@@ -145,6 +145,11 @@ impl dyn Schema {
             .iter()
             .position(|val| moving_file_id == val)
             .unwrap_or_else(|| {
+                log::error!(
+                    "Children should only be removed from their parents. child id: \
+                    {moving_file_id}, parent: {source_file_id}. Please report this issue"
+                );
+
                 panic!(
                     "Children should only be removed from their parents. \
                     child id: {moving_file_id}, parent: {source_file_id}"
@@ -179,7 +184,9 @@ impl dyn Schema {
                 .move_object(new_index, dest.borrow().get_path(), objects)
         {
             // We don't pass enough information around to meaninfully recover here
-            log::error!("Encountered error while trying to move {moving_file_id}");
+            log::error!(
+                "Encountered unrecoverable error while trying to move {moving_file_id}: {err}"
+            );
             panic!("Encountered unrecoverable error while trying to move {moving_file_id}: {err}");
         }
 

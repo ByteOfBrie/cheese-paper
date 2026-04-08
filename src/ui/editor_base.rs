@@ -219,8 +219,7 @@ impl EditorState {
         let mut settings = Settings::new(project_dirs.config_dir().to_path_buf());
 
         settings.load().unwrap_or_else(|err| {
-            log::error!("{err}");
-            panic!("{err}");
+            log::error!("error while loading settings: {err}");
         });
 
         // If we're not supposed to check for updates, we're also already done
@@ -232,13 +231,14 @@ impl EditorState {
             Ok(config) => config
                 .parse::<DocumentMut>()
                 .expect("invalid toml data file"),
-            Err(err) => match err.kind() {
-                std::io::ErrorKind::NotFound => DocumentMut::new(),
-                _ => {
-                    log::error!("Unknown error while reading editor settings: {err}");
-                    panic!("Unknown error while reading editor settings: {err}");
+            Err(err) => {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    log::error!(
+                        "Unknown error while reading editor settings, could not load: {err}"
+                    );
                 }
-            },
+                DocumentMut::new()
+            }
         };
 
         data.load(&data_toml);

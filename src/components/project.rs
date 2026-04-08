@@ -1052,6 +1052,9 @@ impl Project {
             }
             if file_object.get_base().index.is_none() && !self.is_top_level_folder(file_object.id())
             {
+                log::error!(
+                    "Found file object {file_object} with index None, cannot recover, please report this issue"
+                );
                 panic!("Found file object {file_object} with index None");
             }
         }
