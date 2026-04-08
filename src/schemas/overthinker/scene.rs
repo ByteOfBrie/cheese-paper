@@ -167,7 +167,7 @@ impl FileObject for Scene {
         if needs_pov {
             write_outline_property(
                 "POV",
-                &self.metadata.pov.borrow().to_string(objects),
+                &self.metadata.pov.borrow().to_display(objects),
                 export_string,
             );
         }

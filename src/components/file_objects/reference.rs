@@ -94,6 +94,30 @@ impl ObjectReference {
         output.push(']');
         output
     }
+
+    pub fn to_display(&self, objects: &FileObjectStore) -> String {
+        match self {
+            Self::Known(file_id) => match objects.get(file_id) {
+                Some(referenced_object) => {
+                    referenced_object.borrow().get_base().metadata.name.clone()
+                }
+                None => {
+                    log::error!(
+                        "Could not find file ID {file_id} for reference while attempting to save"
+                    );
+                    String::from("Error finding character's name")
+                }
+            },
+            Self::Unknown(unknown) => {
+                if unknown.name.is_empty() {
+                    String::from("Unknown")
+                } else {
+                    unknown.name.clone()
+                }
+            }
+            Self::None => String::new(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
