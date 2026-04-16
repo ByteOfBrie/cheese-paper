@@ -1,3 +1,4 @@
 /target
 .lapce
 .vscode
+build/flatpak/flatpak-builder-tools/
