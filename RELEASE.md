@@ -2,6 +2,8 @@ This lists some of the instructions for releasing the official build of cheese-p
 
 1. Ensure that CI job for the latest commit succeeded (sort out any non-release issues before trying to create the release)
 
+2. Run `./build/flatpak/update_sources.sh` to verify that sources are up to date.
+
 2. Double check that the version in `Cargo.toml` matches the planned version tag (it should! Fix it if necessary)
 
 3. Push version tag:
