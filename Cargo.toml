@@ -15,7 +15,7 @@ rust-version = "1.91.1"
 categories = ["text-editors", "filesystem"]
 
 [package.metadata.bundle]
-identifier = "gay.brie.cheese-paper"
+identifier = "gay.brie.CheesePaper"
 category = "Productivity"
 icon = ["resources/cheese-paper-icon.png"]
 resources = ["resources/spellcheck/*"]

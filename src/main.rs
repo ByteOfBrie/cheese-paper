@@ -55,12 +55,12 @@ fn main() -> eframe::Result {
     let viewport = if let Ok(icon_data) = icon_data_res {
         egui::ViewportBuilder::default()
             .with_icon(icon_data)
-            .with_app_id("cheese-paper")
+            .with_app_id("gay.brie.CheesePaper")
     } else {
         // if you clone without setting up git lfs, we won't have a valid icon file.
         // we just proceed without it for now
         log::warn!("Could not load icon data: did this repo have git lfs set up?");
-        egui::ViewportBuilder::default().with_app_id("cheese-paper")
+        egui::ViewportBuilder::default().with_app_id("gay.brie.CheesePaper")
     };
 
     let native_options = NativeOptions {

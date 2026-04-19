@@ -46,6 +46,8 @@ This is almost the same as characters, but for information about the world. This
 
 Cheese Paper projects split their contents over a lot of different files. This is wonderful for when you're trying to navigate around a larger project, especially outside of the editor, but makes it annoying to share a high level summary with someone else, particularly if that person is not lucky enough to also be using Cheese Paper. We have a solution, however: the outline export:
 
+TODO: summarize what it does
+
 > # Robot with Frustrated Mechanic
 > 
 > Story Summary:
