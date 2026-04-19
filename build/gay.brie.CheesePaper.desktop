@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=Cheese Paper
+Comment=Organized writing tool with a simple file format for easy syncing 
+Categories=Office;WordProcessor;
+
+Icon=gay.brie.CheesePaper
+Exec=cheese-paper
+Terminal=false
+Keywords=cheese-paper;cheese paper;office;writing;edit;novel;text;

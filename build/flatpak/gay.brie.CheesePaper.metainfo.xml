@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>gay.brie.CheesePaper</id>
+  
+  <name>Cheese Paper</name>
+  <summary>Organized writing tool with a simple file format for easy syncing </summary>
+  
+  <metadata_license>CC-BY-4.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  
+  <description>
+    <p>
+      Cheese Paper is a text editor for writing long form prose, particularly fiction. Cheese Paper attempts to have metadata (especially notes and summaries) tied to individual scenes (or other objects). Unlike any other text editors, Cheese Paper does this while retaining a simple file format that can be easily synced and meaningfully modified outside the editor, including being reasonable to edit by hand on a phone.
+    </p>
+    <p>
+      The underlying text is all Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, also simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing programs - if you sync the files on disk, it will happily load them.
+    </p>
+    <p>
+      ## Features
+    </p>
+    <p>
+      ### See your notes as you write
+    </p>
+    <p>
+      Cheese Paper keeps your notes visible as you&apos;re writing the scene. This can be used to jot down something for later, to plan our where a scene will go before writing, or to summarize a scene after you&apos;ve written it to get a better high level overview of your story.
+    </p>
+    <p>
+      ### Set the colors how you want
+    </p>
+    <p>
+      Cheese Paper comes with both a dark and light theme out of the box, and has the ability to customize nearly every color used in the editor.
+    </p>
+    <p>
+      ### Randomize your theme
+    </p>
+    <p>
+      Is the text too readable? Colors too pleasant? Not enough whimsy?
+    </p>
+    <p>
+      Thankfully, Cheese Paper has a solution: a button that randomizes every single color used in the theme. There is no coordination, no consistency, and no concern for contrast. If you restart Cheese Paper with this option selected, it will helpfully generate a new random theme. You can also save your randomized theme if you somehow generate one that looks somewhat okay.
+    </p>
+    <p>
+      My roommate suggested this feature, then was horrified to find me actually using it while editing a story. You can also horrify others around you!
+    </p>
+    <p>
+      ### Characters
+    </p>
+    <p>
+      Characters are a handy place to fill out some information about who is in your story. It&apos;s easy to reference it in one place, and conveniently located on the sidebar below the story text. You can also set characters to be the POV of a scene.
+    </p>
+    <p>
+      ### Worldbuilding
+    </p>
+    <p>
+      This is almost the same as characters, but for information about the world. This can be places, real or fictional, and as specific as desired. This could also be about organizations or magic systems in your world, if the plot/setting calls for that.
+    </p>
+    <p>
+      ### Outline Export
+    </p>
+    <p>
+      Cheese Paper projects split their contents over a lot of different files. This is wonderful for when you&apos;re trying to navigate around a larger project, especially outside of the editor, but makes it annoying to share a high level summary with someone else, particularly if that person is not lucky enough to also be using Cheese Paper. We have a solution, however: the outline export
+    </p>
+    <p>
+      ### Story Export
+    </p>
+    <p>
+      Cheese Paper combines all of the scenes (that have not explicitly been excluded) into a single file in the outline process. This produces a markdown file, which is then easily transformed into any file format you might desire. For the transformation, I highly recommend Pandoc, [which has a fantastic online tool here](https://pandoc.org/app/). Pandoc is a great way to convert markdown to an epub, docx, html, or pdf.
+    </p>
+    <p>
+      (Side note: if you are distributing a book, please consider not just using PDFs. PDFs can be difficult for readers who need larger font sizes, particularly on smaller devices like phones)
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">gay.brie.CheesePaper.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://brie.gay/images/cheese-paper/scene.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://brie.gay/images/cheese-paper/amaryllis%20character.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://brie.gay/images/cheese-paper/rose%20workshop%20worldbuilding.png</image>
+    </screenshot>
+  </screenshots>
+</component>
