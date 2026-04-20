@@ -12,13 +12,13 @@ Cheese Paper's home is on [Codeberg](https://codeberg.org/ByteOfBrie/cheese-pape
 
 Cheese Paper keeps your notes visible as you're writing the scene. This can be used to jot down something for later, to plan our where a scene will go before writing, or to summarize a scene after you've written it to get a better high level overview of your story.
 
-<img src="resources/screenshots/scene.png" alt="Screenshot of the Cheese Paper editor opened to a project titled 'Robot with Frustrated Mechanic'. There is a view of folders and scenes on the left, a main editor window with the text of the scene, and a summary and notes section on the sidebar" width="500">
+<img src="resources/screenshots/scene.png" alt="Cheese Paper opened to a project. There is a view of folders and scenes on the left, a main editor window with the text of the scene, and a summary and notes section on the right sidebar" width="500">
 
 ### Set the colors how you want
 
 Cheese Paper comes with both a dark and light theme out of the box, and has the ability to customize nearly every color used in the editor.
 
-<img src="resources/screenshots/light theme.png" alt="Screenshot of the Cheese Paper editor open, now with a light theme" width="300">
+<img src="resources/screenshots/light theme.png" alt="Cheese Paper editor with a light theme" width="300">
 
 ### Randomize your theme
 
@@ -26,7 +26,7 @@ Is the text too readable? Colors too pleasant? Not enough whimsy?
 
 Thankfully, Cheese Paper has a solution: a button that randomizes every single color used in the theme. There is no coordination, no consistency, and no concern for contrast. If you restart Cheese Paper with this option selected, it will helpfully generate a new random theme. You can also save your randomized theme if you somehow generate one that looks somewhat okay.
 
-<img src="resources/screenshots/random theme.png" alt="Screenshot of the Cheese Paper editor open, with a randomly generated theme. The left sidebar is bright green, the text is blue, the buttons are also blue (and barely readable). The main settings window is a pale orange/yellow. It looks awful." width="300">
+<img src="resources/screenshots/random theme.png" alt="Cheese Paper editor with a randomly generated theme. The left sidebar is bright green, the text is blue, the buttons are also blue (and barely readable). The main settings window is a pale orange/yellow. It looks awful." width="300">
 
 My roommate suggested this feature, then was horrified to find me actually using it while editing a story. You can also horrify others around you!
 
@@ -34,19 +34,21 @@ My roommate suggested this feature, then was horrified to find me actually using
 
 Characters are a handy place to fill out some information about who is in your story. It's easy to reference it in one place, and conveniently located on the sidebar below the story text. You can also set characters to be the POV of a scene.
 
-<img src="resources/screenshots/amaryllis character.png" alt="Screenshot of the Cheese Paper Character view, for Amaryllis. Visible are notes about her appearance (Smooth fake-skin panels with some visible seams), her personality (She's still figuring this out for herself. She'll end up being a little bit bubbly and outgoing), a summary (An ex-combat bot, one of the two main love interests in the story. She's really into Rose, but is also incredibly out of her depth in dealing with nuanced human interactions like flirting), and notes (I'd like to have a little bit of her choosing her own individuality. I don't think I want military or police, but maybe a mercenary bot of sorts who was mostly used as a tool)" width="300">
+<img src="resources/screenshots/amaryllis character.png" alt="Cheese Paper Character view, for Amaryllis. Visible sections include: notes about her appearance (Smooth fake-skin panels with some visible seams...), her personality (She's still figuring this out for herself. She'll end up being a little bit bubbly and outgoing...), a summary (An ex-combat bot, one of the two main love interests in the story. She's really into Rose, but is also incredibly out of her depth in dealing with nuanced human interactions like flirting...), and notes (I'd like to have a little bit of her choosing her own individuality...)" width="300">
 
 ### Worldbuilding
 
 This is almost the same as characters, but for information about the world. This can be places, real or fictional, and as specific as desired. This could also be about organizations or magic systems in your world, if the plot/setting calls for that.
 
-<img src="resources/screenshots/rose workshop worldbuilding.png" alt="Screenshot of the Cheese Paper Worldbuilding view for Rose's Workshop. Visible are notes about it's connection to the story (The setting for literally every scene in this story), description (Mechanic's workshop, somewhat messy (so Amaryllis has things to trip on)), appearance (Concrete flooring and industrial appearance, a little bit messy, but the type where Rose knows *exactly* where everything is), other senses (In the industrial district, so things are a bit loud. Some smells of machine oil), and notes (Not much is defined so far in terms of blocking. There's a chair where work is done and some shelving, but more might be added later on)" width="300">
+<img src="resources/screenshots/rose workshop worldbuilding.png" alt="Cheese Paper Worldbuilding view for Rose's Workshop. Visible sections include: notes about it's connection to the story (The setting for literally every scene in this story), description (Mechanic's workshop, somewhat messy (so Amaryllis has things to trip on)), appearance (Concrete flooring and industrial appearance, a little bit messy, but the type where Rose knows *exactly* where everything is), other senses (In the industrial district, so things are a bit loud. Some smells of machine oil), and notes (Not much is defined so far in terms of blocking. There's a chair where work is done and some shelving, but more might be added later on)" width="300">
 
 ### Outline Export
 
 Cheese Paper projects split their contents over a lot of different files. This is wonderful for when you're trying to navigate around a larger project, especially outside of the editor, but makes it annoying to share a high level summary with someone else, particularly if that person is not lucky enough to also be using Cheese Paper. We have a solution, however: the outline export:
 
-TODO: summarize what it does
+The outline export produces a single file containing your notes (but not story prose) which can easily be shared.
+
+For example:
 
 > # Robot with Frustrated Mechanic
 > 
@@ -90,7 +92,7 @@ Here is an example of some of the output:
 
 # Installing
 
-You can get [the latest release on codeberg](https://codeberg.org/ByteOfBrie/cheese-paper/releases). On Windows and MacOS, installers are generally recommended for most users, but the portable versions are also available, although without default spellcheck or start menu/dock icons.
+You can get [the latest release on Codeberg](https://codeberg.org/ByteOfBrie/cheese-paper/releases). On Windows and MacOS, installers are generally recommended for most users, but the portable versions are also available, although without default spellcheck or start menu/dock icons.
 
 # Compiling
 
@@ -135,7 +137,7 @@ Cheese Paper makes exactly one network request: if checking for updates is enabl
 
 ## AI
 
-Cheese Paper was written by humans without the assistance of AI/LLM tools. There are various concerns around the ehtics, quality, and copyright status of AI created code, so please avoid submitting any code authored/assisted by LLMs.
+Cheese Paper was written by humans without the assistance of AI/LLM tools. There are various concerns around the ethics, quality, and copyright status of AI created code, so please avoid submitting any code authored/assisted by LLMs.
 
 ## Contributing
 
