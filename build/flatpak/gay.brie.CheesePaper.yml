@@ -24,6 +24,8 @@ finish-args:
   # cheese-paper uses config and data
   - --filesystem=xdg-config/cheese-paper
   - --filesystem=xdg-data/cheese-paper
+  # allow for opening the folder for dictionary
+  - --talk-name=org.freedesktop.FileManager1
 modules:
   - name: cheese-paper
     buildsystem: simple
