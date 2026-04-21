@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    env,
     sync::OnceLock,
     time::{Duration, SystemTime},
 };
@@ -210,11 +211,24 @@ impl SettingsPage {
             ui.label(RichText::new(err_msg).color(Color32::RED));
         }
 
-        let app_dict_folder_path = settings_data.settings_path.join("dictionaries").clone();
-        if ui.button("Open Dictionary Folder").clicked()
-            && let Err(err) = open::that(app_dict_folder_path)
-        {
-            log::warn!("Could not open dictionary folder: {err}");
+        if ui.button("Open Dictionary Folder").clicked() {
+            let app_dict_folder_path = if cfg!(target_os = "linux")
+                && env::var("container") == Ok("flatpak".to_owned())
+                && let Some(home_dir) = env::home_dir()
+            {
+                // we intentionally ignore XDG_CONFIG_HOME if we're in a flatpak here because
+                // we're trying to open a path on the host system, and it needs to match.
+                // this will still not work for anyone with a XDG_CONFIG_HOME on their host
+                // system that isn't `~/.config` running in a flatpak, but I don't know if we
+                // have enough information to ever make that work
+                home_dir.join(".config/cheese-paper/dictionaries")
+            } else {
+                settings_data.settings_path.join("dictionaries").clone()
+            };
+
+            if let Err(err) = open::that(app_dict_folder_path) {
+                log::warn!("Could not open dictionary folder: {err}");
+            }
         }
 
         cheese_response
