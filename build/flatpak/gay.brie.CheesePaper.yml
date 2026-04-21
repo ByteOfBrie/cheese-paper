@@ -13,14 +13,11 @@ finish-args:
   - --socket=fallback-x11
   # Wayland access
   - --socket=wayland
-  # GPU acceleration if needed
+  # GPU acceleration (for egui (I think?))
   - --device=dri
   # Needs to talk to the network: (only for checking for updates,
-  # can/should disable for flathub)
+  # can (should?) disable for flathub)
   - --share=network
-  # Needs to save files locally (first test without, but portals might not work
-  # out of the box)
-  #- --filesystem=xdg-documents
   # cheese-paper uses config and data
   - --filesystem=xdg-config/cheese-paper
   - --filesystem=xdg-data/cheese-paper
