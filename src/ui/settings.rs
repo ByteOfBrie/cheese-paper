@@ -6,7 +6,6 @@ pub mod theme;
 use crate::ui::prelude::*;
 
 use dictionaries::AvailableDictionary;
-use spellbook::Dictionary;
 
 use crate::components::file_objects::utils::{
     create_dir_if_missing, process_name_for_filename, write_with_temp_file,

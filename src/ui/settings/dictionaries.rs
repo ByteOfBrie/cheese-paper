@@ -3,8 +3,6 @@ use std::{env, path::PathBuf};
 use super::SettingsData;
 use crate::ui::prelude::*;
 
-use spellbook::Dictionary;
-
 #[derive(Debug)]
 pub struct AvailableDictionary {
     dic_path: PathBuf,
@@ -55,16 +53,7 @@ impl TryFrom<PathBuf> for AvailableDictionary {
 
 impl AvailableDictionary {
     pub fn load(&self) -> Result<Dictionary, CheeseError> {
-        let dic = std::fs::read_to_string(&self.dic_path)?;
-        let aff = std::fs::read_to_string(&self.aff_path)?;
-
-        Dictionary::new(&aff, &dic).map_err(|err| {
-            cheese_error!(
-                "Error reading dictionary files ({:?} and {:?}):\n{err}",
-                &self.dic_path,
-                &self.aff_path
-            )
-        })
+        Dictionary::new(self.aff_path.clone(), self.dic_path.clone())
     }
 }
 
@@ -95,7 +84,8 @@ impl SettingsData {
             dict_search_paths.push(exe_folder.join("../Resources/resources/spellcheck/en_US/"));
         } else if env::consts::OS == "windows"
             && let Ok(exe_path) = std::env::current_exe()
-            && let Some(exe_folder) = exe_path.parent() {
+            && let Some(exe_folder) = exe_path.parent()
+        {
             dict_search_paths.push(exe_folder.join("../resources/spellcheck/en_US/"));
         }
 

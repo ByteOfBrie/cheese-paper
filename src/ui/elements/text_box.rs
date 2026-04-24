@@ -263,11 +263,8 @@ impl Text {
                     ctx.spellcheck_status.correct = true;
                 } else {
                     ctx.spellcheck_status.correct = false;
-                    ctx.spellcheck_status.suggestions.clear();
-                    dictionary.suggest(
-                        &ctx.spellcheck_status.selected_word,
-                        &mut ctx.spellcheck_status.suggestions,
-                    );
+                    ctx.spellcheck_status.suggestions =
+                        dictionary.suggest(&ctx.spellcheck_status.selected_word);
                 }
             }
         }

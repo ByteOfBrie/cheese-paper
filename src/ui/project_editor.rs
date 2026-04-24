@@ -30,7 +30,6 @@ use egui::{Key, Modifiers};
 use egui_dock::{DockArea, DockState};
 use egui_ltreeview::TreeViewState;
 use rfd::FileDialog;
-use spellbook::Dictionary;
 
 #[derive(Debug, Default)]
 pub struct SpellCheckStatus {
@@ -80,7 +79,6 @@ impl Debug for ProjectEditor {
 #[derive(Debug)]
 pub struct DictionaryState {
     pub dictionary: Option<Dictionary>,
-    _fresh_dictionary: Option<Dictionary>,
     /// The words that are explictly ignored, are stored in the data toml file
     ignored_words: HashSet<String>,
     characters_and_places: HashSet<String>,
@@ -90,10 +88,9 @@ pub struct DictionaryState {
 }
 
 impl DictionaryState {
-    pub fn new(dict: Option<Dictionary>) -> Self {
+    pub fn new(dictionary: Option<Dictionary>) -> Self {
         Self {
-            dictionary: dict.clone(),
-            _fresh_dictionary: dict,
+            dictionary,
             ignored_words: HashSet::new(),
             characters_and_places: HashSet::new(),
             old_characters_and_places: HashSet::new(),
@@ -148,23 +145,23 @@ impl DictionaryState {
             .added_file_object_names
             .difference(&self.characters_and_places);
 
-        if names_to_remove.count() != 0 {
+        if names_to_remove.count() != 0
+            && let Some(dictionary) = &self.dictionary
+            && let Ok(mut new_dictionary) = dictionary.try_clone()
+        {
             // we have words added to the dictionary that need to be removed now, the only way we can do
-            // this is to freshly clone the dictionary and add everything back
-            self.dictionary = self._fresh_dictionary.clone();
+            // this is to freshly clone the dictionary and add everything back (until we do #277)
 
-            if let Some(dictionary) = &mut self.dictionary {
-                for word in &self.ignored_words {
-                    if !dictionary.check(word)
-                        && let Err(err) = dictionary.add(word)
-                    {
-                        log::error!(
-                            "Could not add already ignored word {word} to dictionary: {err}"
-                        );
-                    }
+            for word in &self.ignored_words {
+                if !new_dictionary.check(word)
+                    && let Err(err) = new_dictionary.add(word)
+                {
+                    log::error!("Could not add already ignored word {word} to dictionary: {err}");
                 }
             }
+
             self.added_file_object_names.clear();
+            self.dictionary = Some(new_dictionary);
         }
 
         if let Some(dictionary) = &mut self.dictionary {

@@ -14,7 +14,7 @@ pub use {
         render_data::RenderDataStore,
         settings::Settings,
     },
-    crate::util::CheeseError,
+    crate::util::{CheeseError, Dictionary},
     egui::{Response, Ui},
     regex::Regex,
     std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc},

@@ -6,7 +6,6 @@ use crate::{
     },
     util::{self, version},
 };
-use spellbook::Dictionary;
 
 use crate::components::file_objects::utils::{create_dir_if_missing, write_with_temp_file};
 use directories::ProjectDirs;
@@ -694,6 +693,20 @@ impl CheesePaperApp {
                                 self.state.new_project_name.clone(),
                             ) {
                                 Ok(project) => {
+                                    let dictionary = if let Some(dict) = &self.dictionary {
+                                        match dict.try_clone() {
+                                            Ok(cloned_dictionary) => Some(cloned_dictionary),
+                                            Err(err) => {
+                                                log::warn!(
+                                                    "Dictionary exists, but unable to clone: {err}"
+                                                );
+                                                None
+                                            }
+                                        }
+                                    } else {
+                                        None
+                                    };
+
                                     self.state.data.last_project_parent_folder =
                                         owned_folder_dir.clone();
                                     self.state
@@ -705,7 +718,7 @@ impl CheesePaperApp {
                                         project,
                                         Vec::new(),
                                         None,
-                                        self.dictionary.clone(),
+                                        dictionary,
                                         self.state.settings.clone(),
                                         self.state.data.last_export_folder.clone(),
                                         &self.state.data.custom_dictionary,
@@ -785,11 +798,23 @@ impl CheesePaperApp {
             .cloned()
             .unwrap_or_default();
 
+        let dictionary = if let Some(dict) = &self.dictionary {
+            match dict.try_clone() {
+                Ok(cloned_dictionary) => Some(cloned_dictionary),
+                Err(err) => {
+                    log::warn!("Dictionary exists, but unable to clone: {err}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let mut project_editor = ProjectEditor::new(
             project,
             open_tabs.clone(),
             current_tab.clone(),
-            self.dictionary.clone(),
+            dictionary,
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,

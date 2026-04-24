@@ -52,7 +52,7 @@ egui_ltreeview = { version = "0.6", features = ["persistence"] }
 egui_dock = "0.18"
 directories = "6"
 rfd = "0.17"
-spellbook = "0.4"
+hunspell-rs = "0.4"
 notify = "8.1.0"
 notify-debouncer-full = "0.7"
 cow-utils = "0.1.3"
