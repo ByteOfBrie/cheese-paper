@@ -4,6 +4,7 @@ runtime-version: '25.08'
 sdk: "org.freedesktop.Sdk"
 sdk-extensions:
   - "org.freedesktop.Sdk.Extension.rust-stable"
+  - "org.freedesktop.Sdk.Extension.llvm20"
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 command: "cheese-paper"
