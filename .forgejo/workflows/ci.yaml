@@ -53,6 +53,12 @@ jobs:
         cargo install cargo-bundle
         cargo bundle --release
         zip -r target/release/${{ matrix.archive_name }} target/release/${{ matrix.build_name }}
+    - name: Create Flatpak
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        flatpak-builder --force-clean --user --install-deps-from=flathub --repo=target/flatpak-repo builddir build/flatpak/gay.brie.CheesePaper.yml
+        flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo target/flatpak-repo target/cheese-paper.flatpak gay.brie.CheesePaper
     - name: Upload Artifacts
       # we don't need/want to upload binaries on pull requests, but doing everything
       # else is good
@@ -61,3 +67,9 @@ jobs:
       with:
         name: cheese-paper-${{ matrix.name }}
         path: target/release/${{ matrix.archive_name }}
+    - name: Upload Flatpak
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cheese-paper.flatpak
+        path: target/cheese-paper.flatpak
