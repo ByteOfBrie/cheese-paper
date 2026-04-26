@@ -105,14 +105,16 @@ git lfs install
 git lfs pull
 ```
 
-Once you have all of the files, just use cargo to build and run:
+Cheese Paper relies on bindgen for now (in the dependency chain for hunspell), which means that `libclang` must be installed to compile. For more information, see [rust-bindgen's requirements](https://rust-lang.github.io/rust-bindgen/requirements.html)
+
+Finally, use cargo to build and run:
 
 ```
 cargo build
 cargo run
 ```
 
-There are more complex commands to deal with packaging, but many of these are awful and complex and I don't think anyone else should suffer through that. If you also wish to suffer, look at the release workflow (but you brought this upon yourself)
+There are more complex commands to deal with packaging, but many of these are awful and complex and I don't think anyone else should suffer through that. For anyone who also wishes to suffer, look at the release workflow (but you brought this upon yourself)
 
 # Other
 

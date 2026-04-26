@@ -13,3 +13,24 @@ flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/fl
 flatpak-builder --force-clean --user --install-deps-from=flathub --install builddir build/flatpak/gay.brie.CheesePaper.yml
 ```
 (or without `--install` if you don't want to install it on your system)
+
+## Other notes
+
+Beware of high resource usage from rust-analyzer when trying to parse these directories. Using vscode, I had to configure some vscode and rust-analyzer to explicitly not to parse them:
+
+```
+    "rust-analyzer.files.exclude": [
+        "builddir",
+        "target/flatpak-repo"
+    ],
+    "files.watcherExclude": {
+        ".git/objects/**": true,
+        ".git/subtree-cache/**": true,
+        ".hg/store/**": true,
+        "*/.git/objects/**": true,
+        "*/.git/subtree-cache/**": true,
+        "*/.hg/store/**": true,
+        "builddir/**": true,
+        "target/flatpak-repo/**": true
+    }
+```
