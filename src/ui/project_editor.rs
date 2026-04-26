@@ -509,7 +509,7 @@ impl ProjectEditor {
                         }
 
                         ui.menu_button("Recent Projects", |ui| {
-                            for project in state.data.recent_projects.iter() {
+                            for project in state.data.recent_projects_on_disk.iter() {
                                 if ui.button(project.to_string_lossy()).clicked() {
                                     state.closing_project = true;
                                     state.next_project = Some(project.clone());

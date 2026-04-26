@@ -27,7 +27,10 @@ type OpenFileIds = (Vec<String>, Option<String>);
 #[derive(Debug)]
 pub struct Data {
     data_directory: PathBuf,
-    pub recent_projects: Vec<PathBuf>,
+    /// Recent projects that have been found on disk. These are projects that we can (try to) open
+    pub recent_projects_on_disk: Vec<PathBuf>,
+    /// List of all recent projects that were found, regardless of being openable
+    pub recent_projects_all: Vec<PathBuf>,
     pub last_project_parent_folder: PathBuf,
     pub last_export_folder: PathBuf,
     pub last_open_file_ids: HashMap<String, OpenFileIds>,
@@ -42,7 +45,8 @@ impl Data {
     pub fn new(data_directory: PathBuf) -> Self {
         Self {
             data_directory,
-            recent_projects: Vec::new(),
+            recent_projects_on_disk: Vec::new(),
+            recent_projects_all: Vec::new(),
             last_project_parent_folder: directories::UserDirs::new()
                 .unwrap()
                 .home_dir()
@@ -61,22 +65,18 @@ impl Data {
         if let Some(recent_projects_array) =
             table.get("recent_projects").and_then(|val| val.as_array())
         {
-            let recent_projects_str: Vec<_> = recent_projects_array
+            self.recent_projects_all = recent_projects_array
                 .iter()
                 .filter_map(|val| val.as_str())
-                .map(|val| val.to_string())
+                .map(PathBuf::from)
                 .collect();
 
-            let mut recent_projects = Vec::new();
-
-            for project in recent_projects_str {
-                let project_path = PathBuf::from(project);
-                if project_path.exists() {
-                    recent_projects.push(project_path);
-                }
-            }
-
-            self.recent_projects = recent_projects;
+            self.recent_projects_on_disk = self
+                .recent_projects_all
+                .iter()
+                .filter(|f| f.exists())
+                .cloned()
+                .collect();
         }
 
         if let Some(last_project_parent_folder_value) = table.get("last_project_parent_folder")
@@ -141,7 +141,7 @@ impl Data {
     /// Save the data in this object to a table
     fn save(&self, table: &mut DocumentMut) {
         let mut recent_projects = toml_edit::Array::new();
-        for project in self.recent_projects.iter() {
+        for project in self.recent_projects_all.iter() {
             recent_projects.push(project.to_string_lossy().to_string());
         }
         table.insert("recent_projects", value(recent_projects));
@@ -499,6 +499,26 @@ pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
     ctx.set_style(style);
 }
 
+/// Helper function to ensure that a particular element is first in the list, made generic
+/// because I have no self control
+fn put_element_first<T: std::cmp::PartialEq + Clone>(vec: &mut Vec<T>, element: &T) -> bool {
+    match vec.iter().position(|id| id == element) {
+        Some(position) => {
+            if position == 0 {
+                false
+            } else {
+                let project_pathbuf = vec.remove(position);
+                vec.insert(0, project_pathbuf);
+                true
+            }
+        }
+        None => {
+            vec.insert(0, element.clone());
+            true
+        }
+    }
+}
+
 impl CheesePaperApp {
     pub fn new(cc: &eframe::CreationContext<'_>, project_dirs: ProjectDirs) -> Self {
         let state = EditorState::new(project_dirs);
@@ -524,7 +544,7 @@ impl CheesePaperApp {
         };
 
         if app.state.settings.reopen_last()
-            && let Some(last_open_project) = app.state.data.recent_projects.first()
+            && let Some(last_open_project) = app.state.data.recent_projects_on_disk.first()
         {
             let last_open_project = last_open_project.clone();
             if let Err(err) = app.load_project(PathBuf::from(&last_open_project)) {
@@ -550,7 +570,7 @@ impl CheesePaperApp {
                     .id_salt("recent projects")
                     .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
-                            let projects = self.state.data.recent_projects.clone();
+                            let projects = self.state.data.recent_projects_on_disk.clone();
                             for project in projects {
                                 if ui.button(project.to_string_lossy().to_string()).clicked()
                                     && let Err(err) = self.load_project(project.clone())
@@ -711,7 +731,11 @@ impl CheesePaperApp {
                                         owned_folder_dir.clone();
                                     self.state
                                         .data
-                                        .recent_projects
+                                        .recent_projects_on_disk
+                                        .insert(0, project.get_path());
+                                    self.state
+                                        .data
+                                        .recent_projects_all
                                         .insert(0, project.get_path());
                                     self.state.data_modified = true;
                                     self.project_editor = Some(ProjectEditor::new(
@@ -765,29 +789,13 @@ impl CheesePaperApp {
             self.state.data_modified = true;
         }
 
-        let project_path_position = self
-            .state
-            .data
-            .recent_projects
-            .iter()
-            .position(|id| id == &project_path);
+        if put_element_first(&mut self.state.data.recent_projects_on_disk, &project_path) {
+            self.state.data_modified = true;
+        }
 
-        match project_path_position {
-            Some(position) => {
-                if position != 0 {
-                    let project_pathbuf = self.state.data.recent_projects.remove(position);
-                    self.state.data.recent_projects.insert(0, project_pathbuf);
-                    self.state.data_modified = true;
-                }
-            }
-            None => {
-                self.state
-                    .data
-                    .recent_projects
-                    .insert(0, project_path.clone());
-                self.state.data_modified = true;
-            }
-        };
+        if put_element_first(&mut self.state.data.recent_projects_all, &project_path) {
+            self.state.data_modified = true;
+        }
 
         // load tabs
         let (open_tabs, current_tab) = self
