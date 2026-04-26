@@ -41,10 +41,16 @@ impl ProjectTracker {
             ));
         }
 
+        // The repo path is just the tracker directory, plus the project ID, plus `.git`
+        // We'll set the workdir path separately
         let repo_path = tracker_path.join(format!("{}.git", project.base_metadata.id));
 
         let repo = if repo_path.exists() {
-            match Repository::open(repo_path) {
+            // We have an existing repo path, we open bare because in some circumstances (e.g., use
+            // of flatpak and non-flatpak on the same system), the `config` file in the repo will
+            // have a workdir path that doesn't exist, so a normal open will fail. We'll set the
+            // workdir again right after, so it shouldn't be an issue
+            match Repository::open_bare(repo_path) {
                 Ok(repo) => {
                     if let Err(err) = repo.set_workdir(&project.get_path(), false) {
                         return Err(format!("could not load workdir: {err}"));
