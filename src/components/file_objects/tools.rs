@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use toml_edit::DocumentMut;
 
 use super::*;
-use crate::components::file_objects::utils::read_file_contents;
 
 pub type FileID = Rc<String>;
 
@@ -71,20 +70,11 @@ impl dyn FileObject {
     }
 
     /// Determine if the file should be loaded
-    fn should_load(&mut self, file_to_read: &Path) -> Result<bool, CheeseError> {
-        let current_modtime = match std::fs::metadata(file_to_read) {
-            Ok(file_metadata) => file_metadata.modified()?,
-            Err(err) => {
-                log::warn!(
-                    "attempted to load file that does not exist: {:?}",
-                    file_to_read
-                );
-                return Err(err.into());
-            }
-        };
+    fn should_load(&mut self, new_file_metadata: &std::fs::Metadata) -> Result<bool, CheeseError> {
+        let new_file_modtime = new_file_metadata.modified()?;
 
         if let Some(old_modtime) = self.get_base().file.modtime
-            && old_modtime == current_modtime
+            && old_modtime == new_file_modtime
         {
             // We've already loaded the latest revision, nothing to do
             return Ok(false);
@@ -95,23 +85,20 @@ impl dyn FileObject {
 
     /// Reloads the contents of this file object from disk. Assumes that the file has been properly
     /// initialized already
-    pub fn reload_file(&mut self) -> Result<(), CheeseError> {
+    pub fn reload_file(
+        &mut self,
+        new_toml_header: DocumentMut,
+        file_body: Option<String>,
+    ) -> Result<(), CheeseError> {
         let file_to_read = self.get_file();
 
-        if !self.should_load(&file_to_read)? {
+        let file_metadata = std::fs::metadata(&file_to_read).map_err(|err| {
+            cheese_error!("attempted to reload file that does not exist: {file_to_read:?}: {err}")
+        })?;
+
+        if !self.should_load(&file_metadata)? {
             return Ok(());
         }
-
-        let (metadata_str, file_body) = read_file_contents(&file_to_read)?;
-
-        let new_toml_header = match metadata_str.parse::<DocumentMut>() {
-            Ok(toml_header) => toml_header,
-            Err(err) => {
-                return Err(cheese_error!(
-                    "Could not reload file: invalid file metadata header: {err}"
-                ));
-            }
-        };
 
         let base_file_object = self.get_base_mut();
 

@@ -235,16 +235,16 @@ impl dyn Schema {
         // Create the file info components right at the start
         let dirname = filename
             .parent()
-            .ok_or(cheese_error!(
-                "filename supplied to from_file should have a dirname component",
-            ))?
+            .ok_or_else(|| {
+                cheese_error!("filename supplied to from_file should have a dirname component",)
+            })?
             .to_path_buf();
 
         let basename = filename
             .file_name()
-            .ok_or(cheese_error!(
-                "filename supplied to from_file should have a basename component",
-            ))?
+            .ok_or_else(|| {
+                cheese_error!("filename supplied to from_file should have a basename component",)
+            })?
             .to_owned();
 
         let mut modified = false;
@@ -344,11 +344,13 @@ impl dyn Schema {
 
         let index = get_index_from_name(&basename.to_string_lossy());
 
-        // Check if we're loading a file object that we already know about
-        if let Some(existing_file_id) = toml_header
+        let existing_file_id_option = toml_header
             .get("id")
             .and_then(|id_item| id_item.as_str())
-            .map(|id_str| FileID::new(id_str.to_owned()))
+            .map(|id_str| FileID::new(id_str.to_owned()));
+
+        // Check if we're loading a file object that we already know about
+        if let Some(existing_file_id) = existing_file_id_option
             && objects.contains_key(&existing_file_id)
         {
             // we just update the object in place
@@ -361,7 +363,7 @@ impl dyn Schema {
             file_object.get_base_mut().index = index;
 
             // call the reload: if we run into an error while reloading, we need to crash so we don't ever overwrite things
-            if let Err(err) = file_object.reload_file() {
+            if let Err(err) = file_object.reload_file(toml_header, file_body) {
                 log::error!("Fatal error while reloading file {file_object}: {err}");
                 panic!("Fatal error while reloading file {file_object}: {err}");
             }
