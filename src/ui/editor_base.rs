@@ -191,7 +191,7 @@ pub struct EditorState {
     pub data: Data,
     data_toml: DocumentMut,
     data_modified: bool,
-    error_message: Option<(String, Instant)>,
+    project_creation_error_message: Option<(String, Instant)>,
     new_project_dir: Option<PathBuf>,
     new_project_name: String,
     new_project_schema: &'static dyn Schema,
@@ -257,7 +257,7 @@ impl EditorState {
             data,
             data_toml,
             data_modified: false,
-            error_message: None,
+            project_creation_error_message: None,
             new_project_dir: None,
             new_project_name: String::new(),
             new_project_schema: &DEFAULT_SCHEMA,
@@ -558,10 +558,10 @@ impl CheesePaperApp {
     }
 
     fn choose_project_ui(&mut self, ctx: &egui::Context) {
-        if let Some((_message, time)) = &self.state.error_message
+        if let Some((_message, time)) = &self.state.project_creation_error_message
             && time.elapsed().as_secs() > 7
         {
-            self.state.error_message = None;
+            self.state.project_creation_error_message = None;
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -586,7 +586,7 @@ impl CheesePaperApp {
 
             ui.add_space(50.0);
 
-            let label_size = match &self.state.error_message {
+            let label_size = match &self.state.project_creation_error_message {
                 Some((message, _time)) => {
                     let response = ui.vertical_centered(|ui| {
                         ui.label(message);
@@ -752,7 +752,7 @@ impl CheesePaperApp {
                                 Err(err) => {
                                     log::error!("Error while attempting to create project: {err}");
                                     let error_message = format!("unable to create project: {err}");
-                                    self.state.error_message =
+                                    self.state.project_creation_error_message =
                                         Some((error_message, Instant::now()));
                                 }
                             }
@@ -774,7 +774,7 @@ impl CheesePaperApp {
         let project = Project::load(project_path).map_err(|err| {
             log::error!("encountered error while trying to load project: {err}");
             let error_message = format!("unable to load project: {err}");
-            self.state.error_message = Some((error_message, Instant::now()));
+            self.state.project_creation_error_message = Some((error_message, Instant::now()));
             cheese_error!("unable to load project\n{}", err)
         })?;
 

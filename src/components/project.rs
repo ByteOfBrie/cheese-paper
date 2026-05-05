@@ -2,7 +2,7 @@ use crate::cheese_error;
 use crate::components::file_objects::{FileInfo, FileObject, FileObjectMetadata, FileObjectStore};
 use crate::components::schema::Schema;
 use crate::components::text::Text;
-use crate::schemas::{DEFAULT_SCHEMA, resolve_schema};
+use crate::schemas::{DEFAULT_SCHEMA, FileTypeInfo, resolve_schema};
 use crate::util::CheeseError;
 
 use notify::event::RenameMode;
@@ -30,6 +30,14 @@ use crate::components::file_objects::utils::{
 type RecommendedDebouncer = Debouncer<RecommendedWatcher, RecommendedCache>;
 type WatcherReceiver = std::sync::mpsc::Receiver<Result<Vec<DebouncedEvent>, Vec<notify::Error>>>;
 
+#[derive(Debug)]
+pub struct ConflictingFileInfo {
+    pub path: PathBuf,
+    pub metadata: Result<std::fs::Metadata, std::io::Error>,
+    pub file_id: FileID,
+    pub file_type: &'static FileTypeInfo,
+}
+
 /// An entire project. This is somewhat file_object like, but we don't implement everything,
 /// so it's separate (for now)
 #[derive(Debug)]
@@ -49,6 +57,10 @@ pub struct Project {
 
     /// We don't need to do anything to the watcher, but we stop getting events if it's dropped
     _watcher: RecommendedDebouncer,
+
+    /// Keep track of files that are causing conflicts, we'll prompt the user
+    /// about them before doing anything else
+    pub conflicting_files: Vec<Vec<ConflictingFileInfo>>,
 }
 
 #[derive(Debug, Default)]
@@ -270,6 +282,7 @@ impl Project {
             event_queue: VecDeque::new(),
             file_event_rx,
             _watcher: watcher,
+            conflicting_files: Vec::new(),
         };
 
         project.add_object(text);
@@ -403,6 +416,7 @@ impl Project {
             last_added_event: None,
             file_event_rx,
             _watcher: watcher,
+            conflicting_files: Vec::new(),
         };
 
         let metadata_modified = project.load_metadata()?;
@@ -986,6 +1000,9 @@ impl Project {
                             .get_base()
                             .children
                             .contains(&file_id);
+                        // We sometimes receive multiple creation events from a single file
+                        // modification, depending on OS/filesystem/editor, so we only add
+                        // it once
                         if !parent_has_child {
                             parent_object
                                 .borrow_mut()
@@ -1039,24 +1056,28 @@ impl Project {
                 .cloned(),
         );
 
+        if !self.conflicting_files.is_empty() {
+            log::warn!(
+                "Called clean_up_orphaned_objects with non-empty conflicting files list. \
+                Will be cleared and re-scanned. Current contents: {:?}",
+                self.conflicting_files
+            );
+            self.conflicting_files.clear();
+        }
+
+        let mut duplicated_objects: HashSet<FileID> = HashSet::new();
+
         // Visit every object and remove all children from the dangling list. This will
         // not find cycles, but if there are cycles in our tree we have bigger problems
         for file_object in self.objects.values() {
             let file_object = file_object.borrow();
             for child in file_object.get_base().children.iter() {
                 if !dangling.remove(child) {
-                    log::error!(
-                        "Found two occurrences of child {child} in objects, unable to recover, exiting"
-                    );
-                    if let Some(duplicate_object) = self.objects.get(child) {
-                        log::error!(
-                            "Path of one of the duplicate: {:?}",
-                            duplicate_object.borrow().get_path()
-                        );
-                    }
-                    // I might regret making this a panic instead of a log, but it
-                    // shouldn't be possible (and I'm not sure how to recover)
-                    panic!("Found two occurrences of child {child} in objects");
+                    // If we try to remove an object twice, it means that two objects own it, so we
+                    // (presumably) have either a duplicated file (most likely) or a cycle (somehow).
+                    //
+                    // We'll try to recover with user input after this loop
+                    duplicated_objects.insert(child.clone());
                 }
             }
             if file_object.get_base().index.is_none() && !self.is_top_level_folder(file_object.id())
@@ -1064,8 +1085,93 @@ impl Project {
                 log::error!(
                     "Found file object {file_object} with index None, cannot recover, please report this issue"
                 );
-                panic!("Found file object {file_object} with index None");
+                panic!(
+                    "Found file object {file_object} with index None. This should not be possible."
+                );
             }
+        }
+
+        for duplicated_id in duplicated_objects {
+            let mut conflicting_file_info = Vec::new();
+
+            for parent_object_ref in self.objects.values() {
+                let parent_object = parent_object_ref.borrow();
+
+                if parent_object.get_base().children.contains(&duplicated_id) {
+                    // We use expect here because we cannot continue, even though this shouldn't be
+                    // possible in the first place
+                    // TODO: display fatal error message in the client instead of except (to panic)
+                    let parent_dir_contents = parent_object
+                        .get_path()
+                        .read_dir()
+                        .inspect_err(|err| {
+                            log::error!(
+                                "Could not read directory containing duplicate file, this \
+                                should not be possible, giving up. Error: {err}"
+                            );
+                        })
+                        .expect("Giving up, could not read directory to recover");
+
+                    let mut found_in_parent = false;
+                    for contained_file_result in parent_dir_contents {
+                        if let Ok(file_entry) = contained_file_result.inspect_err(|err| {
+                            log::warn!("Could not read file in directory, skipping: {err}")
+                        }) {
+                            let mut fake_objects: FileObjectStore = HashMap::new();
+                            // Try to load every file in that directory again, ignoring the result
+                            // this is not the most efficient option but it doesn't really matter
+                            //
+                            // It might be a good idea to allow load_file to take an option to force it to
+                            // not recurse, which we could then use to extract the full file info.
+                            // Loading files has side effects, although at the point where we're calling
+                            // this, it should have been loaded already, so this shouldn't do anything
+                            if let Ok(loaded_file_id) = self
+                                .schema
+                                .load_file(&file_entry.path(), &mut fake_objects)
+                                .inspect_err(|err| {
+                                    log::debug!(
+                                        "could not load file while processing \
+                                        duplicates of {duplicated_id}: {err}"
+                                    )
+                                })
+                            {
+                                let file_type = fake_objects
+                                    .get(&loaded_file_id)
+                                    .unwrap()
+                                    .borrow()
+                                    .get_type();
+
+                                // What if a folder is duplicated? it would probably
+                                // just be the metadata.toml, right? This will result in the "new"
+                                // folder getting copied again, but I don't want to deal with folder
+                                // contents
+                                if loaded_file_id == duplicated_id {
+                                    found_in_parent = true;
+                                    conflicting_file_info.push(ConflictingFileInfo {
+                                        path: file_entry.path(),
+                                        metadata: file_entry.path().metadata(),
+                                        file_id: loaded_file_id.clone(),
+                                        file_type,
+                                    });
+                                }
+                                // Do I need to do anything else here? I don't think so
+                                // I need to read in the duplicated stuff somewhere else
+                            }
+                        }
+                    }
+
+                    if !found_in_parent {
+                        log::error!(
+                            "Did not find duplicate file ID {duplicated_id} in parent object \
+                            {parent_object}, despite being listed as a child. Unable to recover"
+                        );
+                        panic!(
+                            "While processing duplicates, parent claimed to have child but was not found, exiting"
+                        )
+                    }
+                }
+            }
+            self.conflicting_files.push(conflicting_file_info);
         }
 
         // If there are any objects left, these are the roots of the trees of dangling

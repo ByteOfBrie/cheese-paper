@@ -263,7 +263,8 @@ impl dyn FileObject {
                     child.borrow()
                 );
                 panic!(
-                    "Error during fix_indexing, cannot be sure if we have valid indexes anymore"
+                    "Error during fix_indexing of {}, cannot be sure if we have valid indexes anymore: {err}",
+                    child.borrow()
                 );
             }
         }
