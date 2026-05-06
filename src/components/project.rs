@@ -1000,9 +1000,13 @@ impl Project {
                             .get_base()
                             .children
                             .contains(&file_id);
-                        // We sometimes receive multiple creation events from a single file
-                        // modification, depending on OS/filesystem/editor, so we only add
-                        // it once
+                        // Most of the time, we only load a given file object once, but if
+                        // the event that we're loading was *generated* by cheese-paper,
+                        // we won't have removed it from the parent in `remove_path_from_parent`,
+                        // (because the file object's path has already changed and won't match
+                        // the event we see on disk)
+                        // We can guard against this, at the cost of sometimes being buggy when
+                        // we get duplicates of a file added in the same folder
                         if !parent_has_child {
                             parent_object
                                 .borrow_mut()

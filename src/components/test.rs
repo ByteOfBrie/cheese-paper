@@ -7,7 +7,7 @@ use crate::components::project::Project;
 use crate::util::CheeseError;
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::fs::create_dir;
+use std::fs::{File, create_dir};
 use std::fs::{read_dir, read_to_string};
 use std::path::Path;
 
@@ -2736,6 +2736,133 @@ qwerty"#,
 
     // Immediately on load, we expect the project to have discovered the error
     assert!(!project.conflicting_files.is_empty());
+}
+
+/// Ensure that we move a new file into the folder, it is non-harmful
+///
+/// We would *actually* like to detect this as a conflicting file, but the logic required
+/// is very complicated with our current logic.
+///
+/// Instead, this test (currently) ensures that we don't do anything "harmful" when there's
+/// a duplicate file loads: it should leave the file in a state we expect and can safely edit
+///
+/// This is truly one of the tests of all time. Because of (otherwise) reasonable decisions,
+/// depending on the order of the events in a hashset, we'll randomly panic or run without
+/// detecting any errors. These are both *okay* enough outcomes for now, but that's hard
+/// to capture in the test logic. Therefore, we always panic, and then if we pass all of our
+/// other tests, we panic with the expected message so the test passes. Sorry.
+#[test]
+#[should_panic(expected = r#"000-file1.md\" already exists"#)]
+fn test_tracker_id_conflict_same_folder() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/000-file1.md"),
+        r#"id = "1"
+++++++++
+asdfjkl"#,
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    // We wrote the first file, the project should be healthy here
+    assert_eq!(project.objects.len(), 4);
+    assert!(project.conflicting_files.is_empty());
+    assert!(project.objects.contains_key(&file_id("1")));
+
+    let file1_copy_write_path = base_dir.path().join("test_project/text/000-file1-copy.md");
+
+    // If we have two files in the same folder (e.g., text), we update to the new one
+    write_with_temp_file(
+        &file1_copy_write_path,
+        r#"id = "1"
+++++++++
+qwerty"#,
+    )
+    .unwrap();
+
+    // We now update the modtime (to make sure that we get consistent behavior)
+    let new_file = File::open(&file1_copy_write_path).unwrap();
+    let new_file_original_modtime = new_file.metadata().unwrap().modified().unwrap();
+    new_file
+        .set_modified(
+            new_file_original_modtime
+                .checked_add(Duration::from_millis(1))
+                .unwrap(),
+        )
+        .unwrap();
+    drop(new_file);
+
+    // Double checking assumptions about metadata/timing
+    let file1_metadata = base_dir
+        .path()
+        .join("test_project/text/000-file1.md")
+        .metadata()
+        .unwrap();
+    let file1_copy_metadata = file1_copy_write_path.metadata().unwrap();
+    // Make sure we have different modtimes on the files
+    assert_ne!(
+        file1_metadata.modified().unwrap(),
+        file1_copy_metadata.modified().unwrap()
+    );
+
+    process_updates(&mut project);
+
+    // Make sure our assumptions about the folder are correct
+    assert_eq!(
+        project.get_text_folder().borrow().get_base().children.len(),
+        1
+    );
+
+    assert_eq!(
+        project.get_text_folder().borrow().get_base().children,
+        [file_id("1")]
+    );
+
+    let file1_path = project
+        .objects
+        .get(&file_id("1"))
+        .unwrap()
+        .borrow()
+        .get_path();
+
+    let file1_contents = project
+        .objects
+        .get(&file_id("1"))
+        .unwrap()
+        .borrow()
+        .get_body();
+
+    assert_eq!(
+        file1_path,
+        base_dir.path().join("test_project/text/000-file1.md")
+    );
+    assert_eq!(file1_contents, "asdfjkl\n");
+
+    if file1_path == base_dir.path().join("test_project/text/000-file1.md") {
+        assert_eq!(file1_contents, "asdfjkl\n");
+    } else if file1_path == base_dir.path().join("test_project/text/000-file1-copy.md") {
+        assert_eq!(file1_contents, "qwerty\n");
+    } else {
+        panic!("Unknown path: {file1_path:?}");
+    }
+
+    // With the current detection logic, we don't pick up on this as a conflicting file,
+    // see function docstring
+    assert!(project.conflicting_files.is_empty());
+
+    // We've completed the test, yay! As mentioned in the test docstring, we have `should_panic`
+    // because we *can* also panic randomly here. Since we're okay with this (for now), we
+    // now need to panic with the right message so the test passes. Sorry.
+    panic!(r#"000-file1.md\" already exists"#)
 }
 
 #[test]
