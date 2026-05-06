@@ -87,6 +87,84 @@ pub fn get_index_from_name(name: &str) -> Option<usize> {
     }
 }
 
+/// Split a name like `000-filename.1.md` into (000, filename, 1)
+///
+/// We might not actually use it, but I'm considering it, and it might be useful
+/// in the future
+#[allow(dead_code)]
+pub fn get_components_from_name(name: &str) -> (Option<usize>, &str, Option<usize>) {
+    let (prefix, body) = match name.split_once('-') {
+        Some((prefix, suffix)) => (prefix.parse().ok(), suffix),
+        None => (None, name),
+    };
+
+    let base_name = if body.ends_with(".toml") {
+        body.strip_suffix(".toml").unwrap()
+    } else if body.ends_with(".md") {
+        body.strip_suffix(".md").unwrap()
+    } else {
+        body
+    };
+
+    // If we have any dots in the name, get whatever is after the last one, otherwise
+    let mut name_components = base_name.split('.');
+    let ending = name_components.next_back().unwrap();
+
+    if name_components.next().is_some()
+        && ending.chars().all(|char| char.is_numeric())
+        && let Ok(count) = ending.parse()
+    {
+        // Adding 1 for the `.` as well
+        let numeric_ending_len = ending.len() + 1;
+        // This seems dangerous but it should be okay: we know that there's more to the string
+        // than this. We're indexing a string by bytes, but we can only possibly be taking
+        // numeric characters or a period, so we can't accidentally use unicode
+        let name_substring = base_name
+            .get(..(base_name.len() - numeric_ending_len))
+            .unwrap();
+        (prefix, name_substring, Some(count))
+    } else {
+        (prefix, base_name, None)
+    }
+}
+
+#[test]
+fn test_get_components_from_name() {
+    assert_eq!(get_components_from_name(r"file.md"), (None, "file", None));
+    assert_eq!(
+        get_components_from_name(r"1-file.md"),
+        (Some(1), "file", None)
+    );
+    assert_eq!(
+        get_components_from_name(r"001-file.md"),
+        (Some(1), "file", None)
+    );
+    assert_eq!(
+        get_components_from_name(r"file.1.md"),
+        (None, "file", Some(1))
+    );
+    assert_eq!(
+        get_components_from_name(r"1file1.md"),
+        (None, "1file1", None)
+    );
+    assert_eq!(
+        get_components_from_name(r"file.0x1.md"),
+        (None, "file.0x1", None)
+    );
+    assert_eq!(
+        get_components_from_name(r"file.0x1.md"),
+        (None, "file.0x1", None)
+    );
+    assert_eq!(
+        get_components_from_name(r"file.0.1.md"),
+        (None, "file.0", Some(1))
+    );
+    assert_eq!(
+        get_components_from_name(r"file.0.1.toml"),
+        (None, "file.0", Some(1))
+    );
+}
+
 pub fn create_dir_if_missing(dest_path: &Path) -> std::io::Result<&Path> {
     let dirname = dest_path.parent().ok_or_else(|| {
         std::io::Error::new(
