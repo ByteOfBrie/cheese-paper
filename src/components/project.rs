@@ -427,7 +427,11 @@ impl Project {
         project.clean_up_orphaned_objects();
 
         project.resolve_references();
-        project.save()?;
+        // if we've detected conflicting files, we don't want to try to save (which will
+        // error, otherwise, continue as normal)
+        if project.conflicting_files.is_empty() {
+            project.save()?;
+        }
 
         Ok(project)
     }
@@ -438,8 +442,15 @@ impl Project {
     }
 
     pub fn save(&mut self) -> Result<(), CheeseError> {
-        // First, try saving the children
+        // We should only save when the project is healthy, when there are conflicting
+        // files the user must manage them before we can continue
+        if !self.conflicting_files.is_empty() {
+            return Err(cheese_error!(
+                "Tried to save with conflicting files! Stopping to avoid overwriting"
+            ));
+        }
 
+        // First, try saving the children
         let results: Vec<Result<(), CheeseError>> = self
             .top_level_folders
             .iter()

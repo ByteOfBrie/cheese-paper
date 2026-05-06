@@ -385,7 +385,7 @@ impl dyn FileObject {
 
         if let Err(err) = self.move_on_disk(old_path, new_path, objects) {
             log::error!(
-                "failed to set filename of {self:?} to {:?}",
+                "failed to set filename of {self} to {:?}",
                 self.get_base().file.basename
             );
             return Err(err);
