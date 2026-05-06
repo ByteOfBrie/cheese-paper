@@ -93,7 +93,9 @@ impl dyn FileObject {
         let file_to_read = self.get_file();
 
         let file_metadata = std::fs::metadata(&file_to_read).map_err(|err| {
-            cheese_error!("attempted to reload file that does not exist: {file_to_read:?}: {err}")
+            cheese_error!(
+                "attempted to reload file that could not be read: {file_to_read:?}: {err}"
+            )
         })?;
 
         if !self.should_load(&file_metadata)? {
@@ -113,6 +115,9 @@ impl dyn FileObject {
         if let Some(file_body) = file_body {
             self.load_body(file_body);
         }
+
+        self.get_base_mut().file.modtime =
+            Some(file_metadata.modified().expect("We must have modtimes"));
 
         Ok(())
     }
