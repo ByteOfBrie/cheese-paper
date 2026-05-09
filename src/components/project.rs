@@ -1038,17 +1038,42 @@ impl Project {
             }
         }
 
-        // 5. Rescan anything that needs it
-        for object_needing_rescan in file_objects_needing_rescan {
-            self.objects
-                .get(&object_needing_rescan)
-                .unwrap()
-                .borrow_mut()
-                .rescan_indexing(&self.objects, true);
-        }
-
-        // 6. Clean up any dangling objects
+        // We want to clean up orphaned objects specifically so that we can
+        // check for dangling objects before we rescan indexing (so we don't)
+        // disturb any filenames
+        // 5 (was 6). Clean up any dangling objects
         self.clean_up_orphaned_objects();
+
+        // NOTE: once we finish processing the event queue, we *must*
+        // rescan_indexing recursively for every file in the project
+        // before resuming other operations
+        if self.conflicting_files.is_empty() {
+            // 5. Rescan anything that needs it
+            for object_needing_rescan in file_objects_needing_rescan {
+                self.objects
+                    .get(&object_needing_rescan)
+                    .unwrap()
+                    .borrow_mut()
+                    .rescan_indexing(&self.objects, true);
+            }
+
+            // Bonus sanity check: every object that isn't a top level folder
+            // should have an index
+            for file_object in self.objects.values() {
+                let file_object = file_object.borrow();
+
+                if file_object.get_base().index.is_none()
+                    && !self.is_top_level_folder(file_object.id())
+                {
+                    log::error!(
+                        "Found file object {file_object} with index None, cannot recover, please report this issue"
+                    );
+                    panic!(
+                        "Found file object {file_object} with index None. This should not be possible."
+                    );
+                }
+            }
+        }
 
         log::debug!(
             "finished processing event queue at {:?}",
@@ -1094,15 +1119,6 @@ impl Project {
                     // We'll try to recover with user input after this loop
                     duplicated_objects.insert(child.clone());
                 }
-            }
-            if file_object.get_base().index.is_none() && !self.is_top_level_folder(file_object.id())
-            {
-                log::error!(
-                    "Found file object {file_object} with index None, cannot recover, please report this issue"
-                );
-                panic!(
-                    "Found file object {file_object} with index None. This should not be possible."
-                );
             }
         }
 

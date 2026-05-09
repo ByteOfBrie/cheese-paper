@@ -39,9 +39,9 @@ fn file_id(s: &str) -> Rc<String> {
     Rc::new(s.to_string())
 }
 
-/// Call process_updates twice with more time than the WATCHER_MSEC_DURATION
-/// to make sure it actually gets woken up and runs
-fn process_updates(project: &mut Project) {
+/// Special version of `process_updates` that doesn't save, useful when testing conflicting
+/// files
+fn process_updates_no_save(project: &mut Project) {
     for _ in 0..5 {
         thread::sleep(time::Duration::from_millis(60));
         project.receive_updates();
@@ -54,6 +54,12 @@ fn process_updates(project: &mut Project) {
         thread::sleep(time::Duration::from_millis(50));
         project.receive_updates();
     }
+}
+
+/// Call process_updates twice with more time than the WATCHER_MSEC_DURATION
+/// to make sure it actually gets woken up and runs
+fn process_updates(project: &mut Project) {
+    process_updates_no_save(project);
     project.save().unwrap();
 }
 
@@ -2863,6 +2869,139 @@ qwerty"#,
     // because we *can* also panic randomly here. Since we're okay with this (for now), we
     // now need to panic with the right message so the test passes. Sorry.
     panic!(r#"000-file1.md\" already exists"#)
+}
+
+/// First, create a file in another folder, then move it in
+#[test]
+fn test_tracker_id_conflict_movement() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+    let other_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    let file1_path = other_dir.path().join("file1.md");
+    let file1_copy_path = other_dir.path().join("file1-copy.md");
+
+    write_with_temp_file(
+        &file1_path,
+        r#"id = "1"
+++++++++
+asdfjkl"#,
+    )
+    .unwrap();
+
+    // These files should have different modtimes, we sleep to ensure that they don't get the same
+    // (e.g., on )
+    thread::sleep(MTIME_SLEEP_DURATION);
+
+    write_with_temp_file(
+        &file1_copy_path,
+        r#"id = "1"
+++++++++
+qwerty"#,
+    )
+    .unwrap();
+
+    // Double check that we got two different modtimes. This is just a check of our test assumptions
+    let file1_before_metadata = file1_path.metadata().unwrap();
+
+    let file1_copy = File::open(&file1_copy_path).unwrap();
+    let file1_copy_before_metadata = file1_copy.metadata().unwrap();
+    file1_copy
+        .set_modified(
+            file1_copy_before_metadata
+                .modified()
+                .unwrap()
+                .checked_add(Duration::from_millis(1))
+                .unwrap(),
+        )
+        .unwrap();
+    drop(file1_copy);
+    let file1_copy_updated_metadata = file1_copy_path.metadata().unwrap();
+
+    // Make sure we have different modtimes on the files
+    assert_ne!(
+        file1_before_metadata.modified().unwrap(),
+        file1_copy_before_metadata.modified().unwrap()
+    );
+
+    // We shouldn't see anything yet
+    process_updates(&mut project);
+    assert_eq!(project.objects.len(), 3);
+
+    // Move the first file into the project
+    rename(
+        &file1_path,
+        base_dir.path().join("test_project/text/file1.md"),
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 4);
+    assert!(project.objects.contains_key(&file_id("1")));
+    assert!(project.conflicting_files.is_empty());
+
+    // Now, we move the second file into the project
+    rename(
+        &file1_copy_path,
+        base_dir
+            .path()
+            .join("test_project/worldbuilding/file1-copy.md"),
+    )
+    .unwrap();
+
+    process_updates_no_save(&mut project);
+
+    // And now we should detect an error
+    assert!(!project.conflicting_files.is_empty());
+
+    let mut conflict_info = project.conflicting_files.pop().unwrap();
+
+    assert!(project.conflicting_files.is_empty());
+
+    assert_eq!(conflict_info.len(), 2);
+
+    let file1 = conflict_info.pop().unwrap();
+    let file2 = conflict_info.pop().unwrap();
+
+    assert_eq!(file1.file_id, file2.file_id);
+    assert_eq!(file1.file_type, file2.file_type);
+
+    assert!(file1.metadata.is_ok());
+    assert!(file2.metadata.is_ok());
+
+    assert_ne!(
+        file1.metadata.as_ref().unwrap().modified().unwrap(),
+        file2.metadata.as_ref().unwrap().modified().unwrap()
+    );
+
+    assert_ne!(file1.path, file2.path);
+
+    let (text_file, worldbuilding_file) = if file1.path.ends_with("text/000-file1.md") {
+        (file1, file2)
+    } else {
+        (file2, file1)
+    };
+
+    println!("worldbuilding file path: {:?}", worldbuilding_file.path);
+
+    assert!(text_file.path.ends_with("test_project/text/000-file1.md"));
+    assert!(
+        worldbuilding_file
+            .path
+            .ends_with("test_project/worldbuilding/file1-copy.md")
+    );
+
+    assert_eq!(
+        file1_copy_updated_metadata.modified().unwrap(),
+        worldbuilding_file.metadata.unwrap().modified().unwrap()
+    );
 }
 
 #[test]
