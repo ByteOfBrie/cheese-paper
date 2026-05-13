@@ -35,6 +35,8 @@ impl Setting<bool> {
             let response = ui.button("⟲");
             if response.clicked() {
                 self.reset_value(project_local);
+                // The egui response doesn't show as "changed", so we set it manually
+                cheese_response.modified = true;
             }
             cheese_response.process_response(&response, true);
 
