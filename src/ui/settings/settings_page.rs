@@ -62,7 +62,7 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
         project_local: bool,
     ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
-        egui::ComboBox::from_id_salt(id_salt)
+        let inner_response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(self.interface_value(project_local).as_ref())
             .show_ui(ui, |ui| {
                 for option in options {
@@ -74,6 +74,8 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
                     cheese_response.process_response(&response, false);
                 }
             });
+
+        cheese_response.tabable_ids.push(inner_response.response.id);
 
         cheese_response
     }
@@ -185,6 +187,11 @@ impl SettingsPage {
         let response = settings_data
             .check_for_updates
             .ui(ui, "Check for Updates", false);
+        cheese_response.extend(response);
+
+        let response = settings_data
+            .custom_tab_behavior
+            .ui(ui, "Tab to Everything", false);
         cheese_response.extend(response);
 
         let response = settings_data

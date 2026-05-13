@@ -230,6 +230,11 @@ struct SettingsData {
 
     selected_dictionary: Setting<String>,
 
+    /// By default, we override tab behavior. This is probably what most users want,
+    /// but some users (e.g., screen readers) might not like this behavior, so we
+    /// provide an option to disable it
+    custom_tab_behavior: Setting<bool>,
+
     theme_settings_modified: bool,
 
     /// theming for visuals.
@@ -276,6 +281,7 @@ impl SettingsData {
             check_for_updates: Setting::transparent(true),
             available_dict: Vec::new(),
             selected_dictionary: Setting::transparent("en_US".to_owned()),
+            custom_tab_behavior: Setting::transparent(true),
             theme_settings_modified: false,
             theme: Theme::default(),
             selected_theme: ThemeSelection::Default,
@@ -336,6 +342,13 @@ impl SettingsData {
                 .set_value(Some(check_for_updates), project_local);
         }
 
+        if let Some(custom_tab_behavior_item) = table.get("custom_tab_behavior")
+            && let Some(custom_tab_behavior) = custom_tab_behavior_item.as_bool()
+        {
+            self.custom_tab_behavior
+                .set_value(Some(custom_tab_behavior), project_local);
+        }
+
         if let Some(selected_dictionary) = table.get("selected_dictionary")
             && let Some(selected_dictionary) = selected_dictionary.as_str()
         {
@@ -369,6 +382,7 @@ impl SettingsData {
             || self.highlight_multiple_spaces.modified
             || self.highlight_spaces_before_punctuation.modified
             || self.check_for_updates.modified
+            || self.custom_tab_behavior.modified
             || self.theme_settings_modified;
 
         self.font_size.modified = false;
@@ -424,6 +438,13 @@ impl SettingsData {
             table.remove("check_for_updates");
         }
 
+        self.custom_tab_behavior.modified = false;
+        if let Some(custom_tab_behavior) = *self.custom_tab_behavior.value(project_local) {
+            table.insert("custom_tab_behavior", value(custom_tab_behavior));
+        } else {
+            table.remove("custom_tab_behavior");
+        }
+
         self.selected_dictionary.modified = false;
         if let Some(selected_dictionary) = &self.selected_dictionary.value(project_local) {
             table.insert("selected_dictionary", value(selected_dictionary));
@@ -455,6 +476,7 @@ impl SettingsData {
             .update_value(project_local);
         self.reopen_last.update_value(project_local);
         self.check_for_updates.update_value(project_local);
+        self.custom_tab_behavior.update_value(project_local);
         self.selected_dictionary.update_value(project_local);
     }
 
@@ -661,6 +683,10 @@ impl Settings {
 
     pub fn check_for_updates(&self) -> bool {
         *self.data.borrow().check_for_updates.get_value()
+    }
+
+    pub fn custom_tab_behavior(&self) -> bool {
+        *self.data.borrow().custom_tab_behavior.get_value()
     }
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem

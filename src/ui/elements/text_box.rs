@@ -127,7 +127,6 @@ impl Text {
             .desired_width(f32::INFINITY)
             .layouter(&mut layouter)
             .min_size(egui::Vec2 { x: 50.0, y: 100.0 })
-            .lock_focus(true)
             .id_salt(text_box_id)
             .show(ui);
 

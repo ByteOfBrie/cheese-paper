@@ -155,6 +155,8 @@ impl OpenPage {
         let rdata = ctx.stores.page.get(&self.page);
         let page_data: &mut PageData = &mut rdata.borrow_mut();
 
+        // We'll consume input here regardless, but if custom_tab_behavior is set, we won't do
+        // anything with it below
         let focus_shift_option = if ui.input_mut(|i| i.consume_key(Modifiers::SHIFT, Key::Tab)) {
             Some(FocusShiftDirection::Previous)
         } else if ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Tab)) {
@@ -190,7 +192,9 @@ impl OpenPage {
 
         self.keep |= modified;
 
-        if let Some(focus_shift) = focus_shift_option {
+        if ctx.settings.custom_tab_behavior()
+            && let Some(focus_shift) = focus_shift_option
+        {
             let current_element_index = if let Some(last_id) = page_data.last_selected_id {
                 page_tabable_ids.iter().position(|&tab| tab == last_id)
             } else {
