@@ -801,7 +801,7 @@ impl CheesePaperApp {
             .cloned()
             .unwrap_or_default();
 
-        let mut project_editor = ProjectEditor::new(
+        self.project_editor = Some(ProjectEditor::new(
             project,
             open_tabs.clone(),
             current_tab.clone(),
@@ -809,21 +809,7 @@ impl CheesePaperApp {
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,
             self.state.data.data_directory.clone(),
-        );
-
-        // bit of a dirty hack to get the theme initialized properly
-        project_editor
-            .editor_context
-            .actions
-            .schedule(|project_editor, ctx| {
-                project_editor.update_theme(ctx);
-            });
-
-        self.state
-            .settings
-            .load_project_local(&project_editor.project.toml_header);
-
-        self.project_editor = Some(project_editor);
+        ));
 
         Ok(())
     }

@@ -831,7 +831,7 @@ impl ProjectEditor {
         project: Project,
         open_tab_ids: Vec<String>,
         last_open_tab: Option<String>,
-        settings: Settings,
+        mut settings: Settings,
         last_export_folder: PathBuf,
         ignored_words: impl IntoIterator<Item: AsRef<str>>,
         data_directory: PathBuf,
@@ -849,7 +849,11 @@ impl ProjectEditor {
             }
         };
 
-        // Spellbook docs say not to do this in the UI thread
+        // We want to load the project specific settings early (before loading the dictionary)
+        settings.load_project_local(&project.toml_header);
+
+        // We theoretically should avoid loading the dictionary in the UI thread, but we can deal
+        // with that later
         let mut dictionary_state = DictionaryState::new(settings.load_dictionary());
 
         for ignored_word in ignored_words.into_iter() {
@@ -872,7 +876,9 @@ impl ProjectEditor {
 
         let mut actions = Actions::default();
 
+        // we need a UI context for these, so we schedule them
         actions.schedule(|editor, ctx| update_title(&editor.project.base_metadata.name, ctx));
+        actions.schedule(|editor, ctx| editor.update_theme(ctx));
 
         // For some weird reason we do not see font size getting applied on Macs
         // during `CheesePaperApp::new`, so we just set it again here. This is
