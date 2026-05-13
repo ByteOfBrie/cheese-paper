@@ -296,12 +296,6 @@ pub struct CheesePaperApp {
     /// to propagate the event downwards
     last_save: Instant,
 
-    /// We want to keep track of this separately from the save logic (probably?)
-    last_dictionary_update: Instant,
-
-    /// Dictionary for spellchecking, if we managed to load it
-    dictionary: Option<Dictionary>,
-
     #[cfg(feature = "metrics")]
     metrics: Metrics,
 }
@@ -334,22 +328,6 @@ impl eframe::App for CheesePaperApp {
                     project_editor.panels(ctx, &mut self.state);
                 } else {
                     project_editor.handle_conflicting_files(ctx);
-                }
-
-                // is it better to have a potential lag spike happen during a save (making the lag worse,
-                // or separately, making it smaller but separate)? not sure if this will even be an issue
-                // so I'm not thinking too hard about it right now
-                if current_time.duration_since(self.last_dictionary_update)
-                    > Duration::from_secs(20)
-                {
-                    project_editor.update_spellcheck_file_object_names();
-                    project_editor
-                        .editor_context
-                        .dictionary_state
-                        .resync_file_names();
-                    project_editor.editor_context.render_version += 1;
-
-                    self.last_dictionary_update = current_time;
                 }
 
                 // We check for updates inside of this loop so we can directly add them to the message queue
@@ -559,8 +537,6 @@ impl CheesePaperApp {
 
         configure_text_styles(&cc.egui_ctx, state.settings.font_size());
 
-        let dictionary = state.settings.load_dictionary();
-
         if state.settings.check_for_updates() {
             util::version::fetch_version();
         }
@@ -570,8 +546,6 @@ impl CheesePaperApp {
             project_editor: None,
             state,
             last_save: Instant::now(),
-            last_dictionary_update: Instant::now(),
-            dictionary,
 
             #[cfg(feature = "metrics")]
             metrics: Metrics::default(),
@@ -749,20 +723,6 @@ impl CheesePaperApp {
                                 self.state.new_project_name.clone(),
                             ) {
                                 Ok(project) => {
-                                    let dictionary = if let Some(dict) = &self.dictionary {
-                                        match dict.try_clone() {
-                                            Ok(cloned_dictionary) => Some(cloned_dictionary),
-                                            Err(err) => {
-                                                log::warn!(
-                                                    "Dictionary exists, but unable to clone: {err}"
-                                                );
-                                                None
-                                            }
-                                        }
-                                    } else {
-                                        None
-                                    };
-
                                     self.state.data.last_project_parent_folder =
                                         owned_folder_dir.clone();
                                     self.state
@@ -778,7 +738,6 @@ impl CheesePaperApp {
                                         project,
                                         Vec::new(),
                                         None,
-                                        dictionary,
                                         self.state.settings.clone(),
                                         self.state.data.last_export_folder.clone(),
                                         &self.state.data.custom_dictionary,
@@ -842,23 +801,10 @@ impl CheesePaperApp {
             .cloned()
             .unwrap_or_default();
 
-        let dictionary = if let Some(dict) = &self.dictionary {
-            match dict.try_clone() {
-                Ok(cloned_dictionary) => Some(cloned_dictionary),
-                Err(err) => {
-                    log::warn!("Dictionary exists, but unable to clone: {err}");
-                    None
-                }
-            }
-        } else {
-            None
-        };
-
         let mut project_editor = ProjectEditor::new(
             project,
             open_tabs.clone(),
             current_tab.clone(),
-            dictionary,
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,

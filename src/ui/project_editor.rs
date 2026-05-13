@@ -90,6 +90,9 @@ pub struct DictionaryState {
     old_characters_and_places: HashSet<String>,
     added_file_object_names: HashSet<String>,
     pub ignore_list_updated: bool,
+
+    /// The last time the dictionary was resynced with characters
+    last_dictionary_update: Instant,
 }
 
 impl DictionaryState {
@@ -101,6 +104,7 @@ impl DictionaryState {
             old_characters_and_places: HashSet::new(),
             added_file_object_names: HashSet::new(),
             ignore_list_updated: false,
+            last_dictionary_update: Instant::now(),
         }
     }
 
@@ -766,6 +770,21 @@ impl ProjectEditor {
         for action in actions {
             action(self, ctx);
         }
+
+        let current_time = Instant::now();
+
+        // is it better to have a potential lag spike happen during a save (making the lag worse,
+        // or separately, making it smaller but separate)? not sure if this will even be an issue
+        // so I'm not thinking too hard about it right now
+        if current_time.duration_since(self.editor_context.dictionary_state.last_dictionary_update)
+            > Duration::from_secs(20)
+        {
+            self.update_spellcheck_file_object_names();
+            self.editor_context.dictionary_state.resync_file_names();
+            self.editor_context.render_version += 1;
+
+            self.editor_context.dictionary_state.last_dictionary_update = current_time;
+        }
     }
 
     fn set_editor_tab(&mut self, page: &Page, keep: bool) {
@@ -812,7 +831,6 @@ impl ProjectEditor {
         project: Project,
         open_tab_ids: Vec<String>,
         last_open_tab: Option<String>,
-        dictionary: Option<Dictionary>,
         settings: Settings,
         last_export_folder: PathBuf,
         ignored_words: impl IntoIterator<Item: AsRef<str>>,
@@ -832,7 +850,7 @@ impl ProjectEditor {
         };
 
         // Spellbook docs say not to do this in the UI thread
-        let mut dictionary_state = DictionaryState::new(dictionary);
+        let mut dictionary_state = DictionaryState::new(settings.load_dictionary());
 
         for ignored_word in ignored_words.into_iter() {
             dictionary_state.add_ignored(ignored_word.as_ref());
