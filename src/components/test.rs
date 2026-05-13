@@ -2973,8 +2973,8 @@ qwerty"#,
     assert_eq!(file1.file_id, file2.file_id);
     assert_eq!(file1.file_type, file2.file_type);
 
-    assert!(file1.metadata.is_ok());
-    assert!(file2.metadata.is_ok());
+    assert!(file1.metadata.is_some());
+    assert!(file2.metadata.is_some());
 
     assert_ne!(
         file1.metadata.as_ref().unwrap().modified().unwrap(),

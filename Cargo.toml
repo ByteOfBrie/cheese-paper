@@ -60,6 +60,7 @@ git2 = { version = "0.20.2", features = ["vendored-libgit2", "vendored-openssl"]
 icu_casemap = "2.0.0"
 rand = "0.10"
 ureq = "3.2.0"
+trash = "5"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"

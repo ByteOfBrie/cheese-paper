@@ -30,12 +30,20 @@ use crate::components::file_objects::utils::{
 type RecommendedDebouncer = Debouncer<RecommendedWatcher, RecommendedCache>;
 type WatcherReceiver = std::sync::mpsc::Receiver<Result<Vec<DebouncedEvent>, Vec<notify::Error>>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConflictingFileInfo {
     pub path: PathBuf,
-    pub metadata: Result<std::fs::Metadata, std::io::Error>,
+    pub metadata: Option<std::fs::Metadata>,
     pub file_id: FileID,
     pub file_type: &'static FileTypeInfo,
+}
+
+impl PartialEq for ConflictingFileInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+            && self.file_id == other.file_id
+            && self.file_type == other.file_type
+    }
 }
 
 /// An entire project. This is somewhat file_object like, but we don't implement everything,
@@ -1180,7 +1188,7 @@ impl Project {
                                     found_in_parent = true;
                                     conflicting_file_info.push(ConflictingFileInfo {
                                         path: file_entry.path(),
-                                        metadata: file_entry.path().metadata(),
+                                        metadata: file_entry.path().metadata().ok(),
                                         file_id: loaded_file_id.clone(),
                                         file_type,
                                     });

@@ -330,7 +330,11 @@ impl eframe::App for CheesePaperApp {
 
         match &mut self.project_editor {
             Some(project_editor) => {
-                project_editor.panels(ctx, &mut self.state);
+                if project_editor.project.conflicting_files.is_empty() {
+                    project_editor.panels(ctx, &mut self.state);
+                } else {
+                    project_editor.handle_conflicting_files(ctx);
+                }
 
                 // is it better to have a potential lag spike happen during a save (making the lag worse,
                 // or separately, making it smaller but separate)? not sure if this will even be an issue
@@ -423,7 +427,9 @@ impl eframe::App for CheesePaperApp {
         }
 
         if current_time.duration_since(self.last_save) > Duration::from_secs(5) {
-            if let Some(project_editor) = &mut self.project_editor {
+            if let Some(project_editor) = &mut self.project_editor
+                && project_editor.project.conflicting_files.is_empty()
+            {
                 // Slightly hacky, but write the data back into the editor state with every
                 // autosave. The settings object was put into a refcell and actually included in
                 // the ctx, but this is easy and good enough for now
@@ -465,7 +471,9 @@ impl eframe::App for CheesePaperApp {
 
 impl Drop for CheesePaperApp {
     fn drop(&mut self) {
-        if let Some(project_editor) = &mut self.project_editor {
+        if let Some(project_editor) = &mut self.project_editor
+            && project_editor.project.conflicting_files.is_empty()
+        {
             project_editor.save();
         }
         self.save();

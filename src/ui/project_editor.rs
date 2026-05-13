@@ -24,12 +24,17 @@ use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
+use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use egui::{Key, Modifiers};
+use egui::{Key, Modifiers, ScrollArea};
 use egui_dock::{DockArea, DockState};
 use egui_ltreeview::TreeViewState;
 use rfd::FileDialog;
+
+const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Default)]
 pub struct SpellCheckStatus {
@@ -456,6 +461,114 @@ impl ProjectEditor {
 
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Comma)) {
             self.set_editor_tab(&Page::Settings(false), true);
+        }
+    }
+
+    pub fn handle_conflicting_files(&mut self, ctx: &egui::Context) {
+        assert!(!self.project.conflicting_files.is_empty());
+
+        let conflicting_file_vec = self.project.conflicting_files.last().unwrap();
+        let first_conflicting_file = conflicting_file_vec.first().unwrap();
+
+        let mut file_to_keep = None;
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label(format!(
+                "Conflicting {} found. (ID: {})",
+                first_conflicting_file.file_type.type_name(),
+                first_conflicting_file.file_id
+            ));
+            ui.label(
+                "Select the version of the file to use (other copies will be \
+                            moved to the trash), or manually remove duplicates from the project \
+                            folders and restart Cheese Paper",
+            );
+            ui.add_space(20.0);
+
+            ui.vertical_centered_justified(|ui| {
+                ScrollArea::vertical()
+                    .id_salt("conflicting files")
+                    .show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            for conflicting_file in conflicting_file_vec.iter() {
+                                let mut label_text = format!("File: {:?}", conflicting_file.path);
+
+                                if let Some(metadata) = &conflicting_file.metadata
+                                    && let Ok(modtime) = metadata.modified()
+                                {
+                                    label_text.push_str("\nLast modified: ");
+                                    label_text.push_str(format!("{modtime:?}").as_str());
+                                }
+
+                                if let Some(metadata) = &conflicting_file.metadata {
+                                    label_text.push_str("\nFile size: ");
+                                    label_text.push_str(format!("{:?}", metadata.size()).as_str());
+                                }
+
+                                if ui.button(label_text).clicked() {
+                                    file_to_keep = Some(conflicting_file.clone());
+                                }
+                                ui.add_space(10.0);
+                            }
+                        });
+                    });
+            });
+        });
+
+        if let Some(keep_file) = file_to_keep {
+            log::debug!("ID conflict, keeping file: {keep_file:?}");
+            let current_conflicting_files = self.project.conflicting_files.pop().unwrap();
+
+            for conflicting_file in current_conflicting_files {
+                if keep_file != conflicting_file {
+                    log::debug!("ID conflict, removing file: {:?}", conflicting_file.path);
+                    if let Err(err) = trash::delete(&conflicting_file.path) {
+                        if cfg!(windows) {
+                            let start = Instant::now();
+
+                            log::warn!(
+                                "Could not remove file on windows: retrying. This may be due to \
+                    antivirus software, consider adjusting settings if this issue persists"
+                            );
+
+                            loop {
+                                if std::fs::remove_file(&conflicting_file.path).is_ok() {
+                                    break;
+                                }
+
+                                if start.elapsed() > WINDOWS_SLEEP_DURATION {
+                                    panic!(
+                                        "Could not remove conflicting file {:?}, even \
+                                        after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                                        conflicting_file.path
+                                    );
+                                }
+
+                                thread::sleep(Duration::from_millis(20));
+                            }
+                        } else {
+                            panic!(
+                                "Could not remove conflicting file {:?}: {err}",
+                                conflicting_file.path
+                            );
+                        }
+                    }
+                }
+            }
+
+            // We finished the queue, now we have to finish the work from
+            // `process_updates`. We don't keep track of which files need
+            // to eventually be rescanned, we just do everything
+            if self.project.conflicting_files.is_empty() {
+                for top_level_folder in &self.project.top_level_folders {
+                    self.project
+                        .objects
+                        .get(top_level_folder)
+                        .unwrap()
+                        .borrow_mut()
+                        .rescan_indexing(&self.project.objects, true);
+                }
+            }
         }
     }
 
