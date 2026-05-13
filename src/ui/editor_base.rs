@@ -15,7 +15,7 @@ use toml_edit::{DocumentMut, value};
 
 use std::{
     fs::read_to_string,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -527,6 +527,32 @@ fn put_element_first<T: std::cmp::PartialEq + Clone>(vec: &mut Vec<T>, element: 
     }
 }
 
+/// On Linux, we might be running inside or outside of a flatpak, but we want to display the
+/// folder names for flatpak nicely, so we filter out the boring part of the path if it exists
+#[cfg(target_os = "linux")]
+fn process_project_path(project_path: &Path) -> String {
+    let uid = uzers::get_current_uid();
+    let flatpak_path = PathBuf::from("/run/user").join(uid.to_string()).join("doc");
+
+    if project_path.starts_with(flatpak_path) {
+        let mut components = project_path.components();
+        // our path will be something like `/run/user/1000/doc/d89f268c/flatpak-test-new`
+        // we want to filter out the first 5 components
+        components.nth(5);
+        let ending = components.as_path();
+
+        format!("flatpak: {ending:?}")
+    } else {
+        project_path.to_string_lossy().to_string()
+    }
+}
+
+/// This is just a no-op on non-linux systems, we don't have to worry about flatpak,
+/// but the functions makes it easier to have platform-specific behavior
+#[cfg(not(target_os = "linux"))]
+fn process_project_path(path: &Path) -> String {
+    project.to_string_lossy().to_string()
+}
 impl CheesePaperApp {
     pub fn new(cc: &eframe::CreationContext<'_>, project_dirs: ProjectDirs) -> Self {
         let state = EditorState::new(project_dirs);
@@ -580,7 +606,9 @@ impl CheesePaperApp {
                         ui.vertical_centered(|ui| {
                             let projects = self.state.data.recent_projects_on_disk.clone();
                             for project in projects {
-                                if ui.button(project.to_string_lossy().to_string()).clicked()
+                                let project_path = process_project_path(project.as_path());
+
+                                if ui.button(project_path).clicked()
                                     && let Err(err) = self.load_project(project.clone())
                                 {
                                     log::error!(
