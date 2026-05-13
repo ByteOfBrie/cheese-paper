@@ -405,8 +405,9 @@ impl SettingsData {
         }
 
         self.highlight_spaces_before_punctuation.modified = false;
-        if let Some(highlight_spaces_before_punctuation) =
-            self.highlight_spaces_before_punctuation.value
+        if let Some(highlight_spaces_before_punctuation) = *self
+            .highlight_spaces_before_punctuation
+            .value(project_local)
         {
             table.insert(
                 "highlight_spaces_before_punctuation",
@@ -620,7 +621,7 @@ impl Settings {
 
         if let Some(next_apply) = data.pl_next_apply {
             if now >= next_apply {
-                data.next_apply = None;
+                data.pl_next_apply = None;
                 return (true, true);
             } else {
                 ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
