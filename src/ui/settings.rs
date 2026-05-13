@@ -461,28 +461,38 @@ impl SettingsData {
     pub fn load_dictionary(&mut self) -> Option<Dictionary> {
         self.selected_dictionary.error_message = None;
 
-        let selection = self.selected_dictionary.get_value();
+        let selection = self.selected_dictionary.get_value().clone();
         if selection.is_empty() {
             return None;
         }
 
-        let dict_selection = self
-            .available_dict
-            .iter()
-            .find(|dict| dict.name == *selection)?;
-
-        dict_selection
-            .load()
-            .map_err(|err| {
-                format!(
-                    "An error was encountered loading the dictionary from {dict_selection:?}: {err}"
-                )
-            }) // chained map_err for lifetime reasons
-            .map_err(|error_msg| {
-                log::error!("{}", error_msg);
-                self.selected_dictionary.error_message = Some(error_msg);
-            })
-            .ok()
+        // Right now, we only support having one dictionary at a time, but we'll *eventually*
+        // support this later. for now, we just want to avoid breaking with the format. This
+        // logic also lets us fall back on different dictionaries if the first one doesn't work,
+        // although there's no way to configure it that way in the editor
+        for requested_dictionary in selection.split(',') {
+            if let Some(dict_selection) = self
+                .available_dict
+                .iter()
+                .find(|dict| dict.name == *requested_dictionary)
+            {
+                match dict_selection.load() {
+                    Ok(loaded_dictionary) => return Some(loaded_dictionary),
+                    Err(err) => {
+                        // We don't expect to fail to load a dictionary, but it can happen, and
+                        // we'll retry other selections if there are any
+                        let dictionary_error_message = format!(
+                            "An error was encountered loading dictionary {dict_selection:?}: {err}"
+                        );
+                        log::error!("{}", dictionary_error_message);
+                        self.selected_dictionary.error_message = Some(dictionary_error_message);
+                    }
+                }
+            } else {
+                log::debug!("Could not find dictionary {requested_dictionary}, skipping");
+            }
+        }
+        None
     }
 
     fn config_file_path(&self) -> PathBuf {
