@@ -509,8 +509,8 @@ fn process_project_path(project_path: &Path) -> String {
 /// This is just a no-op on non-linux systems, we don't have to worry about flatpak,
 /// but the functions makes it easier to have platform-specific behavior
 #[cfg(not(target_os = "linux"))]
-fn process_project_path(path: &Path) -> String {
-    project.to_string_lossy().to_string()
+fn process_project_path(project_path: &Path) -> String {
+    project_path.to_string_lossy().to_string()
 }
 impl CheesePaperApp {
     pub fn new(cc: &eframe::CreationContext<'_>, project_dirs: ProjectDirs) -> Self {

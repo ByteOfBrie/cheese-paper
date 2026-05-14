@@ -24,7 +24,6 @@ use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
-use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -506,7 +505,7 @@ impl ProjectEditor {
 
                                 if let Some(metadata) = &conflicting_file.metadata {
                                     label_text.push_str("\nFile size: ");
-                                    label_text.push_str(format!("{:?}", metadata.size()).as_str());
+                                    label_text.push_str(format!("{:?}", metadata.len()).as_str());
                                 }
 
                                 if ui.button(label_text).clicked() {
