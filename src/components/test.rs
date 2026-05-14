@@ -2840,7 +2840,9 @@ qwerty"#,
         .get(&file_id("1"))
         .unwrap()
         .borrow()
-        .get_path();
+        .get_path()
+        .canonicalize()
+        .unwrap();
 
     let file1_contents = project
         .objects
@@ -2851,13 +2853,29 @@ qwerty"#,
 
     assert_eq!(
         file1_path,
-        base_dir.path().join("test_project/text/000-file1.md")
+        base_dir
+            .path()
+            .join("test_project/text/000-file1.md")
+            .canonicalize()
+            .unwrap()
     );
     assert_eq!(file1_contents, "asdfjkl\n");
 
-    if file1_path == base_dir.path().join("test_project/text/000-file1.md") {
+    if file1_path
+        == base_dir
+            .path()
+            .join("test_project/text/000-file1.md")
+            .canonicalize()
+            .unwrap()
+    {
         assert_eq!(file1_contents, "asdfjkl\n");
-    } else if file1_path == base_dir.path().join("test_project/text/000-file1-copy.md") {
+    } else if file1_path
+        == base_dir
+            .path()
+            .join("test_project/text/000-file1-copy.md")
+            .canonicalize()
+            .unwrap()
+    {
         assert_eq!(file1_contents, "qwerty\n");
     } else {
         panic!("Unknown path: {file1_path:?}");
