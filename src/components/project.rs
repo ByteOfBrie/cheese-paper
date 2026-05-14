@@ -227,10 +227,10 @@ impl Project {
     /// Create a new project
     pub fn new(
         schema: &'static dyn Schema,
-        dirname: PathBuf,
+        project_dir: PathBuf,
         project_name: String,
     ) -> Result<Self, CheeseError> {
-        let canonical_dirname = dirname.canonicalize().unwrap();
+        let canonical_dirname = project_dir.canonicalize().unwrap();
         // Not truncating here (for now)
         let file_safe_name = process_name_for_filename(&project_name);
         let project_path = canonical_dirname.join(&file_safe_name);

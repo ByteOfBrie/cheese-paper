@@ -398,9 +398,9 @@ impl eframe::App for CheesePaperApp {
                     }
                 }
             }
-            None => match self.state.new_project_dir.is_none() {
-                true => self.choose_project_ui(ctx),
-                false => self.new_project_name_ui(ctx),
+            None => match self.state.new_project_dir {
+                None => self.choose_project_ui(ctx),
+                Some(_) => self.new_project_name_ui(ctx),
             },
         }
 
@@ -642,7 +642,7 @@ impl CheesePaperApp {
     }
 
     fn new_project_name_ui(&mut self, ctx: &egui::Context) {
-        let owned_folder_dir = self.state.new_project_dir.as_mut().unwrap().clone();
+        // let owned_folder_dir = self.state.new_project_dir.as_mut().unwrap().clone();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Modal::new(egui::Id::new("new project name")).show(ui.ctx(), |ui| {
@@ -717,32 +717,19 @@ impl CheesePaperApp {
                     |_ui| {},
                     |ui| {
                         if ui.button("Ok").clicked() {
+                            let project_dir = self
+                                .state
+                                .new_project_dir
+                                .clone()
+                                .expect("This UI only shows when there is a new_project_dir");
+                            self.state.new_project_dir = None;
                             match Project::new(
                                 self.state.new_project_schema,
-                                owned_folder_dir.clone(),
+                                project_dir,
                                 self.state.new_project_name.clone(),
                             ) {
                                 Ok(project) => {
-                                    self.state.data.last_project_parent_folder =
-                                        owned_folder_dir.clone();
-                                    self.state
-                                        .data
-                                        .recent_projects_on_disk
-                                        .insert(0, project.get_path());
-                                    self.state
-                                        .data
-                                        .recent_projects_all
-                                        .insert(0, project.get_path());
-                                    self.state.data_modified = true;
-                                    self.project_editor = Some(ProjectEditor::new(
-                                        project,
-                                        Vec::new(),
-                                        None,
-                                        self.state.settings.clone(),
-                                        self.state.data.last_export_folder.clone(),
-                                        &self.state.data.custom_dictionary,
-                                        self.state.data.data_directory.clone(),
-                                    ));
+                                    self.open_project(project);
                                 }
                                 Err(err) => {
                                     log::error!("Error while attempting to create project: {err}");
@@ -751,7 +738,6 @@ impl CheesePaperApp {
                                         Some((error_message, Instant::now()));
                                 }
                             }
-                            self.state.new_project_dir = None;
                         }
 
                         ui.add_space(10.0);
@@ -773,24 +759,27 @@ impl CheesePaperApp {
             cheese_error!("unable to load project\n{}", err)
         })?;
 
-        // open the project
-        let project_path = project.get_path();
+        self.open_project(project);
 
-        // update recent projects
-        if project_path.parent() != Some(self.state.data.last_project_parent_folder.as_path())
-            && let Some(path) = project_path.parent()
-        {
-            self.state.data.last_project_parent_folder = path.to_path_buf();
-            self.state.data_modified = true;
-        }
+        Ok(())
+    }
 
-        if put_element_first(&mut self.state.data.recent_projects_on_disk, &project_path) {
-            self.state.data_modified = true;
-        }
+    fn open_project(&mut self, project: Project) {
+        self.state.data.last_project_parent_folder = project
+            .get_path()
+            .parent()
+            .expect("Project path should always have a parent")
+            .to_owned();
 
-        if put_element_first(&mut self.state.data.recent_projects_all, &project_path) {
-            self.state.data_modified = true;
-        }
+        put_element_first(
+            &mut self.state.data.recent_projects_on_disk,
+            &project.get_path(),
+        );
+
+        put_element_first(
+            &mut self.state.data.recent_projects_all,
+            &project.get_path(),
+        );
 
         // load tabs
         let (open_tabs, current_tab) = self
@@ -801,17 +790,17 @@ impl CheesePaperApp {
             .cloned()
             .unwrap_or_default();
 
+        self.state.data_modified = true;
+
         self.project_editor = Some(ProjectEditor::new(
             project,
-            open_tabs.clone(),
-            current_tab.clone(),
+            open_tabs,
+            current_tab,
             self.state.settings.clone(),
             self.state.data.last_export_folder.clone(),
             &self.state.data.custom_dictionary,
             self.state.data.data_directory.clone(),
         ));
-
-        Ok(())
     }
 
     fn update_open_tabs(&mut self) {
