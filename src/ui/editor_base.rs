@@ -14,6 +14,7 @@ use rfd::FileDialog;
 use toml_edit::{DocumentMut, value};
 
 use std::{
+    collections::VecDeque,
     fs::read_to_string,
     path::{Path, PathBuf},
     time::{Duration, Instant},
@@ -28,9 +29,9 @@ type OpenFileIds = (Vec<String>, Option<String>);
 pub struct Data {
     data_directory: PathBuf,
     /// Recent projects that have been found on disk. These are projects that we can (try to) open
-    pub recent_projects_on_disk: Vec<PathBuf>,
+    pub recent_projects_on_disk: VecDeque<PathBuf>,
     /// List of all recent projects that were found, regardless of being openable
-    pub recent_projects_all: Vec<PathBuf>,
+    pub recent_projects_all: VecDeque<PathBuf>,
     pub last_project_parent_folder: PathBuf,
     pub last_export_folder: PathBuf,
     pub last_open_file_ids: HashMap<String, OpenFileIds>,
@@ -45,8 +46,8 @@ impl Data {
     pub fn new(data_directory: PathBuf) -> Self {
         Self {
             data_directory,
-            recent_projects_on_disk: Vec::new(),
-            recent_projects_all: Vec::new(),
+            recent_projects_on_disk: VecDeque::new(),
+            recent_projects_all: VecDeque::new(),
             last_project_parent_folder: directories::UserDirs::new()
                 .unwrap()
                 .home_dir()
@@ -485,26 +486,6 @@ pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
     ctx.set_style(style);
 }
 
-/// Helper function to ensure that a particular element is first in the list, made generic
-/// because I have no self control
-fn put_element_first<T: std::cmp::PartialEq + Clone>(vec: &mut Vec<T>, element: &T) -> bool {
-    match vec.iter().position(|id| id == element) {
-        Some(position) => {
-            if position == 0 {
-                false
-            } else {
-                let project_pathbuf = vec.remove(position);
-                vec.insert(0, project_pathbuf);
-                true
-            }
-        }
-        None => {
-            vec.insert(0, element.clone());
-            true
-        }
-    }
-}
-
 /// On Linux, we might be running inside or outside of a flatpak, but we want to display the
 /// folder names for flatpak nicely, so we filter out the boring part of the path if it exists
 #[cfg(target_os = "linux")]
@@ -552,14 +533,14 @@ impl CheesePaperApp {
         };
 
         if app.state.settings.reopen_last()
-            && let Some(last_open_project) = app.state.data.recent_projects_on_disk.first()
+            && let Some(last_open_project) = app.state.data.recent_projects_on_disk.pop_front()
         {
-            let last_open_project = last_open_project.clone();
-            if let Err(err) = app.load_project(PathBuf::from(&last_open_project)) {
+            let _ = app.load_project(PathBuf::from(&last_open_project))
+            .inspect_err(|err|{
                 log::error!(
                     "error while trying to open most recent project: {last_open_project:?}: {err}"
                 );
-            }
+            });
         }
 
         app
@@ -642,8 +623,6 @@ impl CheesePaperApp {
     }
 
     fn new_project_name_ui(&mut self, ctx: &egui::Context) {
-        // let owned_folder_dir = self.state.new_project_dir.as_mut().unwrap().clone();
-
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Modal::new(egui::Id::new("new project name")).show(ui.ctx(), |ui| {
                 ui.heading("New Project");
@@ -720,13 +699,13 @@ impl CheesePaperApp {
                             let project_dir = self
                                 .state
                                 .new_project_dir
-                                .clone()
+                                .take()
                                 .expect("This UI only shows when there is a new_project_dir");
-                            self.state.new_project_dir = None;
+                            let project_name = std::mem::take(&mut self.state.new_project_name);
                             match Project::new(
                                 self.state.new_project_schema,
                                 project_dir,
-                                self.state.new_project_name.clone(),
+                                project_name,
                             ) {
                                 Ok(project) => {
                                     self.open_project(project);
@@ -752,6 +731,19 @@ impl CheesePaperApp {
     }
 
     fn load_project(&mut self, project_path: PathBuf) -> Result<(), CheeseError> {
+        self.state
+            .data
+            .recent_projects_on_disk
+            .retain(|p| *p != project_path);
+        self.state
+            .data
+            .recent_projects_all
+            .retain(|p| *p != project_path);
+
+        self.state.data_modified = true;
+
+        self.state.save()?;
+
         let project = Project::load(project_path).map_err(|err| {
             log::error!("encountered error while trying to load project: {err}");
             let error_message = format!("unable to load project: {err}");
@@ -771,15 +763,14 @@ impl CheesePaperApp {
             .expect("Project path should always have a parent")
             .to_owned();
 
-        put_element_first(
-            &mut self.state.data.recent_projects_on_disk,
-            &project.get_path(),
-        );
+        let path = project.get_path();
 
-        put_element_first(
-            &mut self.state.data.recent_projects_all,
-            &project.get_path(),
-        );
+        self.state
+            .data
+            .recent_projects_on_disk
+            .push_front(path.clone());
+
+        self.state.data.recent_projects_all.push_front(path);
 
         // load tabs
         let (open_tabs, current_tab) = self
