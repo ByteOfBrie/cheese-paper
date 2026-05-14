@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+  # hacky fix to make linking work properly on macos build hosts,
+  # I'm not sure exactly what's stopping it from working normally
+  RUSTFLAGS: "-L native=/opt/homebrew/opt/llvm/lib/"
+
 jobs:
   create-release:
     runs-on: linux-x86_64
