@@ -7,8 +7,7 @@ use crate::components::project::Project;
 use crate::util::CheeseError;
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::fs::{File, create_dir};
-use std::fs::{read_dir, read_to_string};
+use std::fs::{OpenOptions, create_dir, read_dir, read_to_string};
 use std::path::Path;
 
 use std::cell::RefCell;
@@ -2796,7 +2795,10 @@ qwerty"#,
     .unwrap();
 
     // We now update the modtime (to make sure that we get consistent behavior)
-    let new_file = File::open(&file1_copy_write_path).unwrap();
+    let new_file = OpenOptions::new()
+        .write(true)
+        .open(&file1_copy_write_path)
+        .unwrap();
     let new_file_original_modtime = new_file.metadata().unwrap().modified().unwrap();
     new_file
         .set_modified(
@@ -2910,7 +2912,10 @@ qwerty"#,
     // Double check that we got two different modtimes. This is just a check of our test assumptions
     let file1_before_metadata = file1_path.metadata().unwrap();
 
-    let file1_copy = File::open(&file1_copy_path).unwrap();
+    let file1_copy = OpenOptions::new()
+        .write(true)
+        .open(&file1_copy_path)
+        .unwrap();
     let file1_copy_before_metadata = file1_copy.metadata().unwrap();
     file1_copy
         .set_modified(
