@@ -57,4 +57,11 @@
 
   <url type="homepage">https://brie.gay/cheese-paper/</url>
   <url type="vcs-browser">https://codeberg.org/ByteOfBrie/cheese-paper</url>
+
+  <requires>
+    <!-- We can *probably* support tablets just fine, but it's untested so far (and wouldn't)
+         be a great experience without a keyboard anyway -->
+    <control>keyboard</control>
+    <display_length compare="ge">768</display_length>
+  </requires>
 </component>
