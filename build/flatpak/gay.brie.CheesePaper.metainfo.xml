@@ -39,16 +39,46 @@
   <launchable type="desktop-id">gay.brie.CheesePaper.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <image>https://brie.gay/images/cheese-paper/scene.png</image>
+      <caption>Cheese Paper editing a scene</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/light%20scene.png</image>
     </screenshot>
-    <screenshot>
-      <image>https://brie.gay/images/cheese-paper/amaryllis%20character.png</image>
+    <screenshot environment="plasma:dark">
+      <caption>Cheese Paper editing a scene (dark mode)</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/dark%20scene.png</image>
     </screenshot>
-    <screenshot>
-      <image>https://brie.gay/images/cheese-paper/rose%20workshop%20worldbuilding.png</image>
+    <screenshot environment="plasma:dark">
+      <caption>Editing information about a specific character</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/dark%20amaryllis%20character.png</image>
+    </screenshot>
+    <screenshot environment="plasma">
+      <caption>Editing information about a place in the world</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/light%20rose%20workshop.png</image>
+    </screenshot>
+    <screenshot environment="plasma:dark">
+      <caption>A test project showing off highlighting for bold, italics, and spellcheck</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/dark%20test%20project.png</image>
+    </screenshot>
+    <screenshot environment="plasma">
+      <caption>Screenshot of the random theme functionality</caption>
+      <image>https://codeberg.org/ByteOfBrie/cheese-paper/media/branch/main/resources/flathub-screenshots/random%20colors.png</image>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.9.0" date="2026-05-15">
+      <description>
+      <p>First full release of Cheese Paper</p>
+        <ul>
+          <li>Full packaging for multiple OSes</li>
+          <li>Better UI for duplicate files</li>
+          <li>Fixed performance issues with French dictionary</li>
+          <li>Support strange paths better</li>
+          <li>More logging of errors and less crashing</li>
+        </ul>
+    </description>
+    </release>
+  </releases>
 
   <branding>
     <color type="primary" scheme_preference="light">#ebdbb5</color>
@@ -59,9 +89,11 @@
   <url type="vcs-browser">https://codeberg.org/ByteOfBrie/cheese-paper</url>
 
   <requires>
-    <!-- We can *probably* support tablets just fine, but it's untested so far (and wouldn't)
-         be a great experience without a keyboard anyway -->
-    <control>keyboard</control>
+    <!-- We can *probably* support tablets just fine, but it's untested so far (and probably
+         wouldn't be a great experience without a keyboard anyway) -->
     <display_length compare="ge">768</display_length>
   </requires>
+  <recommends>
+    <control>keyboard</control>
+  </recommends>
 </component>
