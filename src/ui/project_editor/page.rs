@@ -238,6 +238,21 @@ impl OpenPage {
             };
 
             ui.memory_mut(|mem| mem.request_focus(*next_element));
+
+            // For terrible reasons that I don't (yet) understand, tabbing back to the menu seems to
+            // happen two frames later, which means that our focus shift gets overwritten. so, we
+            // schedule an action for next frame, where we schedule the action again to actually
+            // request focus. this will only matter for *one* element, but we seem to need it there
+            // we've already requested focus once, so we should generally be able to type, and the
+            // behavior of spamming tab seems fine from my testing
+            let next_element_copy = *next_element;
+            ctx.actions.schedule(move |editor, ctx| {
+                editor.editor_context.actions.schedule(move |_editor, ctx| {
+                    ctx.memory_mut(|mem| mem.request_focus(next_element_copy));
+                });
+                ctx.request_repaint();
+            });
+            ui.request_repaint();
         }
 
         // Update the currently selected element if we need to do that

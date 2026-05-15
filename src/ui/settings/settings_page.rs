@@ -191,7 +191,7 @@ impl SettingsPage {
 
         let response = settings_data
             .custom_tab_behavior
-            .ui(ui, "Tab to Everything", false);
+            .ui(ui, "Custom Tab Behavior", false);
         cheese_response.extend(response);
 
         let response = settings_data
