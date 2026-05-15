@@ -302,14 +302,14 @@ pub struct CheesePaperApp {
 }
 
 impl eframe::App for CheesePaperApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         #[cfg(feature = "metrics")]
         self.metrics.frame_start();
 
         if self.state.closing_project {
             self.project_editor = None;
             self.state.closing_project = false;
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title("Cheese Paper".to_string()));
+            ui.send_viewport_cmd(egui::ViewportCommand::Title("Cheese Paper".to_string()));
             if let Some(new_project_path) = self.state.next_project.take()
                 && let Err(err) = self.load_project(new_project_path)
             {
@@ -317,7 +317,7 @@ impl eframe::App for CheesePaperApp {
             }
         }
 
-        if let Err(err) = self.process_settings_changes(ctx) {
+        if let Err(err) = self.process_settings_changes(ui) {
             log::error!("Encountered error while processing settings: {err}");
         }
 
@@ -326,9 +326,9 @@ impl eframe::App for CheesePaperApp {
         match &mut self.project_editor {
             Some(project_editor) => {
                 if project_editor.project.conflicting_files.is_empty() {
-                    project_editor.panels(ctx, &mut self.state);
+                    project_editor.panels(ui, &mut self.state);
                 } else {
-                    project_editor.handle_conflicting_files(ctx);
+                    project_editor.handle_conflicting_files(ui);
                 }
 
                 // We check for updates inside of this loop so we can directly add them to the message queue
@@ -400,8 +400,8 @@ impl eframe::App for CheesePaperApp {
                 }
             }
             None => match self.state.new_project_dir {
-                None => self.choose_project_ui(ctx),
-                Some(_) => self.new_project_name_ui(ctx),
+                None => self.choose_project_ui(ui),
+                Some(_) => self.new_project_name_ui(ui),
             },
         }
 
@@ -428,14 +428,14 @@ impl eframe::App for CheesePaperApp {
         #[cfg(feature = "metrics")]
         {
             let next_refresh = self.metrics.frame_stop();
-            ctx.request_repaint_after(next_refresh);
+            ui.request_repaint_after(next_refresh);
 
             if let Some(report) = &self.metrics.report {
                 egui::Area::new(egui::Id::new("metrics"))
                     .anchor(egui::Align2::LEFT_BOTTOM, [0.0, 0.0])
                     .interactable(false)
                     .order(egui::Order::Foreground)
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         ui.set_min_width(200.0);
                         ui.label(
                             egui::RichText::new(format!("{report}"))
@@ -464,7 +464,7 @@ pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
 
     let scalar = (font_size / 10.0).ceil();
 
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.global_style()).clone();
     style.text_styles = [
         (
             TextStyle::Heading,
@@ -483,7 +483,7 @@ pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
     ]
     .into();
 
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 }
 
 /// On Linux, we might be running inside or outside of a flatpak, but we want to display the
@@ -546,14 +546,14 @@ impl CheesePaperApp {
         app
     }
 
-    fn choose_project_ui(&mut self, ctx: &egui::Context) {
+    fn choose_project_ui(&mut self, ui: &mut egui::Ui) {
         if let Some((_message, time)) = &self.state.project_creation_error_message
             && time.elapsed().as_secs() > 7
         {
             self.state.project_creation_error_message = None;
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ScrollArea::vertical()
                     .id_salt("recent projects")
@@ -622,8 +622,8 @@ impl CheesePaperApp {
         });
     }
 
-    fn new_project_name_ui(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn new_project_name_ui(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             egui::Modal::new(egui::Id::new("new project name")).show(ui.ctx(), |ui| {
                 ui.heading("New Project");
 

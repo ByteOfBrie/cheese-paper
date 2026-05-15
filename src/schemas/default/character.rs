@@ -11,7 +11,7 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::ScrollArea;
+use egui::{Panel, ScrollArea};
 
 #[derive(Debug, Default)]
 pub struct CharacterMetadata {
@@ -181,10 +181,10 @@ impl FileObjectEditor for Character {
         let mut cheese_response = CheeseResponse::default();
 
         cheese_response.extend(
-            egui::SidePanel::right("metadata sidebar")
+            Panel::right("metadata sidebar")
                 .resizable(true)
-                .default_width(200.0)
-                .width_range(50.0..)
+                .default_size(200.0)
+                .size_range(50.0..)
                 .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
                 .inner,
         );

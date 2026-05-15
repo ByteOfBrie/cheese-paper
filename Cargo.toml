@@ -10,7 +10,7 @@ license = "GPL-3.0-or-later"
 authors = ["Brie <brie@brie.gay>", "Eve <new-years-evening@proton.me>"]
 
 # from `cargo msrv find`
-rust-version = "1.91.1"
+rust-version = "1.92"
 
 categories = ["text-editors", "filesystem"]
 
@@ -42,14 +42,14 @@ semver = "1.0.27"
 open = "5"
 
 # ui
-egui = "0.33"
-eframe = { version = "0.33", features = [
+egui = "0.34"
+eframe = { version = "0.34", features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 flexi_logger = "0.31"
 
-egui_ltreeview = { version = "0.6", features = ["persistence"] }
-egui_dock = "0.18"
+egui_ltreeview = { version = "0.7", features = ["persistence"] }
+egui_dock = "0.19"
 directories = "6"
 rfd = "0.17"
 hunspell-rs = "0.4"

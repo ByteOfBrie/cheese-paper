@@ -11,7 +11,7 @@ use crate::ui::prelude::*;
 use crate::ford_get;
 use crate::schemas::FileTypeInfo;
 
-use egui::ScrollArea;
+use egui::{Panel, ScrollArea};
 
 #[derive(Debug, Default)]
 pub struct PlaceMetadata {
@@ -169,10 +169,10 @@ impl FileObjectEditor for Place {
     fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         ford_get!(RenderData, rdata, ctx.stores.file_objects, self.id());
 
-        let mut cheese_response = egui::SidePanel::right("metadata sidebar")
+        let mut cheese_response = Panel::right("metadata sidebar")
             .resizable(true)
-            .default_width(200.0)
-            .width_range(50.0..)
+            .default_size(200.0)
+            .size_range(50.0..)
             .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 

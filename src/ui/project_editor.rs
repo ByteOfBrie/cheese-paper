@@ -19,7 +19,6 @@ use crate::ui::project_tracker::ProjectTracker;
 use action::Actions;
 use focus_jumper::FocusJumper;
 
-use core::f32;
 use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
@@ -28,7 +27,7 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use egui::{Key, Modifiers, ScrollArea};
+use egui::{Key, Modifiers, Panel, ScrollArea};
 use egui_dock::{DockArea, DockState};
 use egui_ltreeview::TreeViewState;
 use rfd::FileDialog;
@@ -351,22 +350,21 @@ fn update_title(project_name: &str, ctx: &egui::Context) {
 }
 
 impl ProjectEditor {
-    pub fn panels(&mut self, ctx: &egui::Context, state: &mut EditorState) {
-        self.process_input(ctx);
-        self.process_state(ctx);
+    pub fn panels(&mut self, ui: &mut egui::Ui, state: &mut EditorState) {
+        self.process_input(ui);
+        self.process_state(ui);
 
-        self.draw_menu(ctx, state);
+        self.draw_menu(ui, state);
 
         if !self.editor_context.measurements.measured {
-            egui::SidePanel::right("measurement panel").show(ctx, |ui| {
-                ui.set_height(f32::INFINITY);
+            Panel::right("measurement panel").show_inside(ui, |ui| {
                 self.editor_context.measurements.measure(ui);
             });
         }
 
         let dismiss = if let Some(message) = self.messages.front() {
-            egui::TopBottomPanel::top("message panel")
-                .show(ctx, |ui| {
+            Panel::top("message panel")
+                .show_inside(ui, |ui| {
                     message.ui(ui, &self.project, &mut self.editor_context)
                 })
                 .inner
@@ -378,7 +376,7 @@ impl ProjectEditor {
             self.messages.pop_front();
         }
 
-        egui::SidePanel::left("project tree panel").show(ctx, |ui| {
+        Panel::left("project tree panel").show_inside(ui, |ui| {
             self.side_panel(ui);
         });
 
@@ -393,8 +391,8 @@ impl ProjectEditor {
             .allowed_splits(egui_dock::AllowedSplits::None)
             .show_leaf_collapse_buttons(false)
             .show_leaf_close_all_buttons(false)
-            .show(
-                ctx,
+            .show_inside(
+                ui,
                 &mut TabViewer {
                     project: &mut self.project,
                     editor_context: &mut self.editor_context,
@@ -467,7 +465,7 @@ impl ProjectEditor {
         }
     }
 
-    pub fn handle_conflicting_files(&mut self, ctx: &egui::Context) {
+    pub fn handle_conflicting_files(&mut self, ui: &mut egui::Ui) {
         assert!(!self.project.conflicting_files.is_empty());
 
         let conflicting_file_vec = self.project.conflicting_files.last().unwrap();
@@ -475,7 +473,7 @@ impl ProjectEditor {
 
         let mut file_to_keep = None;
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.label(format!(
                 "Conflicting {} found. (ID: {})",
                 first_conflicting_file.file_type.type_name(),
@@ -606,7 +604,11 @@ impl ProjectEditor {
             let new_tab_page = open_tabs.get(new_pos).unwrap();
 
             let new_tab_index = self.dock_state.find_tab(new_tab_page).unwrap();
-            self.dock_state.set_active_tab(new_tab_index);
+            if let Err(err) = self.dock_state.set_active_tab(new_tab_index) {
+                // I'm not currently sure when this would actually happen or what to do, a warning
+                // seems reasonable enough for now
+                log::warn!("Could not set active tab: {err}");
+            }
 
             Some(new_tab_page.clone())
         } else {
@@ -614,10 +616,10 @@ impl ProjectEditor {
         }
     }
 
-    fn draw_menu(&mut self, ctx: &egui::Context, state: &mut EditorState) {
-        egui::TopBottomPanel::top("menu_bar_panel")
+    fn draw_menu(&mut self, ui: &mut egui::Ui, state: &mut EditorState) {
+        Panel::top("menu_bar_panel")
             .show_separator_line(false)
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         if ui.button("Close Project").clicked() {
@@ -726,7 +728,7 @@ impl ProjectEditor {
     }
 
     pub fn update_theme(&self, ctx: &egui::Context) {
-        ctx.style_mut(|style| {
+        ctx.global_style_mut(|style| {
             self.editor_context.settings.theme().apply(style);
         });
     }
@@ -799,7 +801,11 @@ impl ProjectEditor {
             .find_tab_from(|open_tab| &open_tab.page == page)
         {
             // We've already opened this, just select it
-            self.dock_state.set_active_tab(tab_position);
+            if let Err(err) = self.dock_state.set_active_tab(tab_position) {
+                // I'm not currently sure when this would actually happen or what to do, a warning
+                // seems reasonable enough for now
+                log::warn!("Could not set active tab: {err}");
+            }
         } else {
             if let Some(tab_position) = self.dock_state.find_tab_from(|tab| !tab.keep) {
                 // there's a tab open in browsing mode, close it
@@ -863,11 +869,15 @@ impl ProjectEditor {
             .map(|tab_id| Page::from_id(tab_id).open(true))
             .collect();
 
+        // If we have a tab to reopen, do that now
         let mut dock_state = DockState::new(open_tabs);
         if let Some(open_tab) = last_open_tab
             && let Some(new_tab_index) = dock_state.find_tab(&Page::from_id(&open_tab).open(true))
+            && let Err(err) = dock_state.set_active_tab(new_tab_index)
         {
-            dock_state.set_active_tab(new_tab_index);
+            // I'm not currently sure when this would actually happen or what to do, a warning
+            // seems reasonable enough for now
+            log::warn!("Could not set active tab: {err}");
         }
 
         let references = References::new(&project);

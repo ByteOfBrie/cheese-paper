@@ -411,7 +411,7 @@ impl Text {
             output.response.mark_changed();
         }
 
-        output.response
+        output.response.response
     }
 
     /// Toggles formatting like italic or bold
