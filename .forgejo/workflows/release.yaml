@@ -93,16 +93,16 @@ jobs:
         (cd "$(dirname "target/release/${{ matrix.build_name }}")" && zip -r "$(basename "${{ matrix.archive_name }}")" "$(basename "${{ matrix.build_name }}")" && mv "$(basename "${{ matrix.archive_name }}")" ../..)
 
         # create the dmg installer
-        create-dmg --skip-jenkins --volname "Cheese-Paper Installer" --window-pos 200 120 \
+        create-dmg --skip-jenkins --volname "Cheese Paper Installer" --window-pos 200 120 \
           --window-size 800 400 --icon-size 100 --icon "cheese-paper.app" 200 190 \
           --hide-extension "cheese-paper.app" --app-drop-link 600 185 \
-          "target/release/Cheese-Paper Installer.dmg" target/release/bundle/osx/
+          "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg" target/release/bundle/osx/
 
-        codesign --options runtime --timestamp -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" "target/release/Cheese-Paper Installer.dmg"
+        codesign --options runtime --timestamp -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg"
         # submit the zip for notarization as well, but don't wait for it (or try to staple)
         xcrun notarytool submit "target/release/${{ matrix.archive_name }}" --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
-        xcrun notarytool submit "target/release/Cheese-Paper Installer.dmg" --wait --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
-        xcrun stapler staple "target/release/Cheese-Paper Installer.dmg"
+        xcrun notarytool submit "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg" --wait --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
+        xcrun stapler staple "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg"
 
         # find python version. we need to use python3 on macos and python on windows :)
         export PYTHON_BINARY=$(if [[ $(python -V) ]]; then echo "python"; else echo "python3"; fi)
@@ -119,7 +119,7 @@ jobs:
           -H 'accept: application/json' \
           -H 'Authorization: token ${{ secrets.RELEASE_TOKEN }}' \
           -H 'Content-Type: multipart/form-data' \
-          -F 'attachment=@target/release/Cheese-Paper Installer.dmg;type=application/octet-stream'
+          -F 'attachment=@target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg;type=application/octet-stream'
 
     - name: Upload artifacts to release
       shell: bash

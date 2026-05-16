@@ -67,7 +67,7 @@ jobs:
       shell: bash
       run: |
         flatpak-builder --force-clean --user --install-deps-from=flathub --repo=target/flatpak-repo builddir build/flatpak/gay.brie.CheesePaper.yml
-        flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo target/flatpak-repo target/cheese-paper.flatpak gay.brie.CheesePaper
+        flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo target/flatpak-repo target/cheese-paper-${{ forgejo.ref_name }}.flatpak gay.brie.CheesePaper
     - name: Upload Artifacts
       # we don't need/want to upload binaries on pull requests, but doing everything
       # else is good
@@ -81,4 +81,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: cheese-paper.flatpak
-        path: target/cheese-paper.flatpak
+        path: target/cheese-paper-${{ forgejo.ref_name }}.flatpak
