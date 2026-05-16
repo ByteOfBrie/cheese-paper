@@ -41,6 +41,7 @@ impl Page {
             Self::EXPORT_ID => Self::Export,
             Self::SETTINGS_ID => Self::Settings(false),
             Self::PL_SETTINGS_ID => Self::Settings(true),
+            Self::HELP_ID => Self::Help,
             _ => Self::FileObject(FileID::new(id.to_owned())),
         }
     }

@@ -6,6 +6,8 @@ use egui::{Color32, TextFormat, text::LayoutJob};
 ///
 /// Eventually, the Style logic will be facotrized with the text box style, to allow consistent markdown rendering in non-editable text boxes.
 /// For now, however, this rendering will be much simpler
+///
+/// Currently disabled and unused, see #290
 #[derive(Debug)]
 pub struct RenderedText {
     text: String,
