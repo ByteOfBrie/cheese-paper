@@ -5,9 +5,13 @@ Thank you for using Cheese Paper. The code currently lives at https://codeberg.o
 Cheese Paper is intended to be used for writing stories which can be broken down into smaller components.
 
 There are currently four types of objects in Cheese Paper:
+
 Scenes contain the text of the story. This can be as much as an entire chapter, or as little as a paragraph, it is entirely up to the author. Scenes have a summary and notes for the author's convenience, and are not included in the final export.
+
 Folders are used to store any type of object. These can also contain a summary and notes.
+
 Characters are purely so the author has a a handy place to fill out some information about who is in the story (so they don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
+
 Places are similar to characters, but intended for information about the world. This can be a specific place/area, or just worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
 
 Depending on whether you're working with a scene, folder, character, or place, the options for metadata will be slightly different, but the concept is all the same. You have a couple different fields that you can fill out and see while writing the story.
@@ -29,9 +33,13 @@ You can edit them yourself by hand! You can edit them on a phone!
 Cheese Paper is designed to have project files be edited, moved, deleted, and created by programs outside of the editor. This can happen on the first load, or if a file is editing or synced to while Cheese Paper is already open
 
 The file format is documented below in more detail. For minimum requirements:
+
 Scene: file that ends in `.md`
+
 Character: must have `file_type = "character"` and end in `.toml`
+
 Folder: must exist as a folder
+
 Place: must exist in a `place_name/metadata.toml` and have `file_type = "place"` within
 
 # Integration
