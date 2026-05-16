@@ -356,7 +356,11 @@ pub fn write_outline_property(property_name: &str, property: &str, export_string
 pub fn read_file_contents(file_to_read: &Path) -> Result<(String, Option<String>), CheeseError> {
     let extension = match file_to_read.extension() {
         Some(val) => val,
-        None => return Err(cheese_error!("value was not string")),
+        None => {
+            return Err(cheese_error!(
+                "Could not read extension of {file_to_read:?}"
+            ));
+        }
     };
 
     let file_data = std::fs::read_to_string(file_to_read)?;

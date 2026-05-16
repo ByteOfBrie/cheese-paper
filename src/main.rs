@@ -25,14 +25,14 @@ fn main() -> eframe::Result {
 
     let egui_data_path = project_dirs.data_dir().join("egui");
 
-    match Logger::try_with_env_or_str("info,cheese_paper=debug") {
+    match Logger::try_with_env_or_str("warn,cheese_paper=info") {
         Ok(logger) => {
             if let Err(err) = logger
                 .log_to_file(FileSpec::default().directory(project_dirs.data_dir().join("logs")))
                 .append()
                 .duplicate_to_stdout(Duplicate::Debug)
                 .rotate(
-                    flexi_logger::Criterion::Size(100_000),
+                    flexi_logger::Criterion::Size(5_000_000),
                     flexi_logger::Naming::TimestampsDirect,
                     flexi_logger::Cleanup::KeepForDays(14),
                 )
