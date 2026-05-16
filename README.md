@@ -1,8 +1,8 @@
 # Cheese Paper
 
-Cheese Paper is a text editor for writing long form prose, particularly fiction. Cheese Paper attempts to have metadata (especially notes and summaries) tied to individual scenes (or other objects). Unlike any other text editors, Cheese Paper does this while retaining a simple file format that can be easily synced and meaningfully modified outside the editor, including by hand on a phone.
+Cheese Paper is a text editor for writing long form prose, particularly fiction. Cheese Paper attempts to have metadata (e.g., notes and summaries) tied to individual scenes (or other objects). Unlike other text editors, Cheese Paper does this while retaining a simple file format that can be easily synced and meaningfully modified outside the editor, including by hand on a phone.
 
-The underlying story text is all Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, also simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing programs - if you sync the files on disk, it will happily load them.
+The underlying text is Markdown, so the file format is simple. Metadata is added to the underlying format in a TOML header, also simple and easy to edit. Any files created outside the editor are automatically read in and processed like any other files, even if some or all of the metadata is missing. It is entirely possible to create, edit, move, and delete files from another text editor, even your phone. Cheese Paper also plays nicely with syncing programs - if you sync the files on disk, it will happily load them.
 
 Cheese Paper's home is on [Codeberg](https://codeberg.org/ByteOfBrie/cheese-paper), but also has [an official GitHub mirror](https://github.com/ByteOfBrie/cheese-paper) (at least for now). I am making no promises to keep up with GitHub in any way (although it might happen anyway).
 
@@ -14,7 +14,7 @@ You can get [the latest release on Codeberg](https://codeberg.org/ByteOfBrie/che
 
 # Compiling
 
-This project uses git lfs to track the icon and dictionary files. If you have `git lfs` set up on your system, this should automatically work. Otherwise, the project will still work, but you will not be able to create release builds.
+This project uses git lfs to track the icon and dictionary files. If you have `git lfs` set up on your system, this should automatically work. Otherwise, the project should still work, but you will not be able to create release builds.
 
 To pull these in later, type
 
@@ -39,7 +39,7 @@ There are more complex commands to deal with packaging, but many of these are aw
 
 ## Comparisons to other projects
 
-For more complete similar projects, check out [Manuskript](https://github.com/olivierkes/manuskript) (FOSS) or [Scrivener](https://www.literatureandlatte.com/scrivener/overview) (closed source, paid). I've used both extensively, although neither of these quite met my use case, which is why Cheese Paper exists.
+For more complete similar projects, check out [Manuskript](https://github.com/olivierkes/manuskript) (FOSS) or [Scrivener](https://www.literatureandlatte.com/scrivener/overview) (closed source, paid). I've used both extensively, although neither of these quite met my use case, otherwise Cheese Paper would not exist.
 
 [Obsidian](https://obsidian.md/) is also often compared to Cheese Paper - it is wonderful for taking notes, but I did not find that it did what I wanted with keeping my chapter notes linked to my writing. If it had, I would also not have bothered writing Cheese Paper.
 
@@ -48,17 +48,21 @@ Cheese Paper is not a perfect project, nor is it capable of every use case. If y
 
 ## Rights/Ownership
 
-Cheese Paper is an open source project, meaning that users are free to modify the code (and distribute it to other under the terms of the GPLv3, see the `COPYING` file for more information). We also have absolutely no claim to the rights surrounding anything produced in Cheese Paper.
+Cheese Paper is an open source project, meaning that users are free to modify the code (and distribute it to other under the terms of the GPLv3, see the `COPYING` file for more information).
+
+We have absolutely no rights related to anything produced in Cheese Paper. Your data is yours.
+
+There is nothing stopping Cheese Paper from being distributed in official Linux repos (beyond effort), feel free to reach out for assistance.
 
 ## Your Data/Privacy
 
 Cheese Paper does not have *any* telemetry, and we do not ever intend to collect data about our user's writing. We do not want your data. Please keep it to yourself.
 
-Cheese Paper makes exactly one network request: if checking for updates is enabled, on startup it fetches the latest version of Cheese Paper available on Codeberg. No network requests are sent if update checking is disabled.
+Cheese Paper makes exactly one network request: if checking for updates is enabled, on startup it fetches the latest version of Cheese Paper available on Codeberg. No network requests are ever sent if checking for updates is disabled.
 
 ## AI
 
-Cheese Paper was written by humans without the assistance of AI/LLM tools. There are various concerns around the ethics, quality, and copyright status of AI created code, so please avoid submitting any code authored/assisted by LLMs.
+Cheese Paper was written by humans without the assistance of AI/LLM tools. There are various concerns around the ethics, quality, and copyright status of AI created code, please avoid submitting any code authored/assisted by LLMs.
 
 ## Contributing
 
@@ -66,7 +70,7 @@ Cheese Paper welcomes contributions. If you are planning on making a larger chan
 
 ## Missing feature? Need help? Found a bug?
 
-Please try searching [the issues](https://codeberg.org/ByteOfBrie/cheese-paper/issues), and then please feel free to open up a new one, providing as much detail as possible.
+Please try searching [the issues](https://codeberg.org/ByteOfBrie/cheese-paper/issues), then opening an issue if it has not already been reported, providing as much detail as possible.
 
 # Features
 
@@ -139,8 +143,6 @@ For example:
 ## Story Export
 
 Cheese Paper combines all of the scenes (that have not explicitly been excluded) into a single file in the outline process. This produces a markdown file, which is then easily transformed into any file format you might desire. For the transformation, I highly recommend Pandoc, [which has a fantastic online tool here](https://pandoc.org/app/). Pandoc is a great way to convert markdown to an epub, docx, html, or pdf.
-
-(Side note: if you are distributing a book, please consider not just using PDFs. PDFs can be difficult for readers who need larger font sizes, particularly on smaller devices like phones)
 
 Here is an example of some of the output:
 

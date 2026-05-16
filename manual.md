@@ -9,11 +9,11 @@ There are currently four types of objects in Cheese Paper:
 * Scenes contain the text of the story. This can be as much as an entire chapter, or as little as a paragraph, it is entirely up to the author. Scenes have a summary and notes for the author's convenience, and are not included in the final export.
 * Folders are used to store any type of object. These can also contain a summary and notes.
 * Characters are purely so the author has a a handy place to fill out some information about who is in the story (so they don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
-* Places are similar to characters, but intended for information about the world. This can be a specific place/area, or just worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
+* Places are similar to characters, but intended for information about the world. This can be a specific place/area, or worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
 
 Depending on whether you're working with a scene, folder, character, or place, the options for metadata will be slightly different, but the concept is all the same. You have a couple different fields that you can fill out and see while writing the story.
 
-Ideally, this can help keep the story on track and make it easier to refer back to all of the other details. Can't remember how a specific character would normally dress? It's just one click away.
+Ideally, this can help keep the story on track and make it easier to refer back to all of the other details. Can't remember how a specific character would normally dress? It's one click away.
 
 You are encouraged to split up your project into as many folders and scenes as makes sense to you. Once you want to share it, there are options to export an outline or the story text into a single shareable file.
 
@@ -21,7 +21,7 @@ You are encouraged to split up your project into as many folders and scenes as m
 
 ## File Format
 
-One of the key design decisions was keeping the file format as simple as possible. Everything except scenes are just [toml](https://toml.io/) documents with a few set fields. For scenes, it's just a toml document, followed by `++++++++`, followed by the text of the scene (markdown). Both of these file formats are quite simple and designed to be easy for humans to read.
+One of the key design decisions was keeping the file format as simple as possible. Everything except scenes are [toml](https://toml.io/) documents with a few set fields. Scenes are a toml document, followed by `++++++++`, followed by the text of the scene (markdown). Both of these file formats were designed to be easy for humans to read.
 
 You can edit them yourself by hand! You can edit them on a phone!
 
@@ -66,6 +66,8 @@ The default export settings assume that top level folders and scenes are should 
 Markdown is designed to be fairly human readable, but you probably don't want to try to publish your story with this. Thankfully, markdown is a well known format and there are plenty of options for converting to other formats. Most notably, pandoc.
 
 Pandoc is an another open-source tool that can deal with all different types of document conversion, including taking your nice markdown file and turning it into an epub, word document, or pdf. See https://pandoc.org/app/ for an easy-to-use in-browser converter.
+
+(Side note: if you are creating a book, please consider not only distributing PDFs. PDFs can be difficult for readers who need larger font sizes, particularly on smaller devices like phones)
 
 ## Outline Export
 
@@ -156,14 +158,14 @@ To even create your self-managed git repo, you'll need to remove that file: `rm 
 
 This will only affect the ability to run git commands from inside of the folder: Cheese Paper will continue to manage its automatic tracker as normal.
 
-After you have deleted that initial link, you can simply do `git init` and start managing your local git repo however you wish, Cheese Paper will not interfere.
+After you have deleted that initial link, you can do `git init` and start managing your local git repo however you wish, Cheese Paper will not interfere.
 
 If you wish to work with the automatic tracker repo after you have removed the `.git` link, you'll need to either set the env variable:
 ```
 GIT_DIR=/home/brie/.local/share/cheese-paper/git_repos/2016bc85-57bc-42e5-bdb3-cb47110cada3.git
 ```
 
-or just pass that to all of your commands:
+or pass that to all of your commands:
 ```
 git --git-dir=/home/brie/.local/share/cheese-paper/git_repos/2016bc85-57bc-42e5-bdb3-cb47110cada3.git
 ```
@@ -174,9 +176,9 @@ At this point, you can manage it as normal, and then go back to using your local
 
 If you ignore a word in the spellcheck dialogue, you will not ever see it flagged again in any of your projects. If you do this by mistake, you can open up the data file (`data.toml` in the folder containing the log folder. See the log section for per-platform paths).
 
-First, make sure to close Cheese Paper (otherwise we might accidentally add it back in to the list of ignored words)
+First, close Cheese Paper (otherwise we might accidentally add it back in to the list of ignored words)
 
-In the data file, you'll see a `custom_dictionary` value, which will be a list of all of the words that were ever ignored. Simply delete the word from the list, and the next time you start Cheese Paper, that word will be marked as misspelled again.
+In the data file, you'll see a `custom_dictionary` value, which will be a list of all of the words that were ever ignored. Delete the word(s) from the list, and the next time you start Cheese Paper, that word will be marked as misspelled again.
 
 ## Quirks
 
