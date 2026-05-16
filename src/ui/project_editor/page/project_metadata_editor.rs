@@ -24,7 +24,6 @@ impl Project {
                 egui::TextEdit::singleline(&mut self.base_metadata.name)
                     .id_salt("name")
                     .hint_text("Story Title")
-                    .lock_focus(true)
                     .desired_width(f32::INFINITY),
             );
             cheese_response.process_response(&response, true);
@@ -38,7 +37,6 @@ impl Project {
                 egui::TextEdit::singleline(&mut self.metadata.genre)
                     .id_salt("genre")
                     .hint_text("Genre")
-                    .lock_focus(true)
                     .desired_width(f32::INFINITY),
             );
             cheese_response.process_response(&response, true);
@@ -50,7 +48,6 @@ impl Project {
                     egui::TextEdit::singleline(&mut self.metadata.author)
                         .id_salt("author")
                         .hint_text("Author Name")
-                        .lock_focus(true)
                         .desired_width(half_width),
                 );
                 cheese_response.process_response(&response, true);
@@ -59,7 +56,6 @@ impl Project {
                     egui::TextEdit::singleline(&mut self.metadata.email)
                         .id_salt("email")
                         .hint_text("Author Email")
-                        .lock_focus(true)
                         .desired_width(half_width),
                 );
                 cheese_response.process_response(&response, true);

@@ -23,8 +23,7 @@ impl NameBox {
                 let edit_response = ui.add(
                     egui::TextEdit::singleline(&mut self.edit_content)
                         .id_salt("name")
-                        .hint_text(empty_text)
-                        .lock_focus(true),
+                        .hint_text(empty_text),
                 );
                 if ctx.focus_jumper.recieve(&"name_edit_field") {
                     edit_response.request_focus();
