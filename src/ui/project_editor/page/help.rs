@@ -12,6 +12,20 @@ impl HelpPage {
     pub fn ui(&mut self, ui: &mut egui::Ui, _ctx: &mut EditorContext) -> CheeseResponse {
         layout::margin_box(ui, |ui| {
             ScrollArea::vertical().id_salt("manual").show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label("Consider viewing the ");
+                    ui.hyperlink_to(
+                        "manual in a web browser",
+                        "https://codeberg.org/ByteOfBrie/cheese-paper/src/branch/main/manual.md",
+                    );
+                    ui.label(", which has nicer formatting.");
+                });
+
+                ui.separator();
+
+                ui.add_space(10.0);
+
                 ui.label(HELP_TEXT);
             });
 

@@ -6,13 +6,10 @@ Cheese Paper is intended to be used for writing stories which can be broken down
 
 There are currently four types of objects in Cheese Paper:
 
-Scenes contain the text of the story. This can be as much as an entire chapter, or as little as a paragraph, it is entirely up to the author. Scenes have a summary and notes for the author's convenience, and are not included in the final export.
-
-Folders are used to store any type of object. These can also contain a summary and notes.
-
-Characters are purely so the author has a a handy place to fill out some information about who is in the story (so they don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
-
-Places are similar to characters, but intended for information about the world. This can be a specific place/area, or just worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
+* Scenes contain the text of the story. This can be as much as an entire chapter, or as little as a paragraph, it is entirely up to the author. Scenes have a summary and notes for the author's convenience, and are not included in the final export.
+* Folders are used to store any type of object. These can also contain a summary and notes.
+* Characters are purely so the author has a a handy place to fill out some information about who is in the story (so they don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
+* Places are similar to characters, but intended for information about the world. This can be a specific place/area, or just worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
 
 Depending on whether you're working with a scene, folder, character, or place, the options for metadata will be slightly different, but the concept is all the same. You have a couple different fields that you can fill out and see while writing the story.
 
