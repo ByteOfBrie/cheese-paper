@@ -1,5 +1,6 @@
 use std::{sync::OnceLock, thread};
 
+use semver::Version;
 use serde::Deserialize;
 
 use crate::ui::{
@@ -105,11 +106,20 @@ pub fn check_for_updates(update_ignore_version: &str) -> Option<Option<Message>>
         Ok(release_tag) => {
             if release_tag > compare_version {
                 log::debug!("Found newer release: {release_tag}");
-                Some(Some(Message::Update(UpdateMessage::new(
-                    release_info.clone(),
-                ))))
+                if let Some(version_equivalence_table) = release_info.equivalent_versions()
+                    && let Some(platform_equivalence) =
+                        version_equivalence_table.get(std::env::consts::OS)
+                    && platform_equivalence.contains(&compare_version)
+                {
+                    log::debug!("Latest release did not make any changes for our OS, skipping");
+                    Some(None)
+                } else {
+                    Some(Some(Message::Update(UpdateMessage::new(
+                        release_info.clone(),
+                    ))))
+                }
             } else {
-                log::debug!("Latest release is {release_tag}, finished checking updates");
+                log::debug!("Done checking updates, latest release is {release_tag}");
                 Some(None)
             }
         }
@@ -120,4 +130,94 @@ pub fn check_for_updates(update_ignore_version: &str) -> Option<Option<Message>>
             Some(None)
         }
     }
+}
+
+impl CodebergRelease {
+    /// Parse the body of a release for the version
+    pub fn equivalent_versions(&self) -> Option<HashMap<String, Vec<Version>>> {
+        for line in self.body.split('\n') {
+            if line.contains("equivalent-to") {
+                // optionally try to trim any html comments or whitespace (as a treat)
+                let line = line.trim();
+                let line = line.strip_prefix("<!--").unwrap_or(line);
+                let line = line.strip_suffix("-->").unwrap_or(line);
+                let line = line.trim();
+
+                // Try to parse this as a toml object. There are two hashmaps here so that serde
+                // will treat it as an inline table, otherwise it wanted separate lines
+                if let Ok(mut line_map) =
+                    toml::from_str::<HashMap<String, HashMap<String, Vec<Version>>>>(line)
+                {
+                    // If we can successfully parse it, try to extract the map we care about
+                    return line_map.remove("equivalent-to");
+                }
+            }
+        }
+        None
+    }
+}
+
+#[test]
+fn test_version_equivalence() {
+    let mut release = CodebergRelease {
+        tag_name: "0.8.2".to_string(),
+        name: "0.8.0".to_string(),
+        body: "random text".to_string(),
+        html_url: "https://codeberg.org/ByteOfBrie/cheese-paper/releases/tag/0.9.0".to_string(),
+    };
+
+    assert_eq!(release.equivalent_versions(), None);
+
+    release.body = String::from("no version equivalence");
+    assert_eq!(release.equivalent_versions(), None);
+
+    release.body = String::from(
+        r#"<!-- equivalent-to: { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]} -->"#,
+    );
+    assert_eq!(release.equivalent_versions(), None);
+
+    release.body = String::from(
+        r#"* changed equivalent-to logic: { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]} -->"#,
+    );
+    assert_eq!(release.equivalent_versions(), None);
+
+    let version_hash_map: HashMap<String, Vec<Version>> = HashMap::from([
+        (
+            "linux".to_string(),
+            vec![Version::new(0, 8, 0), Version::new(0, 8, 1)],
+        ),
+        ("windows".to_string(), vec![Version::new(0, 8, 1)]),
+    ]);
+
+    release.body = String::from(
+        r#"<!-- equivalent-to = { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]} -->"#,
+    );
+    assert_eq!(
+        release.equivalent_versions(),
+        Some(version_hash_map.clone())
+    );
+
+    release.body =
+        String::from(r#"equivalent-to = { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]}"#);
+    assert_eq!(
+        release.equivalent_versions(),
+        Some(version_hash_map.clone())
+    );
+
+    release.body = String::from(
+        r#"* changed equivalent-to logic: { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]} -->
+               equivalent-to = { linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]}"#,
+    );
+    assert_eq!(
+        release.equivalent_versions(),
+        Some(version_hash_map.clone())
+    );
+
+    release.body = String::from(
+        r#"   <!--    equivalent-to={ linux = ["0.8.0", "0.8.1"], windows = ["0.8.1"]}-->  "#,
+    );
+    assert_eq!(
+        release.equivalent_versions(),
+        Some(version_hash_map.clone())
+    );
 }
