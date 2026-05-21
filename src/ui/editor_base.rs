@@ -335,67 +335,15 @@ impl eframe::App for CheesePaperApp {
                 // This should eventually be moved further out, along with the message queue, but I haven't
                 // gotten around to that
                 if !self.state.finished_update_check
-                    && let Some(version_result) = version::latest()
+                    && let Some(version_check) =
+                        check_for_updates(&self.state.data.update_ignore_version)
                 {
-                    // We only ever run this code once per program, so we're already done with this
+                    // We only check updates once per startup, so once we've gotten our result, we're done.
+                    // We might end up missing an update because of network conditions or something, but
+                    // it really doesn't matter that much, we'll get it on the next startup
                     self.state.finished_update_check = true;
-                    match version_result {
-                        Ok(release_info) => {
-                            let current_version = semver::Version::parse(version::current())
-                                .unwrap_or_else(|_| {
-                                    log::warn!(
-                                        "we failed to parse our own version, this shouldn't be possible"
-                                    );
-                                    semver::Version::new(0, 0, 0)
-                                });
-
-                            let compare_version = if self
-                                .state
-                                .data
-                                .update_ignore_version
-                                .is_empty()
-                            {
-                                // we don't have an ignore version, we only need to compare against the current version
-                                current_version
-                            } else {
-                                match semver::Version::parse(&self.state.data.update_ignore_version)
-                                {
-                                    Ok(update_ignore_version) => {
-                                        std::cmp::max(update_ignore_version, current_version)
-                                    }
-                                    Err(err) => {
-                                        log::debug!(
-                                            "Could not parse saved version in data: {}, err: {err}",
-                                            self.state.data.update_ignore_version
-                                        );
-                                        current_version
-                                    }
-                                }
-                            };
-
-                            match semver::Version::parse(&release_info.tag_name) {
-                                Ok(release_tag) => {
-                                    if release_tag > compare_version {
-                                        log::debug!("Found newer release: {release_tag}");
-                                        project_editor.messages.push_back(Message::Update(
-                                            UpdateMessage::new(release_info.clone()),
-                                        ));
-                                    } else {
-                                        log::debug!(
-                                            "Found latest release {release_tag}, we have already seen it"
-                                        );
-                                    }
-                                }
-                                Err(err) => {
-                                    log::warn!(
-                                        "We processed a release but were not able to parse it as a semver tag: {release_info:?}: err: {err}"
-                                    );
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            log::debug!("Could not fetch version: {err}");
-                        }
+                    if let Some(update_message) = version_check {
+                        project_editor.messages.push_back(update_message);
                     }
                 }
             }
@@ -484,6 +432,64 @@ pub fn configure_text_styles(ctx: &egui::Context, font_size: f32) {
     .into();
 
     ctx.set_global_style(style);
+}
+
+/// Process any pending updates, adding the notification if necessary. The outer option is
+/// the version check finishing, the inner option is for the message itself
+fn check_for_updates(update_ignore_version: &str) -> Option<Option<Message>> {
+    // We can't do anything if we haven't gotten the response yet
+    let version_result = version::latest()?;
+
+    let release_info = match version_result {
+        Ok(release_info) => release_info,
+        Err(err) => {
+            // Likely either lack of network connection or codeberg being down, we've
+            // finished our update check regardless
+            log::debug!("Could not fetch version: {err}");
+            return Some(None);
+        }
+    };
+
+    let current_version = semver::Version::parse(version::current()).unwrap_or_else(|_| {
+        log::warn!("we failed to parse our own version, this shouldn't be possible");
+        semver::Version::new(0, 0, 0)
+    });
+
+    let compare_version = if update_ignore_version.is_empty() {
+        // we don't have an ignore version, we only need to compare against the current version
+        current_version
+    } else {
+        match semver::Version::parse(update_ignore_version) {
+            Ok(update_ignore_version) => std::cmp::max(update_ignore_version, current_version),
+            Err(err) => {
+                log::debug!(
+                    "Could not parse saved version in data: {}, err: {err}",
+                    update_ignore_version
+                );
+                current_version
+            }
+        }
+    };
+
+    match semver::Version::parse(&release_info.tag_name) {
+        Ok(release_tag) => {
+            if release_tag > compare_version {
+                log::debug!("Found newer release: {release_tag}");
+                Some(Some(Message::Update(UpdateMessage::new(
+                    release_info.clone(),
+                ))))
+            } else {
+                log::debug!("Latest release is {release_tag}, finished checking updates");
+                Some(None)
+            }
+        }
+        Err(err) => {
+            log::warn!(
+                "We processed a release but were not able to parse it as a semver tag: {release_info:?}: err: {err}"
+            );
+            Some(None)
+        }
+    }
 }
 
 /// On Linux, we might be running inside or outside of a flatpak, but we want to display the
