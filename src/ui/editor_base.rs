@@ -1,8 +1,7 @@
-use crate::{
-    schemas::DEFAULT_SCHEMA,
-    ui::prelude::*,
-    util::{self, version},
-};
+use crate::{schemas::DEFAULT_SCHEMA, ui::prelude::*};
+
+#[cfg(feature = "update_checking")]
+use crate::util::version;
 
 use crate::components::file_objects::utils::{create_dir_if_missing, write_with_temp_file};
 use directories::ProjectDirs;
@@ -198,6 +197,7 @@ pub struct EditorState {
     pub next_project: Option<PathBuf>,
 
     /// If we've done the update check and displayed a message to the user as necessary
+    #[cfg(feature = "update_checking")]
     finished_update_check: bool,
 }
 
@@ -225,6 +225,7 @@ impl EditorState {
         });
 
         // If we're not supposed to check for updates, we're also already done
+        #[cfg(feature = "update_checking")]
         let finished_update_check = !settings.check_for_updates();
 
         let mut data = Data::new(project_dirs.data_dir().to_path_buf());
@@ -261,6 +262,7 @@ impl EditorState {
             new_project_schema: &DEFAULT_SCHEMA,
             closing_project: false,
             next_project: None,
+            #[cfg(feature = "update_checking")]
             finished_update_check,
         }
     }
@@ -331,6 +333,7 @@ impl eframe::App for CheesePaperApp {
                 // We check for updates inside of this loop so we can directly add them to the message queue
                 // This should eventually be moved further out, along with the message queue, but I haven't
                 // gotten around to that
+                #[cfg(feature = "update_checking")]
                 if !self.state.finished_update_check
                     && let Some(version_check) =
                         version::check_for_updates(&self.state.data.update_ignore_version)
@@ -463,8 +466,9 @@ impl CheesePaperApp {
 
         configure_text_styles(&cc.egui_ctx, state.settings.font_size());
 
+        #[cfg(feature = "update_checking")]
         if state.settings.check_for_updates() {
-            util::version::fetch_version();
+            version::fetch_version();
         }
 
         // Load the actual app

@@ -224,6 +224,7 @@ struct SettingsData {
 
     /// Check against the latest released version, we should not do
     /// network calls if this is false
+    #[cfg(feature = "update_checking")]
     check_for_updates: Setting<bool>,
 
     available_dict: Vec<AvailableDictionary>,
@@ -278,6 +279,7 @@ impl SettingsData {
             indent_line_start: Setting::transparent(false),
             highlight_multiple_spaces: Setting::transparent(true),
             highlight_spaces_before_punctuation: Setting::transparent(true),
+            #[cfg(feature = "update_checking")]
             check_for_updates: Setting::transparent(true),
             available_dict: Vec::new(),
             selected_dictionary: Setting::transparent("en_US".to_owned()),
@@ -335,6 +337,7 @@ impl SettingsData {
                 .set_value(Some(highlight_spaces_before_punctuation), project_local);
         }
 
+        #[cfg(feature = "update_checking")]
         if let Some(check_for_updates_item) = table.get("check_for_updates")
             && let Some(check_for_updates) = check_for_updates_item.as_bool()
         {
@@ -376,12 +379,21 @@ impl SettingsData {
     pub fn save(&mut self, table: &mut DocumentMut, project_local: bool) -> bool {
         // We always try to update the entire document
         // or if any of the sub-values have been modified
+
+        // This is ugly but it seems to be the least bad option for splitting up code paths
+        // here based on a feature
+        #[cfg(not(feature = "update_checking"))]
+        let check_for_updates_modified = false;
+
+        #[cfg(feature = "update_checking")]
+        let check_for_updates_modified = self.check_for_updates.modified;
+
         let modified = self.font_size.modified
             || self.reopen_last.modified
             || self.indent_line_start.modified
             || self.highlight_multiple_spaces.modified
             || self.highlight_spaces_before_punctuation.modified
-            || self.check_for_updates.modified
+            || check_for_updates_modified
             || self.custom_tab_behavior.modified
             || self.theme_settings_modified;
 
@@ -431,11 +443,14 @@ impl SettingsData {
             table.remove("highlight_spaces_before_punctuation");
         }
 
-        self.check_for_updates.modified = false;
-        if let Some(check_for_updates) = *self.check_for_updates.value(project_local) {
-            table.insert("check_for_updates", value(check_for_updates));
-        } else {
-            table.remove("check_for_updates");
+        #[cfg(feature = "update_checking")]
+        {
+            self.check_for_updates.modified = false;
+            if let Some(check_for_updates) = *self.check_for_updates.value(project_local) {
+                table.insert("check_for_updates", value(check_for_updates));
+            } else {
+                table.remove("check_for_updates");
+            }
         }
 
         self.custom_tab_behavior.modified = false;
@@ -475,6 +490,7 @@ impl SettingsData {
         self.highlight_spaces_before_punctuation
             .update_value(project_local);
         self.reopen_last.update_value(project_local);
+        #[cfg(feature = "update_checking")]
         self.check_for_updates.update_value(project_local);
         self.custom_tab_behavior.update_value(project_local);
         self.selected_dictionary.update_value(project_local);
@@ -681,6 +697,7 @@ impl Settings {
             .get_value()
     }
 
+    #[cfg(feature = "update_checking")]
     pub fn check_for_updates(&self) -> bool {
         *self.data.borrow().check_for_updates.get_value()
     }

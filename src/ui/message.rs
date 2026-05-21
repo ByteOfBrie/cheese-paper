@@ -1,11 +1,16 @@
+#[cfg(feature = "update_checking")]
 use std::cell::OnceCell;
 
-use crate::{ui::prelude::*, util::version::CodebergRelease};
+use crate::ui::prelude::*;
+
+#[cfg(feature = "update_checking")]
+use crate::util::version::CodebergRelease;
 
 /// Any sort of message that the user needs to be informed of
 #[derive(Debug, Clone)]
 pub enum Message {
     Generic(GenericMessage),
+    #[cfg(feature = "update_checking")]
     Update(UpdateMessage),
 }
 
@@ -28,11 +33,14 @@ impl GenericMessage {
     }
 }
 
+#[cfg(feature = "update_checking")]
 #[derive(Debug, Clone)]
 pub struct UpdateMessage {
     pub release: CodebergRelease,
     message: OnceCell<String>,
 }
+
+#[cfg(feature = "update_checking")]
 impl UpdateMessage {
     pub fn new(release: CodebergRelease) -> Self {
         Self {
@@ -87,6 +95,7 @@ impl Message {
     pub fn ui(&self, ui: &mut Ui, project: &Project, ctx: &mut EditorContext) -> bool {
         match self {
             Message::Generic(message) => message.ui(ui, project, ctx),
+            #[cfg(feature = "update_checking")]
             Message::Update(update_message) => update_message.ui(ui, project, ctx),
         }
     }

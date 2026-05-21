@@ -183,10 +183,13 @@ impl SettingsPage {
         );
         cheese_response.extend(response);
 
-        let response = settings_data
-            .check_for_updates
-            .ui(ui, "Check for Updates", false);
-        cheese_response.extend(response);
+        #[cfg(feature = "update_checking")]
+        {
+            let response = settings_data
+                .check_for_updates
+                .ui(ui, "Check for Updates", false);
+            cheese_response.extend(response);
+        }
 
         let response = settings_data
             .custom_tab_behavior
