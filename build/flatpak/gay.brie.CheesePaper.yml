@@ -9,27 +9,15 @@ build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 command: "cheese-paper"
 finish-args:
-  # X11 + XShm access
+  # standard desktop protocols
   - --share=ipc
   - --socket=fallback-x11
-  # Wayland access
   - --socket=wayland
   # GPU acceleration (for egui (I think?))
   - --device=dri
-  # Needs to talk to the network: (only for checking for updates,
-  # can (should?) disable for flathub)
+  # only for checking for updates, disabled on flathub
   - --share=network
-  # cheese-paper uses config and data
-  - --filesystem=xdg-config/cheese-paper
-  - --filesystem=xdg-data/cheese-paper
 modules:
-  - name: xdg-utils
-    buildsystem: meson
-    sources:
-      - type: git
-        url: https://github.com/flatpak/flatpak-xdg-utils
-        tag: 1.0.6
-        commit: 05abdd7421688be5835a6b12f2b068086c38d4aa
   - name: cheese-paper
     buildsystem: simple
     build-options:
