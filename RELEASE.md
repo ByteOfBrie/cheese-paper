@@ -18,6 +18,11 @@ git push origin 0.3.0
 
 6. Edit release draft and put release notes in
 
+7. (Optional): Add version equivalence if this release is specific to one or more platforms:
+```
+<!-- equivalent-to = { linux = ["0.8.0", "0.8.1"], macos = ["0.8.0", "0.8.1"], windows = ["0.8.1"]} -->
+```
+
 7. Click publish release button
 
 8. Publish on crates.io: run `cargo publish`. This is a manual step currently because we can run automation as many times as we want before fully publishing, but this can only happen once. It might get automated later, maybe in a separate action once we fully publish the release?
