@@ -117,7 +117,7 @@ impl Data {
     }
 
     pub fn get_directory(&self) -> PathBuf {
-        self.data.borrow().get_path()
+        self.data.borrow().get_directory()
     }
 }
 
@@ -276,6 +276,10 @@ impl InnerData {
             "custom_dictionary",
             value(toml_edit::Array::from_iter(self.custom_dictionary.iter())),
         );
+    }
+
+    fn get_directory(&self) -> PathBuf {
+        self.data_directory.clone()
     }
 
     fn get_path(&self) -> PathBuf {

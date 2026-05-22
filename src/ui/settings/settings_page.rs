@@ -201,22 +201,24 @@ impl SettingsPage {
             .ui(ui, "Reopen Last Project on Launch", false);
         cheese_response.extend(response);
 
-        ui.label("Dictionary");
+        ui.horizontal(|ui| {
+            ui.label("Dictionary: ");
 
-        let mut options: VecDeque<_> = settings_data
-            .available_dict
-            .iter()
-            .map(|entry| entry.name.clone())
-            .collect();
+            let mut options: VecDeque<_> = settings_data
+                .available_dict
+                .iter()
+                .map(|entry| entry.name.clone())
+                .collect();
 
-        options.push_front(dictionaries::SELECTED_NONE.to_owned());
+            options.push_front(dictionaries::SELECTED_NONE.to_owned());
 
-        cheese_response.extend(settings_data.selected_dictionary.dropdown(
-            ui,
-            "Dictionary Selection Dropdown",
-            options.into_iter(),
-            false,
-        ));
+            cheese_response.extend(settings_data.selected_dictionary.dropdown(
+                ui,
+                "Dictionary Selection Dropdown",
+                options.into_iter(),
+                false,
+            ));
+        });
 
         if let Some(err_msg) = &settings_data.selected_dictionary.error_message {
             ui.label(RichText::new(err_msg).color(Color32::RED));
@@ -227,6 +229,22 @@ impl SettingsPage {
         {
             log::warn!("Could not open dictionary folder: {err}");
         }
+
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            if ui.button("Open Log Folder").clicked()
+                && let Err(err) = open::that(ctx.data.get_directory().join("logs"))
+            {
+                log::warn!("Could not open log folder: {err}");
+            }
+
+            if ui.button("Open Data Folder").clicked()
+                && let Err(err) = open::that(ctx.data.get_directory())
+            {
+                log::warn!("Could not open data folder: {err}");
+            }
+        });
 
         cheese_response
     }
