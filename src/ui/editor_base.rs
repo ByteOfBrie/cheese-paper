@@ -21,8 +21,108 @@ use super::metrics::Metrics;
 
 type OpenFileIds = (Vec<String>, Option<String>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Data {
+    pub data: Rc<RefCell<InnerData>>,
+    toml: DocumentMut,
+    pub modified: bool,
+}
+impl Data {
+    pub fn new(data_directory: PathBuf) -> Self {
+        let mut data = InnerData::new(data_directory);
+
+        let toml = match read_to_string(data.get_path()) {
+            Ok(config) => match config.parse::<DocumentMut>() {
+                Ok(parsed_toml) => parsed_toml,
+                Err(err) => {
+                    log::error!("Exiting, could not parse toml data file: {err}");
+                    panic!("Could not parse toml data file: {err}");
+                }
+            },
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::NotFound => DocumentMut::new(),
+                _ => {
+                    // We have to panic here because an error means that we failed to load an existing
+                    // data file, so we can't overwrite it without losing data
+                    log::error!("Unknown error while reading editor data: {err}");
+                    panic!("Unknown error while reading editor data: {err}");
+                }
+            },
+        };
+
+        data.load(&toml);
+
+        Self {
+            data: Rc::new(RefCell::new(data)),
+            toml,
+            modified: false,
+        }
+    }
+
+    pub fn save(&mut self) -> Result<(), CheeseError> {
+        if self.modified {
+            self.data.borrow().save(&mut self.toml);
+            write_with_temp_file(
+                create_dir_if_missing(self.data.borrow().get_path().as_path())?,
+                self.toml.to_string(),
+            )
+            .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn update_ignore_version(&self) -> String {
+        self.data.borrow().update_ignore_version.clone()
+    }
+
+    pub fn set_last_export_folder(&self, latest_export: PathBuf) {
+        if self.data.borrow().last_export_folder == latest_export {
+            return;
+        }
+
+        self.data.borrow_mut().last_export_folder = latest_export.to_owned();
+    }
+
+    pub fn pop_most_recent_project(&self) -> Option<PathBuf> {
+        self.data.borrow_mut().recent_projects_on_disk.pop_front()
+    }
+
+    pub fn last_project_parent_folder(&self) -> PathBuf {
+        self.data.borrow().last_project_parent_folder.clone()
+    }
+
+    pub fn remove_from_recent_projects(&self, project_path: &Path) {
+        self.data
+            .borrow_mut()
+            .recent_projects_on_disk
+            .retain(|p| *p != project_path);
+
+        self.data
+            .borrow_mut()
+            .recent_projects_on_disk
+            .retain(|p| *p != project_path);
+    }
+
+    pub fn push_recent_project(&self, project_path: PathBuf) {
+        self.data
+            .borrow_mut()
+            .recent_projects_on_disk
+            .push_front(project_path.clone());
+
+        self.data
+            .borrow_mut()
+            .recent_projects_all
+            .push_front(project_path);
+    }
+
+    pub fn get_directory(&self) -> PathBuf {
+        self.data.borrow().get_path()
+    }
+}
+
+#[derive(Debug)]
+pub struct InnerData {
     data_directory: PathBuf,
     /// Recent projects that have been found on disk. These are projects that we can (try to) open
     pub recent_projects_on_disk: VecDeque<PathBuf>,
@@ -38,7 +138,7 @@ pub struct Data {
     pub custom_dictionary: Vec<String>,
 }
 
-impl Data {
+impl InnerData {
     pub fn new(data_directory: PathBuf) -> Self {
         Self {
             data_directory,
@@ -183,11 +283,10 @@ impl Data {
     }
 }
 
+#[derive(Debug)]
 pub struct EditorState {
     pub settings: Settings,
     pub data: Data,
-    data_toml: DocumentMut,
-    data_modified: bool,
     project_creation_error_message: Option<(String, Instant)>,
     new_project_dir: Option<PathBuf>,
     new_project_name: String,
@@ -201,15 +300,14 @@ pub struct EditorState {
     finished_update_check: bool,
 }
 
-impl std::fmt::Debug for EditorState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EditorState")
-            .field("settings", &self.settings)
-            .field("data", &self.data)
-            .field("data_modified", &self.data_modified)
-            .finish()
-    }
-}
+// impl std::fmt::Debug for EditorState {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("EditorState")
+//             .field("settings", &self.settings)
+//             .field("data", &self.data)
+//             .finish()
+//     }
+// }
 
 impl EditorState {
     pub fn new(project_dirs: ProjectDirs) -> Self {
@@ -228,34 +326,11 @@ impl EditorState {
         #[cfg(feature = "update_checking")]
         let finished_update_check = !settings.check_for_updates();
 
-        let mut data = Data::new(project_dirs.data_dir().to_path_buf());
-
-        let data_toml = match read_to_string(data.get_path()) {
-            Ok(config) => match config.parse::<DocumentMut>() {
-                Ok(parsed_toml) => parsed_toml,
-                Err(err) => {
-                    log::error!("Exiting, could not parse toml data file: {err}");
-                    panic!("Could not parse toml data file: {err}");
-                }
-            },
-            Err(err) => match err.kind() {
-                std::io::ErrorKind::NotFound => DocumentMut::new(),
-                _ => {
-                    // We have to panic here because an error means that we failed to load an existing
-                    // data file, so we can't overwrite it without losing data
-                    log::error!("Unknown error while reading editor data: {err}");
-                    panic!("Unknown error while reading editor data: {err}");
-                }
-            },
-        };
-
-        data.load(&data_toml);
+        let data = Data::new(project_dirs.data_dir().to_owned());
 
         Self {
             settings,
             data,
-            data_toml,
-            data_modified: false,
             project_creation_error_message: None,
             new_project_dir: None,
             new_project_name: String::new(),
@@ -271,16 +346,7 @@ impl EditorState {
 impl EditorState {
     // TODO: call this more often
     fn save(&mut self) -> Result<(), CheeseError> {
-        if self.data_modified {
-            self.data.save(&mut self.data_toml);
-            write_with_temp_file(
-                create_dir_if_missing(self.data.get_path().as_path())?,
-                self.data_toml.to_string(),
-            )
-            .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
-        }
-
-        Ok(())
+        self.data.save()
     }
 }
 
@@ -335,8 +401,9 @@ impl eframe::App for CheesePaperApp {
                 // gotten around to that
                 #[cfg(feature = "update_checking")]
                 if !self.state.finished_update_check
-                    && let Some(version_check) =
-                        version::check_for_updates(&self.state.data.update_ignore_version)
+                    && let Some(version_check) = version::check_for_updates(
+                        &self.state.data.data.borrow().update_ignore_version,
+                    )
                 {
                     // We only check updates once per startup, so once we've gotten our result, we're done.
                     // We might end up missing an update because of network conditions or something, but
@@ -357,16 +424,6 @@ impl eframe::App for CheesePaperApp {
             if let Some(project_editor) = &mut self.project_editor
                 && project_editor.project.conflicting_files.is_empty()
             {
-                // Slightly hacky, but write the data back into the editor state with every
-                // autosave. The settings object was put into a refcell and actually included in
-                // the ctx, but this is easy and good enough for now
-                if self.state.data.last_export_folder
-                    != project_editor.editor_context.last_export_folder
-                {
-                    self.state.data.last_export_folder =
-                        project_editor.editor_context.last_export_folder.clone()
-                }
-
                 project_editor.save();
             }
 
@@ -482,7 +539,7 @@ impl CheesePaperApp {
         };
 
         if app.state.settings.reopen_last()
-            && let Some(last_open_project) = app.state.data.recent_projects_on_disk.pop_front()
+            && let Some(last_open_project) = app.state.data.pop_most_recent_project()
         {
             let _ = app.load_project(PathBuf::from(&last_open_project))
             .inspect_err(|err|{
@@ -508,7 +565,14 @@ impl CheesePaperApp {
                     .id_salt("recent projects")
                     .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
-                            let projects = self.state.data.recent_projects_on_disk.clone();
+                            let projects = self
+                                .state
+                                .data
+                                .data
+                                .borrow()
+                                .recent_projects_on_disk
+                                .clone();
+
                             for project in projects {
                                 let project_path = process_project_path(project.as_path());
 
@@ -545,7 +609,7 @@ impl CheesePaperApp {
                     cols[1].vertical_centered_justified(|ui| {
                         if ui.button("new project").clicked() {
                             self.state.new_project_dir =
-                                Some(self.state.data.last_project_parent_folder.clone());
+                                Some(self.state.data.last_project_parent_folder());
                         }
                     });
                     cols[2].vertical_centered_justified(|_ui| {});
@@ -553,7 +617,9 @@ impl CheesePaperApp {
                         if ui.button("load project").clicked() {
                             let project_dir = FileDialog::new()
                                 .set_title("Load Folder")
-                                .set_directory(&self.state.data.last_project_parent_folder)
+                                .set_directory(
+                                    &self.state.data.data.borrow().last_project_parent_folder,
+                                )
                                 .pick_folder();
 
                             if let Some(project_dir) = project_dir
@@ -682,14 +748,9 @@ impl CheesePaperApp {
     fn load_project(&mut self, project_path: PathBuf) -> Result<(), CheeseError> {
         self.state
             .data
-            .recent_projects_on_disk
-            .retain(|p| *p != project_path);
-        self.state
-            .data
-            .recent_projects_all
-            .retain(|p| *p != project_path);
+            .remove_from_recent_projects(project_path.as_path());
 
-        self.state.data_modified = true;
+        self.state.data.modified = true;
 
         self.state.save()?;
 
@@ -706,7 +767,7 @@ impl CheesePaperApp {
     }
 
     fn open_project(&mut self, project: Project) {
-        self.state.data.last_project_parent_folder = project
+        self.state.data.data.borrow_mut().last_project_parent_folder = project
             .get_path()
             .parent()
             .expect("Project path should always have a parent")
@@ -714,32 +775,27 @@ impl CheesePaperApp {
 
         let path = project.get_path();
 
-        self.state
-            .data
-            .recent_projects_on_disk
-            .push_front(path.clone());
-
-        self.state.data.recent_projects_all.push_front(path);
+        self.state.data.push_recent_project(path);
 
         // load tabs
         let (open_tabs, current_tab) = self
             .state
             .data
+            .data
+            .borrow_mut()
             .last_open_file_ids
             .get(&*project.base_metadata.id)
             .cloned()
             .unwrap_or_default();
 
-        self.state.data_modified = true;
+        self.state.data.modified = true;
 
         self.project_editor = Some(ProjectEditor::new(
             project,
             open_tabs,
             current_tab,
             self.state.settings.clone(),
-            self.state.data.last_export_folder.clone(),
-            &self.state.data.custom_dictionary,
-            self.state.data.data_directory.clone(),
+            self.state.data.clone(),
         ));
     }
 
@@ -767,15 +823,17 @@ impl CheesePaperApp {
                 != self
                     .state
                     .data
+                    .data
+                    .borrow()
                     .last_open_file_ids
                     .get(&*project_editor.project.base_metadata.id)
             {
-                self.state.data.last_open_file_ids.insert(
+                self.state.data.data.borrow_mut().last_open_file_ids.insert(
                     project_editor.project.base_metadata.id.to_string(),
                     open_tab_info,
                 );
 
-                self.state.data_modified = true;
+                self.state.data.modified = true;
             }
         }
     }
@@ -787,20 +845,20 @@ impl CheesePaperApp {
                 .dictionary_state
                 .ignore_list_updated
         {
-            self.state.data.custom_dictionary = project_editor
+            self.state.data.data.borrow_mut().custom_dictionary = project_editor
                 .editor_context
                 .dictionary_state
                 .get_ignore_list()
                 .into_iter()
                 .collect();
-            self.state.data_modified = true;
+            self.state.data.modified = true;
         }
 
         if let Some(project_editor) = &self.project_editor
             && let Some(ignored_version) = project_editor.editor_context.ignore_version.get()
         {
-            self.state.data.update_ignore_version = ignored_version.clone();
-            self.state.data_modified = true;
+            self.state.data.data.borrow_mut().update_ignore_version = ignored_version.clone();
+            self.state.data.modified = true;
         }
 
         self.update_open_tabs();

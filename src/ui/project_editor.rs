@@ -12,7 +12,7 @@ use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
 
 use crate::components::file_objects::utils::process_name_for_filename;
-use crate::ui::editor_base::{EditorState, configure_text_styles};
+use crate::ui::editor_base::{Data, EditorState, configure_text_styles};
 use crate::ui::project_editor::search::global_search;
 use crate::ui::project_tracker::ProjectTracker;
 
@@ -23,7 +23,6 @@ use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
-use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -257,6 +256,7 @@ impl References {
 #[derive(Debug)]
 pub struct EditorContext {
     pub settings: Settings,
+    pub data: Data,
     pub dictionary_state: DictionaryState,
     pub spellcheck_status: SpellCheckStatus,
     pub typing_status: TypingStatus,
@@ -266,9 +266,6 @@ pub struct EditorContext {
     pub actions: Actions,
     pub measurements: Measurements,
     pub focus_jumper: FocusJumper,
-
-    /// Duplicates the value from state.data, which is then more recent
-    pub last_export_folder: PathBuf,
 
     /// version number. increment to trigger a project-wide formatting refresh
     pub render_version: usize,
@@ -627,7 +624,7 @@ impl ProjectEditor {
                         }
 
                         ui.menu_button("Recent Projects", |ui| {
-                            for project in state.data.recent_projects_on_disk.iter() {
+                            for project in state.data.data.borrow().recent_projects_on_disk.iter() {
                                 if ui.button(project.to_string_lossy()).clicked() {
                                     state.closing_project = true;
                                     state.next_project = Some(project.clone());
@@ -653,7 +650,7 @@ impl ProjectEditor {
                                 format!("{}_outline.md", process_name_for_filename(project_title));
                             let export_location_option = FileDialog::new()
                                 .set_title(format!("Export {project_title} Outline"))
-                                .set_directory(&state.data.last_export_folder)
+                                .set_directory(&state.data.data.borrow().last_export_folder)
                                 .set_file_name(suggested_title)
                                 .save_file();
 
@@ -664,10 +661,7 @@ impl ProjectEditor {
                                     log::error!("Error while attempting to write outline: {err}");
                                 }
 
-                                state.data.last_export_folder = export_location
-                                    .parent()
-                                    .map(|val| val.to_path_buf())
-                                    .unwrap_or_default();
+                                state.data.set_last_export_folder(export_location);
                             }
                         }
 
@@ -836,11 +830,9 @@ impl ProjectEditor {
         open_tab_ids: Vec<String>,
         last_open_tab: Option<String>,
         mut settings: Settings,
-        last_export_folder: PathBuf,
-        ignored_words: impl IntoIterator<Item: AsRef<str>>,
-        data_directory: PathBuf,
+        data: Data,
     ) -> Self {
-        let tracker = match ProjectTracker::new(&project, data_directory) {
+        let tracker = match ProjectTracker::new(&project, data.get_directory()) {
             Ok(mut tracker) => {
                 if let Err(err) = tracker.snapshot("Startup") {
                     log::warn!("Failed to snapshot tracker: {err}");
@@ -860,8 +852,8 @@ impl ProjectEditor {
         // with that later
         let mut dictionary_state = DictionaryState::new(settings.load_dictionary());
 
-        for ignored_word in ignored_words.into_iter() {
-            dictionary_state.add_ignored(ignored_word.as_ref());
+        for ignored_word in data.data.borrow().custom_dictionary.iter() {
+            dictionary_state.add_ignored(ignored_word.as_str());
         }
 
         let open_tabs = open_tab_ids
@@ -903,6 +895,7 @@ impl ProjectEditor {
             dock_state,
             editor_context: EditorContext {
                 settings,
+                data,
                 dictionary_state,
                 spellcheck_status: SpellCheckStatus::default(),
                 typing_status: TypingStatus::default(),
@@ -912,7 +905,6 @@ impl ProjectEditor {
                 focus_jumper: FocusJumper::default(),
                 measurements: Measurements::default(),
                 references,
-                last_export_folder,
                 render_version: 0,
                 ignore_version: OnceCell::new(),
             },

@@ -114,7 +114,7 @@ impl Project {
             let suggested_title = format!("{}.md", process_name_for_filename(project_title));
             let export_location_option = FileDialog::new()
                 .set_title(format!("Export {project_title}"))
-                .set_directory(&ctx.last_export_folder)
+                .set_directory(&ctx.data.data.borrow().last_export_folder)
                 .set_file_name(suggested_title)
                 .save_file();
 
@@ -146,10 +146,11 @@ impl Project {
                     log::error!("Error while attempting to write outline: {err}");
                 }
 
-                ctx.last_export_folder = export_location
+                ctx.data.data.borrow_mut().last_export_folder = export_location
                     .parent()
                     .map(|val| val.to_path_buf())
                     .unwrap_or_default();
+                ctx.data.modified = true;
             }
         }
 
