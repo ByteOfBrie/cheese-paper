@@ -155,6 +155,7 @@ impl dyn FileObject {
         position: DirPosition<FileID>,
         objects: &FileObjectStore,
     ) -> Result<Box<dyn FileObject>, CheeseError> {
+        assert!(self.is_folder());
         let new_index = match position {
             DirPosition::After(child) => {
                 self.get_base()

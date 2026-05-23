@@ -21,6 +21,16 @@ use std::time::Instant;
 use crate::schemas::FileType;
 use crate::schemas::SCHEMA_LIST;
 
+// For debugging purposes, logs can be added to any test with:
+// ```
+//     let _ = flexi_logger::Logger::try_with_env_or_str("info,cheese_paper=debug")
+//         .unwrap()
+//         .start()
+//         .unwrap();
+// ```
+//
+// This is convenient, but spams *every* log when running cargo test, so it should not ever be committed
+
 /// These tests were not written to be agnostic to the kind of file types that exist.
 /// Rather than re-write them immediately, it is best to make an iteration of the tests which
 /// are not changed in functionality, and test if the post-refactor code still behaves the same way
@@ -3206,6 +3216,64 @@ fn test_tracker_creation_by_movement_folder() {
     assert!(project.objects.contains_key(&file_id("1")));
 }
 
+/// Create multiple files in between saves
+#[test]
+fn test_tracker_creation_twice() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let scene_text = "123456";
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    assert_eq!(project.objects.len(), 3);
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/scene.md"),
+        scene_text,
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 4);
+
+    project.save().unwrap();
+    process_updates_after_save(&mut project);
+
+    assert!(
+        base_dir
+            .path()
+            .join("test_project/text/000-scene.md")
+            .exists(),
+    );
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/scene2.md"),
+        scene_text,
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    assert_eq!(project.objects.len(), 5);
+
+    project.save().unwrap();
+    process_updates_after_save(&mut project);
+    process_updates_after_save(&mut project);
+
+    assert!(
+        base_dir
+            .path()
+            .join("test_project/text/001-scene2.md")
+            .exists(),
+    );
+}
+
 #[test]
 fn test_tracker_delete_file() {
     let base_dir = tempfile::TempDir::new().unwrap();
@@ -4379,6 +4447,88 @@ asdfjkl123"#;
         let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
         assert_eq!(scene1_file_object.get_type(), SCENE);
         assert_eq!(scene1_file_object.get_body().trim(), "asdfjkl123");
+    }
+}
+
+/// Test that the tracker updates files in place
+#[test]
+fn test_tracker_multiple_modifications() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    let scene_text = r#"id = "1"
+++++++++
+123456"#;
+
+    let scene1_path = base_dir.path().join("test_project/text/000-scene1.md");
+
+    write_with_temp_file(&scene1_path, scene_text).unwrap();
+
+    process_updates(&mut project);
+
+    {
+        assert_eq!(project.objects.len(), 4);
+        assert!(project.objects.contains_key(&file_id("1")));
+
+        // Check the file contents (first)
+        let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+        assert_eq!(scene1_file_object.get_type(), SCENE);
+        assert_eq!(scene1_file_object.get_body().trim(), "123456");
+        assert!(
+            base_dir
+                .path()
+                .join("test_project/text/000-scene1.md")
+                .exists()
+        );
+    }
+
+    let new_scene_text = r#"id = "1"
+++++++++
+asdfjkl123"#;
+
+    thread::sleep(MTIME_SLEEP_DURATION);
+
+    std::fs::write(&scene1_path, new_scene_text).unwrap();
+
+    process_updates_after_save(&mut project);
+
+    {
+        // Ensure that the file object still exists (and we don't have duplicates)
+        assert_eq!(project.objects.len(), 4);
+        assert!(project.objects.contains_key(&file_id("1")));
+
+        // Check the file contents (first)
+        let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+        assert_eq!(scene1_file_object.get_type(), SCENE);
+        assert_eq!(scene1_file_object.get_body().trim(), "asdfjkl123");
+    }
+
+    // now we update again, and make sure this one also gets processed
+    let new_scene_text = r#"id = "1"
+++++++++
+54321"#;
+
+    thread::sleep(MTIME_SLEEP_DURATION);
+
+    std::fs::write(&scene1_path, new_scene_text).unwrap();
+
+    process_updates_after_save(&mut project);
+
+    {
+        // Ensure that the file object still exists (and we don't have duplicates)
+        assert_eq!(project.objects.len(), 4);
+        assert!(project.objects.contains_key(&file_id("1")));
+
+        // Check the file contents (first)
+        let scene1_file_object = project.objects.get(&file_id("1")).unwrap().borrow();
+        assert_eq!(scene1_file_object.get_type(), SCENE);
+        assert_eq!(scene1_file_object.get_body().trim(), "54321");
     }
 }
 
