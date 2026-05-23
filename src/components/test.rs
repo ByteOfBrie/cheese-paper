@@ -3,7 +3,7 @@ use crate::components::file_objects::FileObjectStore;
 
 use crate::components::file_objects::{FileID, FileObject, utils::write_with_temp_file};
 
-use crate::components::project::Project;
+use crate::components::project::{Project, WATCHER_MSEC_DURATION};
 use crate::util::CheeseError;
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -38,19 +38,28 @@ fn file_id(s: &str) -> Rc<String> {
     Rc::new(s.to_string())
 }
 
+/// Watch for incoming updates. This is useful when we're trying to "work around"
+/// debouncer behavior timing (e.g., we don't want the debouncer to fix problems
+/// in the test env that will still show up in the real world)
+fn sleep_and_receive(project: &mut Project) {
+    thread::sleep(time::Duration::from_millis(
+        WATCHER_MSEC_DURATION + WATCHER_MSEC_DURATION / 5,
+    ));
+    project.receive_updates();
+}
+
 /// Special version of `process_updates` that doesn't save, useful when testing conflicting
 /// files
 fn process_updates_no_save(project: &mut Project) {
     for _ in 0..5 {
-        thread::sleep(time::Duration::from_millis(60));
-        project.receive_updates();
+        sleep_and_receive(project);
     }
     // Make sure the process_updates call goes through
     loop {
         if project.process_updates() || !project.has_updates_queued() {
             break;
         }
-        thread::sleep(time::Duration::from_millis(50));
+        thread::sleep(time::Duration::from_millis(WATCHER_MSEC_DURATION));
         project.receive_updates();
     }
 }
@@ -3380,6 +3389,102 @@ fn test_tracker_delete_folder() {
 
     assert!(!scene1_path.exists());
     assert!(!scene2_path.exists());
+    assert!(!folder1_path.exists());
+
+    assert_eq!(
+        std::fs::read_dir(base_dir.path().join("test_project/text/"))
+            .unwrap()
+            .count(),
+        1
+    );
+}
+
+/// Modify a file (requiring its parent to be rescanned), then delete the file and folder
+/// *before* processing updates
+#[test]
+fn test_tracker_modify_file_delete_folder() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    let mut folder1 = project
+        .get_text_folder()
+        .borrow_mut()
+        .create_child_at_end(FOLDER)
+        .unwrap();
+    folder1.get_base_mut().metadata.name = "folder1".to_string();
+    folder1.get_base_mut().file.modified = true;
+    let folder1_id = folder1.get_base().metadata.id.clone();
+
+    project.add_object(folder1);
+    project.save().unwrap();
+
+    let file_path = base_dir
+        .path()
+        .join("test_project/text/000-folder1/000-file.md");
+
+    // Write a file into the folder to start with
+    write_with_temp_file(
+        &file_path,
+        r#"id = "1"
+++++++++
+asdfjkl"#,
+    )
+    .unwrap();
+
+    // Now we process this to make sure we have a clean slate
+    process_updates_after_save(&mut project);
+    assert_eq!(project.objects.len(), 5);
+
+    let folder1_path = project
+        .objects
+        .get(&folder1_id)
+        .unwrap()
+        .borrow()
+        .get_path();
+
+    // First, update the file
+    thread::sleep(MTIME_SLEEP_DURATION);
+    std::fs::write(
+        &file_path,
+        r#"id = "1"
+++++++++
+123asdfjkl456"#,
+    )
+    .unwrap();
+
+    // We want to receive the update as a discrete event, not just as a removal
+    // that the debouncer smoothed out
+    sleep_and_receive(&mut project);
+    sleep_and_receive(&mut project);
+
+    // Delete the file and folder
+    remove_file(&file_path).unwrap();
+    remove_file(folder1_path.join("metadata.toml")).unwrap();
+    remove_dir(&folder1_path).unwrap();
+
+    assert_eq!(
+        std::fs::read_dir(base_dir.path().join("test_project/text/"))
+            .unwrap()
+            .count(),
+        1
+    );
+
+    assert!(!file_path.exists());
+    assert!(!folder1_path.exists());
+
+    process_updates_after_save(&mut project);
+
+    assert!(!project.objects.contains_key(&file_id("1")));
+    assert!(!project.objects.contains_key(&folder1_id));
+
+    assert_eq!(project.objects.len(), 3);
+    assert!(!file_path.exists());
     assert!(!folder1_path.exists());
 
     assert_eq!(

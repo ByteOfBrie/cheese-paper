@@ -183,10 +183,10 @@ fn load_top_level_folder(
 }
 
 #[cfg(not(test))]
-const WATCHER_MSEC_DURATION: u64 = 1000;
+pub(crate) const WATCHER_MSEC_DURATION: u64 = 1000;
 
 #[cfg(test)]
-const WATCHER_MSEC_DURATION: u64 = 50;
+pub(crate) const WATCHER_MSEC_DURATION: u64 = 50;
 
 fn create_watcher() -> notify::Result<(RecommendedDebouncer, WatcherReceiver)> {
     let (tx, rx) = std::sync::mpsc::channel();
@@ -953,6 +953,8 @@ impl Project {
                         .first()
                         .expect("Remove event should always have source");
 
+                    log::debug!("processing removal event: {event:?}");
+
                     if let Some(parent_id) = self.remove_path_from_parent(delete_path) {
                         file_objects_needing_rescan.insert(parent_id);
                     }
@@ -1058,11 +1060,11 @@ impl Project {
         if self.conflicting_files.is_empty() {
             // 5. Rescan anything that needs it
             for object_needing_rescan in file_objects_needing_rescan {
-                self.objects
-                    .get(&object_needing_rescan)
-                    .unwrap()
-                    .borrow_mut()
-                    .rescan_indexing(&self.objects, true);
+                if let Some(object_to_rescan) = self.objects.get(&object_needing_rescan) {
+                    object_to_rescan
+                        .borrow_mut()
+                        .rescan_indexing(&self.objects, true);
+                }
             }
 
             // Bonus sanity check: every object that isn't a top level folder
@@ -1222,7 +1224,7 @@ impl Project {
 
             while let Some(to_remove) = queue_to_remove.pop_front() {
                 if let Some(removed_object) = self.objects.remove(&to_remove) {
-                    log::debug!("Removed dangling file object: {removed_object:?}");
+                    log::debug!("Removed dangling file object: {}", removed_object.borrow());
 
                     // There might be a better way to do this (since we're dropping it anyway), but
                     // this is easy
