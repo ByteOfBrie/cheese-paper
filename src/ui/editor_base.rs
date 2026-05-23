@@ -24,47 +24,22 @@ type OpenFileIds = (Vec<String>, Option<String>);
 #[derive(Debug, Clone)]
 pub struct Data {
     pub data: Rc<RefCell<InnerData>>,
-    toml: DocumentMut,
     pub modified: bool,
 }
 impl Data {
     pub fn new(data_directory: PathBuf) -> Self {
-        let mut data = InnerData::new(data_directory);
-
-        let toml = match read_to_string(data.get_path()) {
-            Ok(config) => match config.parse::<DocumentMut>() {
-                Ok(parsed_toml) => parsed_toml,
-                Err(err) => {
-                    log::error!("Exiting, could not parse toml data file: {err}");
-                    panic!("Could not parse toml data file: {err}");
-                }
-            },
-            Err(err) => match err.kind() {
-                std::io::ErrorKind::NotFound => DocumentMut::new(),
-                _ => {
-                    // We have to panic here because an error means that we failed to load an existing
-                    // data file, so we can't overwrite it without losing data
-                    log::error!("Unknown error while reading editor data: {err}");
-                    panic!("Unknown error while reading editor data: {err}");
-                }
-            },
-        };
-
-        data.load(&toml);
-
         Self {
-            data: Rc::new(RefCell::new(data)),
-            toml,
+            data: Rc::new(RefCell::new(InnerData::new(data_directory))),
             modified: false,
         }
     }
 
     pub fn save(&mut self) -> Result<(), CheeseError> {
         if self.modified {
-            self.data.borrow().save(&mut self.toml);
+            self.data.borrow_mut().save();
             write_with_temp_file(
                 create_dir_if_missing(self.data.borrow().get_path().as_path())?,
-                self.toml.to_string(),
+                self.data.borrow().toml.to_string(),
             )
             .map_err(|err| cheese_error!("Error while saving app data\n{}", err))?;
         }
@@ -136,12 +111,33 @@ pub struct InnerData {
     /// Words that have been ignored by the user. Maybe should be in a separate file, but they're here for
     /// now
     pub custom_dictionary: Vec<String>,
+    pub toml: DocumentMut,
 }
 
 impl InnerData {
     pub fn new(data_directory: PathBuf) -> Self {
-        Self {
+        let toml = match read_to_string(data_directory.join("data.toml")) {
+            Ok(config) => match config.parse::<DocumentMut>() {
+                Ok(parsed_toml) => parsed_toml,
+                Err(err) => {
+                    log::error!("Exiting, could not parse toml data file: {err}");
+                    panic!("Could not parse toml data file: {err}");
+                }
+            },
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::NotFound => DocumentMut::new(),
+                _ => {
+                    // We have to panic here because an error means that we failed to load an existing
+                    // data file, so we can't overwrite it without losing data
+                    log::error!("Unknown error while reading editor data: {err}");
+                    panic!("Unknown error while reading editor data: {err}");
+                }
+            },
+        };
+
+        let mut data = Self {
             data_directory,
+            toml: DocumentMut::new(),
             recent_projects_on_disk: VecDeque::new(),
             recent_projects_all: VecDeque::new(),
             last_project_parent_folder: directories::UserDirs::new()
@@ -155,7 +151,10 @@ impl InnerData {
             last_open_file_ids: HashMap::new(),
             update_ignore_version: String::new(),
             custom_dictionary: Vec::new(),
-        }
+        };
+
+        data.load(&toml);
+        data
     }
 
     fn load(&mut self, table: &DocumentMut) {
@@ -236,14 +235,14 @@ impl InnerData {
     }
 
     /// Save the data in this object to a table
-    fn save(&self, table: &mut DocumentMut) {
+    fn save(&mut self) {
         let mut recent_projects = toml_edit::Array::new();
         for project in self.recent_projects_all.iter() {
             recent_projects.push(project.to_string_lossy().to_string());
         }
-        table.insert("recent_projects", value(recent_projects));
+        self.toml.insert("recent_projects", value(recent_projects));
 
-        table.insert(
+        self.toml.insert(
             "last_project_parent_folder",
             value(
                 self.last_project_parent_folder
@@ -252,12 +251,12 @@ impl InnerData {
             ),
         );
 
-        table.insert(
+        self.toml.insert(
             "update_ignore_version",
             value(self.update_ignore_version.clone()),
         );
 
-        table.insert(
+        self.toml.insert(
             "last_export_folder",
             value(self.last_export_folder.to_string_lossy().to_string()),
         );
@@ -270,9 +269,10 @@ impl InnerData {
             open_tab_info.push(current_tab.clone().unwrap_or_default());
             last_open_file_ids.insert(project_id, value(open_tab_info).into_value().unwrap());
         }
-        table.insert("last_open_file_ids", value(last_open_file_ids));
+        self.toml
+            .insert("last_open_file_ids", value(last_open_file_ids));
 
-        table.insert(
+        self.toml.insert(
             "custom_dictionary",
             value(toml_edit::Array::from_iter(self.custom_dictionary.iter())),
         );
