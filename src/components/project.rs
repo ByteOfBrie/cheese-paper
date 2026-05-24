@@ -855,6 +855,38 @@ impl Project {
         }
     }
 
+    #[cfg(test)]
+    pub fn create_object_with_name(
+        &mut self,
+        file_type: FileType,
+        parent: Option<&FileID>,
+        name: &str,
+    ) -> Result<FileID, CheeseError> {
+        let parent_id = match parent {
+            Some(parent_id) => parent_id,
+            None => self.text_id(),
+        };
+
+        let child_add_result = self
+            .objects
+            .get(parent_id)
+            .unwrap()
+            .borrow_mut()
+            .create_child(file_type, DirPosition::Last, &self.objects);
+
+        match child_add_result {
+            Ok(mut new_child) => {
+                let id = new_child.id().clone();
+                new_child.get_base_mut().metadata.name = name.to_string();
+                new_child.get_base_mut().file.modified = true;
+
+                self.add_object(new_child);
+                Ok(id)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     /// Get updates from the file watcher, can be called very frequently. Will only store
     /// them until `process_updates` is called
     pub fn receive_updates(&mut self) {
@@ -1359,6 +1391,11 @@ impl Project {
         }
 
         ProjectPathKind::UnrecognizedLocation
+    }
+
+    #[cfg(test)]
+    pub fn text_id(&self) -> &FileID {
+        &self.top_level_folders[0]
     }
 
     #[cfg(test)]
