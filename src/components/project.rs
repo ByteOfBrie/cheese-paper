@@ -2,9 +2,10 @@ use crate::cheese_error;
 use crate::components::file_objects::{FileInfo, FileObject, FileObjectMetadata, FileObjectStore};
 use crate::components::schema::Schema;
 use crate::components::text::Text;
-use crate::schemas::{DEFAULT_SCHEMA, FileTypeInfo, resolve_schema};
+use crate::schemas::{DEFAULT_SCHEMA, FileType, FileTypeInfo, resolve_schema};
 use crate::util::CheeseError;
 
+use egui_ltreeview::DirPosition;
 #[cfg(feature = "polling")]
 use notify::PollWatcher;
 #[cfg(not(feature = "polling"))]
@@ -828,6 +829,29 @@ impl Project {
     pub fn resolve_references(&mut self) {
         for object in self.objects.values() {
             object.borrow_mut().resolve_references(&self.objects);
+        }
+    }
+
+    /// Create a child at the specified spot, adding to both the parent and the object dictionary
+    pub fn create_object(
+        &mut self,
+        file_type: FileType,
+        parent: &FileID,
+        position: DirPosition<FileID>,
+    ) -> Result<FileID, CheeseError> {
+        let child_add_result = self.objects.get(parent).unwrap().borrow_mut().create_child(
+            file_type,
+            position,
+            &self.objects,
+        );
+
+        match child_add_result {
+            Ok(new_child) => {
+                let id = new_child.id().clone();
+                self.add_object(new_child);
+                Ok(id)
+            }
+            Err(err) => Err(err),
         }
     }
 

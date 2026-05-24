@@ -649,19 +649,10 @@ impl ProjectEditor {
                                         )
                                     };
 
-                                    // We can't match directly on this statement because we need a mutable
-                                    // borrow to add
-                                    let child_add_result = self
-                                        .project
-                                        .objects
-                                        .get(&parent_id)
-                                        .unwrap()
-                                        .borrow_mut()
-                                        .create_child(file_type, position, &self.project.objects);
-
-                                    match child_add_result {
-                                        Ok(new_child) => self.project.add_object(new_child),
-                                        Err(err) => log::error!("Unable to create file ID: {err}"),
+                                    if let Err(err) =
+                                        self.project.create_object(file_type, &parent_id, position)
+                                    {
+                                        log::error!("Unable to create file ID: {err}");
                                     }
                                 }
                             }

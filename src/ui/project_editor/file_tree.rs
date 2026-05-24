@@ -260,19 +260,8 @@ pub fn ui(editor: &mut ProjectEditor, ui: &mut egui::Ui) {
                 position,
                 file_type,
             } => {
-                let result = editor
-                    .project
-                    .objects
-                    .get(&parent)
-                    .unwrap()
-                    .borrow_mut()
-                    .create_child(file_type, position, &editor.project.objects);
-
-                match result {
-                    Ok(new_child) => editor.project.add_object(new_child),
-                    Err(err) => {
-                        log::error!("Encountered error while trying to add child: {err}")
-                    }
+                if let Err(err) = editor.project.create_object(file_type, &parent, position) {
+                    log::error!("Encountered error while trying to add child: {err}");
                 }
             }
         }
