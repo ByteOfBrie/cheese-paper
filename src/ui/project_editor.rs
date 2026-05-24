@@ -28,7 +28,7 @@ use std::time::{Duration, Instant};
 
 use egui::{Key, Modifiers, Panel, ScrollArea};
 use egui_dock::{DockArea, DockState};
-use egui_ltreeview::TreeViewState;
+use egui_ltreeview::{DirPosition, TreeViewState};
 use rfd::FileDialog;
 
 const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
@@ -619,6 +619,56 @@ impl ProjectEditor {
             .show_inside(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
+                        ui.menu_button("New...", |ui| {
+                            for file_type in self.project.schema.get_all_file_types() {
+                                if ui
+                                    .button(format!("New {}", file_type.type_name()))
+                                    .clicked()
+                                {
+                                    let (parent_id, position) = if let Some(open_page) =
+                                        &self.current_open_tab
+                                        && let Page::FileObject(current_file_id) = &open_page.page
+                                        && let Some(current_file_object) =
+                                            self.project.objects.get(current_file_id)
+                                    {
+                                        if current_file_object.borrow().is_folder() {
+                                            (current_file_id.clone(), DirPosition::Last)
+                                        } else {
+                                            (
+                                                self.project
+                                                    .find_object_parent(current_file_id)
+                                                    .unwrap()
+                                                    .clone(),
+                                                DirPosition::After(current_file_id.clone()),
+                                            )
+                                        }
+                                    } else {
+                                        (
+                                            self.project.top_level_folders[0].clone(),
+                                            DirPosition::Last,
+                                        )
+                                    };
+
+                                    // We can't match directly on this statement because we need a mutable
+                                    // borrow to add
+                                    let child_add_result = self
+                                        .project
+                                        .objects
+                                        .get(&parent_id)
+                                        .unwrap()
+                                        .borrow_mut()
+                                        .create_child(file_type, position, &self.project.objects);
+
+                                    match child_add_result {
+                                        Ok(new_child) => self.project.add_object(new_child),
+                                        Err(err) => log::error!("Unable to create file ID: {err}"),
+                                    }
+                                }
+                            }
+                        });
+
+                        ui.separator();
+
                         if ui.button("Close Project").clicked() {
                             state.closing_project = true;
                         }

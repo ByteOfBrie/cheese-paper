@@ -71,11 +71,11 @@ impl dyn FileObject {
 
                 ui.separator();
 
-                if let Some(parent) = parent_id.clone()
+                if let Some(parent) = &parent_id
                     && ui.button("Delete").clicked()
                 {
                     actions.push(ContextMenuActions::Delete {
-                        parent,
+                        parent: parent.clone(),
                         deleting: self.id().clone(),
                     });
                 }
