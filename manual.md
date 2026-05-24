@@ -2,32 +2,32 @@ Thank you for using Cheese Paper. The code currently lives at https://codeberg.o
 
 # Basic Flow
 
-Cheese Paper is intended to be used for writing stories which can be broken down into smaller components.
+Cheese Paper is intended to be used for writing stories by breaking them down into smaller components.
 
 There are currently four types of objects in Cheese Paper:
 
-* Scenes contain the text of the story. This can be as much as an entire chapter, or as little as a paragraph, it is entirely up to the author. Scenes have a summary and notes for the author's convenience, and are not included in the final export.
-* Folders are used to store any type of object. These can also contain a summary and notes.
-* Characters are purely so the author has a a handy place to fill out some information about who is in the story (so they don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
+* Scenes contain the text of the story. Depending on your preference, this can be as much as an entire chapter, or as little as a paragraph. Scenes have a summary and notes for the author's convenience (which are not included in the final export).
+* Folders are used to store any type of object. These also have a summary and notes section.
+* Characters are places for the author to fill out some information about who is in the story (so you don't forget a character's hair color or the spelling of their middle name on chapter seventeen).
 * Places are similar to characters, but intended for information about the world. This can be a specific place/area, or worldbuilding information. Once again, this is purely for organization and can be used in whatever way the author works.
 
 Depending on whether you're working with a scene, folder, character, or place, the options for metadata will be slightly different, but the concept is all the same. You have a couple different fields that you can fill out and see while writing the story.
 
 Ideally, this can help keep the story on track and make it easier to refer back to all of the other details. Can't remember how a specific character would normally dress? It's one click away.
 
-You are encouraged to split up your project into as many folders and scenes as makes sense to you. Once you want to share it, there are options to export an outline or the story text into a single shareable file.
+You are encouraged to split up your project into as many folders and scenes as makes sense to you. Once you want to share it, you can create a single file which contains all of the story text, or an single outline file with all of the notes and characters.
 
 # Key Features
 
 ## File Format
 
-One of the key design decisions was keeping the file format as simple as possible. Everything except scenes are [toml](https://toml.io/) documents with a few set fields. Scenes are a toml document, followed by `++++++++`, followed by the text of the scene (markdown). Both of these file formats were designed to be easy for humans to read.
+One of the original design decisions was keeping the file format as simple as possible. Everything except scenes are [toml](https://toml.io/) documents with a few set fields. Scenes are a toml document, followed by `++++++++`, followed by the text of the scene (markdown). Both of these file formats were designed to be easy for humans to read.
 
 You can edit them yourself by hand! You can edit them on a phone!
 
 ## Loading Partial Files
 
-Cheese Paper is designed to have project files be edited, moved, deleted, and created by programs outside of the editor. This can happen on the first load, or if a file is editing or synced to while Cheese Paper is already open
+Files within Cheese Paper can be edited, moved, deleted, and created by programs outside of the editor. Cheese Paper will parse all edits when starting up or when files are edited (or synced to) while Cheese Paper is already open.
 
 The file format is documented below in more detail. For minimum requirements:
 
@@ -39,6 +39,8 @@ Folder: must exist as a folder
 
 Place: must exist in a `place_name/metadata.toml` and have `file_type = "place"` within
 
+As a result, if you have access to your files but not Cheese Paper, you can write a new scene in a file named `title_of_scene.md` with just the text of the scene. When you load the project with Cheese Paper (or sync files to a computer that is running Cheese Paper), will convert it to a normal Cheese Paper scene 
+
 # Integration
 
 ## Spellcheck
@@ -49,9 +51,9 @@ On non-flatpak Linux, Cheese Paper's spellcheck should work out of the box with 
 
 The flatpak Linux Cheese Paper cannot access system dictionaries, but comes with a selection of dictionaries to choose from.
 
-On Windows and MacOS, Cheese Paper comes with a default en_US dictionary. To use other dictionaries in other languages, you will need to download the `.dic` and `.aff` files yourself. They can be downloaded from various places, notably from libreoffice: https://github.com/LibreOffice/dictionaries/
+On Windows and MacOS, Cheese Paper comes with a default en_US dictionary. To use other dictionaries in other languages, you will need to download the `.dic` and `.aff` files yourself, for example, from libreoffice: https://github.com/LibreOffice/dictionaries/
 
-Once you have both a `.dic` and `.aff` file, you'll want to open Cheese Paper settings and clicking the "open spellcheck folder" button in the settings. After placing both the `.dic` and `.aff` files directly in that folder and restarting Cheese Paper, you should be able to select the desired dictionary.
+Once you have both a `.dic` and `.aff` file, you'll want to open Cheese Paper settings and clicking the "Open Dictionary Folder" button. After placing both the `.dic` and `.aff` files directly in that folder and restarting Cheese Paper, that language should appear in the dropdown.
 
 ### Per-Project Spellcheck
 
@@ -63,17 +65,15 @@ Cheese Paper directories are not very useful for sharing your completed story, w
 
 The default export settings assume that top level folders and scenes are should be given headings as if they are chapters, and nothing else should. This can be changed project-wide on the export screen, or this can be changed for a specific scene or folder from their sidebar.
 
-Markdown is designed to be fairly human readable, but you probably don't want to try to publish your story with this. Thankfully, markdown is a well known format and there are plenty of options for converting to other formats. Most notably, pandoc.
-
-Pandoc is an another open-source tool that can deal with all different types of document conversion, including taking your nice markdown file and turning it into an epub, word document, or pdf. See https://pandoc.org/app/ for an easy-to-use in-browser converter.
+Markdown is designed to be fairly human readable, but you probably don't want to try to publish your story with this. Thankfully, markdown is a well known format and there are plenty of options for converting to other formats. Most notably, Pandoc, another open-source tool for converting between a wide variety of document types, including turning your exported markdown file into an epub, word document, or pdf. See https://pandoc.org/app/ for an easy-to-use in-browser converter.
 
 (Side note: if you are creating a book, please consider not only distributing PDFs. PDFs can be difficult for readers who need larger font sizes, particularly on smaller devices like phones)
 
 ## Outline Export
 
-Cheese Paper is designed to hold a lot of information about your writing project inside of the editor itself. This is great for your own use, but some of your friends might not have Cheese Paper (unfortunately), or you might not want to share the entire project file with them.
+Cheese Paper is designed to hold a lot of information about your writing project inside of the editor itself. This is great for your own use, but some of your friends might not have Cheese Paper (unfortunately), or you might not want to bother sharing the entire project folder with them.
 
-For this, Cheese Paper has the ability to export the entire outline into a single file. It will put all of the summaries and notes from your project into a markdown file that can then be shared as desired.
+For this, Cheese Paper has the ability to export the entire outline into a single file. All of the summaries and notes from your project are combined into a markdown file, which can be easily shared as desired.
 
 ## Syncthing (and syncing in general)
 
@@ -85,25 +85,27 @@ Other programs will likely work well, Cheese Paper's sync model is theoretically
 
 ## Logs
 
-Cheese Paper will automatically write logs. The exact path will vary based on OS:
+Cheese Paper will automatically write logs. There is a button in the settings to open the logs folder. If you need to navigate to it outside of cheese paper, the path varies by OS:
 
-Linux: `~/.local/share/cheese-paper/logs`
+Linux (non-flatpak): `~/.local/share/cheese-paper/logs`
 
-Windows: `%appdata%\cheese-paper\logs` (or `C:\Users\<User>\AppData\Roaming\cheese-paper\logs`)
+Linux (flatpak): `~/.var/app/gay.brie.CheesePaper/data/cheese-paper/logs/`
+
+Windows: `%appdata%\cheese-paper\logs` (full path: `C:\Users\<User>\AppData\Roaming\cheese-paper\logs`)
 
 MacOS: `~/Library/Application Support/cheese-paper/`
 
-The log levels can be changed if desired by setting the desired `RUST_LOG` variable before starting Cheese Paper (this will vary by platform). The default log level is `warn,cheese_paper=info`, meaning that logs will include warnings and above from other libraries, while Cheese Paper message from info and above will be included.
+The log levels can be changed if desired by setting the desired `RUST_LOG` variable before starting Cheese Paper (the method of doing this will vary by platform). The default log level is `warn,cheese_paper=info`, meaning that logs will include warnings and above from other libraries, while Cheese Paper message from info and above will be included.
 
 ## Markdown
 
 Markdown is rather complicated and Cheese Paper's rendering only displays a tiny portion of that. However, the intended path is to use cheese paper and then Pandoc, which does implement everything.
 
-Users familiar with markdown can use whatever formatting they like, and it should render without issues in their final product
+Users familiar with markdown can use whatever formatting they like; Cheese Paper is not actually involved in the final rendering of your project.
 
-Users unfamiliar with markdown should be sure to glance over exports to ensure that unintended formatting has not occurred
+Especially if you are unfamiliar with markdown, it is recommended to check over your exports for formatting issues.
 
-If there are frequent cases of unexpected formatting confusion, please open an issue on codeberg.
+If there are frequent cases of Cheese Paper providing misleading formatting, please open an issue on codeberg. 
 
 ## Full File Format
 
@@ -148,7 +150,9 @@ brie@cheddar ~/w/cheese-paper-test (main)> cat .git
 gitdir: /home/brie/.local/share/cheese-paper/git_repos/2016bc85-57bc-42e5-bdb3-cb47110cada3.git
 ```
 
-If you have `git` installed and run `git` commands inside of the folder, it will automatically detect the `.git` file and pick it up, no special options are needed.
+If you have `git` installed and run `git` commands inside of the project folder, it will automatically detect the `.git` file without any special options.
+
+The actual `git` data will be stored inside the `git_repos` folder, in the `data` directory (there is a button in settings), and the folder name will be the project's ID with `.git` at the end
 
 #### Managing A Separate Git Repo
 
@@ -172,13 +176,13 @@ git --git-dir=/home/brie/.local/share/cheese-paper/git_repos/2016bc85-57bc-42e5-
 
 At this point, you can manage it as normal, and then go back to using your local git repo.
 
-## Ignored Words
+## Spellcheck Ignored Words
 
-If you ignore a word in the spellcheck dialogue, you will not ever see it flagged again in any of your projects. If you do this by mistake, you can open up the data file (`data.toml` in the folder containing the log folder. See the log section for per-platform paths).
+If you ignore a word in the spellcheck dialogue, you will not ever see it flagged again in any of your projects. If you do this by mistake, you can open up the data file: 
 
-First, close Cheese Paper (otherwise we might accidentally add it back in to the list of ignored words)
+Click "Open Data Folder" in the settings, then close Cheese Paper (otherwise we might accidentally add it back in to the list of ignored words)
 
-In the data file, you'll see a `custom_dictionary` value, which will be a list of all of the words that were ever ignored. Delete the word(s) from the list, and the next time you start Cheese Paper, that word will be marked as misspelled again.
+Open the file named `data.toml`. Inside, you'll see `custom_dictionary`, which is a list of all of the words that were ever ignored. Delete the word(s) from the list, and the next time you start Cheese Paper, that word will be marked as misspelled again.
 
 ## Quirks
 
