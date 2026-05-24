@@ -5,10 +5,18 @@ use crate::components::text::Text;
 use crate::schemas::{DEFAULT_SCHEMA, FileTypeInfo, resolve_schema};
 use crate::util::CheeseError;
 
+#[cfg(feature = "polling")]
+use notify::PollWatcher;
+#[cfg(not(feature = "polling"))]
+use notify::RecommendedWatcher;
+use notify::RecursiveMode;
 use notify::event::RenameMode;
 use notify::{EventKind, event::ModifyKind};
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{DebouncedEvent, Debouncer, RecommendedCache, new_debouncer};
+#[cfg(not(feature = "polling"))]
+use notify_debouncer_full::new_debouncer;
+#[cfg(feature = "polling")]
+use notify_debouncer_full::new_debouncer_opt;
+use notify_debouncer_full::{DebouncedEvent, Debouncer, RecommendedCache};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -17,7 +25,7 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use toml_edit::DocumentMut;
 
 use crate::components::file_objects::{FOLDER_METADATA_FILE_NAME, FileID};
@@ -27,7 +35,10 @@ use crate::components::file_objects::utils::{
     process_name_for_filename, write_outline_property, write_with_temp_file,
 };
 
+#[cfg(not(feature = "polling"))]
 type RecommendedDebouncer = Debouncer<RecommendedWatcher, RecommendedCache>;
+#[cfg(feature = "polling")]
+type RecommendedDebouncer = Debouncer<PollWatcher, RecommendedCache>;
 type WatcherReceiver = std::sync::mpsc::Receiver<Result<Vec<DebouncedEvent>, Vec<notify::Error>>>;
 
 #[derive(Debug, Clone)]
@@ -182,20 +193,40 @@ fn load_top_level_folder(
     }
 }
 
-#[cfg(not(test))]
+#[cfg(all(not(test), feature = "polling"))]
+pub(crate) const WATCHER_MSEC_DURATION: u64 = 5000;
+
+#[cfg(all(not(test), not(feature = "polling")))]
 pub(crate) const WATCHER_MSEC_DURATION: u64 = 1000;
 
 #[cfg(test)]
 pub(crate) const WATCHER_MSEC_DURATION: u64 = 50;
 
+#[cfg(not(feature = "polling"))]
 fn create_watcher() -> notify::Result<(RecommendedDebouncer, WatcherReceiver)> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let watcher = new_debouncer(
-        std::time::Duration::from_millis(WATCHER_MSEC_DURATION),
+    let watcher = new_debouncer(Duration::from_millis(WATCHER_MSEC_DURATION), None, tx)?;
+
+    Ok((watcher, rx))
+}
+
+#[cfg(feature = "polling")]
+fn create_watcher() -> notify::Result<(
+    notify_debouncer_full::Debouncer<notify::PollWatcher, RecommendedCache>,
+    WatcherReceiver,
+)> {
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    let watcher = new_debouncer_opt::<_, notify::PollWatcher, RecommendedCache>(
+        Duration::from_millis(WATCHER_MSEC_DURATION),
         None,
         tx,
-    )?;
+        RecommendedCache::new(),
+        notify::Config::default()
+            .with_poll_interval(Duration::from_millis(WATCHER_MSEC_DURATION / 4)),
+    )
+    .unwrap();
 
     Ok((watcher, rx))
 }

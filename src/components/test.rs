@@ -2935,7 +2935,7 @@ asdfjkl"#,
     .unwrap();
 
     // These files should have different modtimes, we sleep to ensure that they don't get the same
-    // (e.g., on )
+    // (e.g., on ci hosts)
     thread::sleep(MTIME_SLEEP_DURATION);
 
     write_with_temp_file(
@@ -4416,7 +4416,7 @@ fn test_tracker_modification() {
 
     write_with_temp_file(&scene1_path, scene_text).unwrap();
 
-    process_updates(&mut project);
+    process_updates_after_save(&mut project);
 
     {
         assert_eq!(project.objects.len(), 4);
@@ -4432,9 +4432,14 @@ fn test_tracker_modification() {
 ++++++++
 asdfjkl123"#;
 
-    thread::sleep(MTIME_SLEEP_DURATION);
+    // The poll watcher is *very* finnicky here, but not on the part that we're trying to test
+    // I think the issue is that we can scan the files after the last save but before writing
+    // the file, so we need to be extra careful to wait long enough for it to scan
+    for _ in 1..20 {
+        sleep_and_receive(&mut project);
+    }
 
-    std::fs::write(scene1_path, new_scene_text).unwrap();
+    std::fs::write(&scene1_path, new_scene_text).unwrap();
 
     process_updates(&mut project);
 
@@ -4492,7 +4497,9 @@ fn test_tracker_multiple_modifications() {
 ++++++++
 asdfjkl123"#;
 
-    thread::sleep(MTIME_SLEEP_DURATION);
+    for _ in 1..20 {
+        sleep_and_receive(&mut project);
+    }
 
     std::fs::write(&scene1_path, new_scene_text).unwrap();
 
@@ -4514,7 +4521,9 @@ asdfjkl123"#;
 ++++++++
 54321"#;
 
-    thread::sleep(MTIME_SLEEP_DURATION);
+    for _ in 1..20 {
+        sleep_and_receive(&mut project);
+    }
 
     std::fs::write(&scene1_path, new_scene_text).unwrap();
 

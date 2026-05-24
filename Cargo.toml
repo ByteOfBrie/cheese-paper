@@ -28,6 +28,7 @@ default = ["update_checking"]
 metrics = []
 schema_selection_dialogue = []
 update_checking = ["ureq", "semver"]
+polling = []
 
 [dependencies]
 # file components
