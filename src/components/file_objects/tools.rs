@@ -462,6 +462,33 @@ impl dyn FileObject {
             final_str.push_str(&self.get_body());
         }
 
+        // Double check expected modtimes right before we write
+        match self.get_base().file.modtime {
+            Some(expected_modtime) => match self.get_file().metadata() {
+                Ok(old_metadata) => match old_metadata.modified() {
+                    Ok(modtime) => {
+                        if modtime != expected_modtime {
+                            log::warn!(
+                                "Saving {self}: expected modtime to be {expected_modtime:?}, \
+                                found {modtime:?}"
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        log::warn!("Could not read modtime of {self}: {err}");
+                    }
+                },
+                Err(err) => {
+                    log::warn!("Could not load metadata before saving {self}: {err}");
+                }
+            },
+            None => {
+                if self.get_file().exists() {
+                    log::warn!("File unexpectedly exists, may be overwriting: {self}");
+                }
+            }
+        }
+
         write_with_temp_file(self.get_file(), final_str)?;
 
         let new_modtime = std::fs::metadata(self.get_file())

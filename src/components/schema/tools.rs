@@ -371,11 +371,15 @@ impl dyn Schema {
             Ok(existing_file_id)
         } else {
             // we need to create a new object
+            let modtime = filename
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .ok();
 
             let mut file_info = FileInfo {
                 dirname,
                 basename,
-                modtime: None,
+                modtime,
                 modified,
             };
 
