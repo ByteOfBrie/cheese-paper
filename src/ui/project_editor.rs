@@ -619,44 +619,7 @@ impl ProjectEditor {
             .show_inside(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
-                        ui.menu_button("New...", |ui| {
-                            for file_type in self.project.schema.get_all_file_types() {
-                                if ui
-                                    .button(format!("New {}", file_type.type_name()))
-                                    .clicked()
-                                {
-                                    let (parent_id, position) = if let Some(open_page) =
-                                        &self.current_open_tab
-                                        && let Page::FileObject(current_file_id) = &open_page.page
-                                        && let Some(current_file_object) =
-                                            self.project.objects.get(current_file_id)
-                                    {
-                                        if current_file_object.borrow().is_folder() {
-                                            (current_file_id.clone(), DirPosition::Last)
-                                        } else {
-                                            (
-                                                self.project
-                                                    .find_object_parent(current_file_id)
-                                                    .unwrap()
-                                                    .clone(),
-                                                DirPosition::After(current_file_id.clone()),
-                                            )
-                                        }
-                                    } else {
-                                        (
-                                            self.project.top_level_folders[0].clone(),
-                                            DirPosition::Last,
-                                        )
-                                    };
-
-                                    if let Err(err) =
-                                        self.project.create_object(file_type, &parent_id, position)
-                                    {
-                                        log::error!("Unable to create file ID: {err}");
-                                    }
-                                }
-                            }
-                        });
+                        ui.menu_button("New...", |ui| self.new_object_menu(ui));
 
                         ui.separator();
 
@@ -738,6 +701,38 @@ impl ProjectEditor {
                     });
                 });
             });
+    }
+
+    fn new_object_menu(&mut self, ui: &mut Ui) {
+        for file_type in self.project.schema.get_all_file_types() {
+            if ui
+                .button(format!("New {}", file_type.type_name()))
+                .clicked()
+            {
+                let (parent_id, position) = if let Some(open_page) = &self.current_open_tab
+                    && let Page::FileObject(current_file_id) = &open_page.page
+                    && let Some(current_file_object) = self.project.objects.get(current_file_id)
+                {
+                    if current_file_object.borrow().is_folder() {
+                        (current_file_id.clone(), DirPosition::Last)
+                    } else {
+                        (
+                            self.project
+                                .find_object_parent(current_file_id)
+                                .unwrap()
+                                .clone(),
+                            DirPosition::After(current_file_id.clone()),
+                        )
+                    }
+                } else {
+                    (self.project.top_level_folders[0].clone(), DirPosition::Last)
+                };
+
+                if let Err(err) = self.project.create_object(file_type, &parent_id, position) {
+                    log::error!("Unable to create file ID: {err}");
+                }
+            }
+        }
     }
 
     // the side panel containing the tree view or the global search
