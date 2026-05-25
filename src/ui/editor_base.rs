@@ -71,12 +71,12 @@ impl Data {
         self.data
             .borrow_mut()
             .recent_projects_on_disk
-            .retain(|p| *p != project_path);
+            .retain(|p| p != project_path);
 
         self.data
             .borrow_mut()
-            .recent_projects_on_disk
-            .retain(|p| *p != project_path);
+            .recent_projects_all
+            .retain(|p| p != project_path);
     }
 
     pub fn push_recent_project(&self, project_path: PathBuf) {
@@ -303,15 +303,6 @@ pub struct EditorState {
     #[cfg(feature = "update_checking")]
     finished_update_check: bool,
 }
-
-// impl std::fmt::Debug for EditorState {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_struct("EditorState")
-//             .field("settings", &self.settings)
-//             .field("data", &self.data)
-//             .finish()
-//     }
-// }
 
 impl EditorState {
     pub fn new(project_dirs: ProjectDirs) -> Self {
