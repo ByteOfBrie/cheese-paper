@@ -717,7 +717,23 @@ impl CheesePaperApp {
                                 project_dir,
                                 project_name,
                             ) {
-                                Ok(project) => {
+                                Ok(mut project) => {
+                                    // Before we actually load the project, create one new scene
+                                    // to make the UI a little nicer
+                                    let default_file_type =
+                                        project.schema.get_all_file_types().first().unwrap();
+                                    let text_id = project.top_level_folders[0].clone();
+
+                                    if let Err(err) = project.create_object(
+                                        default_file_type,
+                                        &text_id,
+                                        egui_ltreeview::DirPosition::Last,
+                                    ) {
+                                        log::warn!(
+                                            "Could not create a scene in new project: {err}"
+                                        );
+                                    }
+
                                     self.open_project(project);
                                 }
                                 Err(err) => {
