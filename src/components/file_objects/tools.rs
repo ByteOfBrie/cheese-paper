@@ -132,6 +132,15 @@ impl dyn FileObject {
             .filter_map(|child_id| objects.get(child_id))
     }
 
+    /// If this object or any of its children are the specified ID
+    pub fn tree_contains(&self, id: &FileID, objects: &FileObjectStore) -> bool {
+        if self.id() == id {
+            return true;
+        }
+        self.children(objects)
+            .any(|child| child.borrow().tree_contains(id, objects))
+    }
+
     pub fn new<O: FileObject + 'static>(o: O) -> Box<RefCell<dyn FileObject>> {
         Box::new(RefCell::new(o))
     }

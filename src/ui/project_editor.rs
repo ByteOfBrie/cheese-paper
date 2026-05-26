@@ -709,11 +709,34 @@ impl ProjectEditor {
                 .button(format!("New {}", file_type.type_name()))
                 .clicked()
             {
+                // Sorry Eve, this is maybe hacky around different schemas, but other ways
+                // to implement this seemed quite annoying. Maybe we should add an expected_folder
+                // to the file_type struct
+                let expected_folder = match file_type.get_identifier() {
+                    "scene" => Some(0),
+                    "character" => Some(1),
+                    "worldbuilding" => Some(2),
+                    _ => None,
+                };
+
+                // If we have an open page and either a file type that's expected to go in it
+                // (e.g., scene in text), or a type that isn't associated with a top level
+                // folder (e.g., folder), we want to create that file object relative to its current
+                // position. Otherwise, we'll just use the default for the current folder, or text
+                // if there's nothing else
                 let (parent_id, position) = if let Some(open_page) = &self.current_open_tab
                     && let Page::FileObject(current_file_id) = &open_page.page
-                    && let Some(current_file_object) = self.project.objects.get(current_file_id)
-                {
-                    if current_file_object.borrow().is_folder() {
+                    && expected_folder.is_none_or(|folder_id| {
+                        self.project
+                            .objects
+                            .get(&self.project.top_level_folders[folder_id])
+                            .unwrap()
+                            .borrow()
+                            .tree_contains(current_file_id, &self.project.objects)
+                    }) {
+                    if let Some(current_file_object) = self.project.objects.get(current_file_id)
+                        && current_file_object.borrow().is_folder()
+                    {
                         (current_file_id.clone(), DirPosition::Last)
                     } else {
                         (
@@ -725,7 +748,10 @@ impl ProjectEditor {
                         )
                     }
                 } else {
-                    (self.project.top_level_folders[0].clone(), DirPosition::Last)
+                    (
+                        self.project.top_level_folders[expected_folder.unwrap_or_default()].clone(),
+                        DirPosition::Last,
+                    )
                 };
 
                 if let Err(err) = self.project.create_object(file_type, &parent_id, position) {
