@@ -21,6 +21,19 @@ pub type FileObjectStore = HashMap<FileID, RefCell<Box<dyn FileObject>>>;
 
 const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
 
+fn recursive_remove_from_objects(
+    to_remove: &FileID,
+    objects: &mut FileObjectStore,
+) -> RefCell<Box<dyn FileObject>> {
+    let obj = objects.remove(to_remove).unwrap();
+
+    for child_id in &obj.borrow().get_base().children {
+        recursive_remove_from_objects(child_id, objects);
+    }
+
+    obj
+}
+
 impl dyn FileObject {
     pub fn is_folder(&self) -> bool {
         self.get_type().is_folder()
@@ -523,9 +536,9 @@ impl dyn FileObject {
     ) -> Result<(), CheeseError> {
         log::debug!("removing file: {child_id:?}");
 
-        let removed_child = objects.remove(child_id).unwrap();
+        let removed_child = recursive_remove_from_objects(child_id, objects);
 
-        removed_child.borrow_mut().remove_file_object(objects)?;
+        removed_child.borrow_mut().delete_file_object()?;
 
         let parent = objects.get(parent_id).unwrap();
 
@@ -549,30 +562,18 @@ impl dyn FileObject {
         Ok(())
     }
 
-    pub fn remove_file_object(&mut self, objects: &mut FileObjectStore) -> Result<(), CheeseError> {
-        let mut errors = Vec::new();
-        log::debug!("Removing file object {}", self.get_base().metadata.id);
+    /// Delete the actual file object on disk, including any children
+    fn delete_file_object(&mut self) -> Result<(), CheeseError> {
+        log::debug!("Removing file object {self}");
 
-        let children = self.get_base().children.clone();
-
-        // Go through the list backwards, so calling `fix_indexing` at the end
-        // isn't expensive (having to do a bunch of moves)
-        for child in children.iter().rev() {
-            let removed_child = objects.remove(child).unwrap();
-            // save any errors for later
-            if let Err(err) = removed_child.borrow_mut().remove_file_object(objects) {
-                errors.push(err);
-            }
-        }
-
-        // then, we need to take care of this file
-        if let Err(err) = std::fs::remove_file(self.get_file()) {
-            if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
+        // then, we need to take care of this file (or directory, if it exists)
+        if let Err(err) = trash::delete(self.get_path()) {
+            if cfg!(windows) {
                 let start = Instant::now();
 
                 log::warn!(
                     "Could not remove file on windows: retrying. This may be due to \
-                    antivirus software, consider adjusting settings if this issue persists"
+                    antivirus software, consider adjusting settings if this issue persists: {err}"
                 );
 
                 loop {
@@ -594,41 +595,7 @@ impl dyn FileObject {
             }
         }
 
-        if self.is_folder()
-            && let Err(err) = std::fs::remove_dir(self.get_path())
-        {
-            if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
-                let start = Instant::now();
-
-                log::warn!(
-                    "Could not remove file on windows: retrying. This may be due to \
-                    antivirus software, consider adjusting settings if this issue persists"
-                );
-
-                loop {
-                    if std::fs::remove_dir(self.get_path()).is_ok() {
-                        break;
-                    }
-
-                    if start.elapsed() > WINDOWS_SLEEP_DURATION {
-                        return Err(cheese_error!(
-                            "Could not remove file for {self}, even \
-                            after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
-                        ));
-                    }
-
-                    thread::sleep(Duration::from_millis(20));
-                }
-            } else {
-                return Err(cheese_error!("Could not remove file for {self}: {err}"));
-            }
-        }
-
-        // If we had any errors earlier, return them
-        match errors.pop() {
-            Some(err) => Err(err),
-            None => Ok(()),
-        }
+        Ok(())
     }
 
     /// Sets the index to this file, doing the move if necessary

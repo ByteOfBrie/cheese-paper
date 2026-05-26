@@ -1106,13 +1106,6 @@ fn test_delete() {
 
     assert!(!project.get_path().join("text/000-folder1/").exists());
 
-    assert!(
-        !project
-            .get_path()
-            .join("text/000-folder1/001-scene2.md")
-            .exists()
-    );
-
     assert_eq!(
         project.get_text_folder().borrow().get_base().children.len(),
         0
