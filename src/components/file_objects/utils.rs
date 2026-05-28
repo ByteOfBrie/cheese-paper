@@ -1,9 +1,11 @@
 use std::io::Write;
 use std::path::Path;
+use std::sync::OnceLock;
 use std::thread;
 use std::time::{Duration, Instant};
 use tempfile::Builder;
 use toml_edit::TableLike;
+use trash::TrashContext;
 
 use crate::cheese_error;
 use crate::util::CheeseError;
@@ -378,4 +380,23 @@ pub fn read_file_contents(file_to_read: &Path) -> Result<(String, Option<String>
         metadata_str.to_owned(),
         file_content.map(|s| s.trim().to_owned()),
     ))
+}
+
+static TRASH_CTX: OnceLock<TrashContext> = OnceLock::new();
+
+/// Wrapper around trash objects so we get the correct call for MacOS, see
+/// https://github.com/Byron/trash-rs/blob/1dca80069ec9d91bf14143c9649e680741ee159a/src/macos/mod.rs#L13-L21
+pub fn delete(path: impl AsRef<Path>) -> Result<(), trash::Error> {
+    TRASH_CTX
+        .get_or_init(|| {
+            #[allow(unused_mut)]
+            let mut trash_ctx = TrashContext::new();
+            #[cfg(target_os = "macos")]
+            {
+                use trash::macos::{DeleteMethod, TrashContextExtMacos};
+                trash_ctx.set_delete_method(DeleteMethod::NsFileManager);
+            }
+            trash_ctx
+        })
+        .delete(path)
 }

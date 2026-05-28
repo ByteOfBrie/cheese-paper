@@ -567,7 +567,7 @@ impl dyn FileObject {
         log::debug!("Removing file object {self}");
 
         // then, we need to take care of this file (or directory, if it exists)
-        if let Err(err) = trash::delete(self.get_path()) {
+        if let Err(err) = utils::delete(self.get_path()) {
             if cfg!(windows) {
                 let start = Instant::now();
 

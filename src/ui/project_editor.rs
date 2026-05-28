@@ -11,7 +11,7 @@ use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
 use crate::ui::{prelude::*, render_data};
 
-use crate::components::file_objects::utils::process_name_for_filename;
+use crate::components::file_objects::utils::{self, process_name_for_filename};
 use crate::ui::editor_base::{Data, EditorState, configure_text_styles};
 use crate::ui::project_editor::search::global_search;
 use crate::ui::project_tracker::ProjectTracker;
@@ -520,7 +520,7 @@ impl ProjectEditor {
             for conflicting_file in current_conflicting_files {
                 if keep_file != conflicting_file {
                     log::debug!("ID conflict, removing file: {:?}", conflicting_file.path);
-                    if let Err(err) = trash::delete(&conflicting_file.path) {
+                    if let Err(err) = utils::delete(&conflicting_file.path) {
                         if cfg!(windows) {
                             let start = Instant::now();
 
