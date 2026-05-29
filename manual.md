@@ -53,7 +53,7 @@ The flatpak Linux Cheese Paper cannot access system dictionaries, but comes with
 
 On Windows and MacOS, Cheese Paper comes with a default en_US dictionary. To use other dictionaries in other languages, you will need to download the `.dic` and `.aff` files yourself, for example, from libreoffice: https://github.com/LibreOffice/dictionaries/
 
-Once you have both a `.dic` and `.aff` file, you'll want to open Cheese Paper settings and clicking the "Open Dictionary Folder" button. After placing both the `.dic` and `.aff` files directly in that folder and restarting Cheese Paper, that language should appear in the dropdown.
+Once you have both a `.dic` and `.aff` file, open Cheese Paper settings, and click the "Open Dictionary Folder" button. After placing both the `.dic` and `.aff` files directly in that folder and restarting Cheese Paper, that language should appear in the dropdown.
 
 ### Per-Project Spellcheck
 
