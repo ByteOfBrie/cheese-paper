@@ -79,25 +79,25 @@ For the most complete view of features, check out [features on the Cheese Paper 
 
 Cheese Paper keeps your notes visible as you're writing the scene. This can be used to jot down something for later, to plan our where a scene will go before writing, or to summarize a scene after you've written it to get a better high level overview of your story.
 
-<img src="resources/screenshots/light scene.png" alt="Cheese Paper opened to a project. There is a view of folders and scenes on the left, a main editor window with the text of the scene, and a summary and notes section on the right sidebar" width="75%">
+<img src="resources/flathub-screenshots/light scene.png" alt="Cheese Paper opened to a project. There is a view of folders and scenes on the left, a main editor window with the text of the scene, and a summary and notes section on the right sidebar" width="75%">
 
 ## Set the colors how you want
 
 Cheese Paper comes with both a dark and light theme out of the box, and has the ability to customize nearly every color used in the editor.
 
-<img src="resources/screenshots/dark scene.png" alt="Cheese Paper editor with a light theme" width="50%">
+<img src="resources/flathub-screenshots/dark scene.png" alt="Cheese Paper editor with a light theme" width="50%">
 
 ## Characters
 
 Characters are a handy place to fill out some information about who is in your story. It's easy to reference it in one place, and conveniently located on the sidebar below the story text. You can also set characters to be the POV of a scene.
 
-<img src="resources/screenshots/dark amaryllis character.png" alt="Cheese Paper Character view, for Amaryllis. Visible sections include: notes about her appearance (Smooth fake-skin panels with some visible seams...), her personality (She's still figuring this out for herself. She'll end up being a little bit bubbly and outgoing...), a summary (An ex-combat bot, one of the two main love interests in the story. She's really into Rose, but is also incredibly out of her depth in dealing with nuanced human interactions like flirting...), and notes (I'd like to have a little bit of her choosing her own individuality...)" width="50%">
+<img src="resources/flathub-screenshots/dark amaryllis character.png" alt="Cheese Paper Character view, for Amaryllis. Visible sections include: notes about her appearance (Smooth fake-skin panels with some visible seams...), her personality (She's still figuring this out for herself. She'll end up being a little bit bubbly and outgoing...), a summary (An ex-combat bot, one of the two main love interests in the story. She's really into Rose, but is also incredibly out of her depth in dealing with nuanced human interactions like flirting...), and notes (I'd like to have a little bit of her choosing her own individuality...)" width="50%">
 
 ## Worldbuilding
 
 This is almost the same as characters, but for information about the world. This can be places, real or fictional, and as specific as desired. This could also be about organizations or magic systems in your world, if the plot/setting calls for that.
 
-<img src="resources/screenshots/light rose workshop.png" alt="Cheese Paper Worldbuilding view for Rose's Workshop. Visible sections include: notes about it's connection to the story (The setting for literally every scene in this story), description (Mechanic's workshop, somewhat messy (so Amaryllis has things to trip on)), appearance (Concrete flooring and industrial appearance, a little bit messy, but the type where Rose knows *exactly* where everything is), other senses (In the industrial district, so things are a bit loud. Some smells of machine oil), and notes (Not much is defined so far in terms of blocking. There's a chair where work is done and some shelving, but more might be added later on)" width="50%">
+<img src="resources/flathub-screenshots/light rose workshop.png" alt="Cheese Paper Worldbuilding view for Rose's Workshop. Visible sections include: notes about it's connection to the story (The setting for literally every scene in this story), description (Mechanic's workshop, somewhat messy (so Amaryllis has things to trip on)), appearance (Concrete flooring and industrial appearance, a little bit messy, but the type where Rose knows *exactly* where everything is), other senses (In the industrial district, so things are a bit loud. Some smells of machine oil), and notes (Not much is defined so far in terms of blocking. There's a chair where work is done and some shelving, but more might be added later on)" width="50%">
 
 ## Outline Export
 
@@ -151,6 +151,6 @@ Is the text too readable? Colors too pleasant? Not enough whimsy?
 
 Thankfully, Cheese Paper has a solution: a button that randomizes every single color used in the theme. There is no coordination, no consistency, and no concern for contrast. If you restart Cheese Paper with this option selected, it will helpfully generate a new random theme. You can also save your randomized theme if you somehow generate one that looks somewhat okay.
 
-<img src="resources/screenshots/random colors.png" alt="Cheese Paper editor with a randomly generated theme. The left sidebar is bright green, the text is blue, the buttons are also blue (and barely readable). The main settings window is a pale orange/yellow. It looks awful." width="50%">
+<img src="resources/flathub-screenshots/random colors.png" alt="Cheese Paper editor with a randomly generated theme. The left sidebar is bright green, the text is blue, the buttons are also blue (and barely readable). The main settings window is a pale orange/yellow. It looks awful." width="50%">
 
 My roommate suggested this feature, then was horrified to find me actually using it while editing a story. You can also horrify others around you!
