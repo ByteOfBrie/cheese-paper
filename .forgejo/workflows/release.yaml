@@ -87,7 +87,25 @@ jobs:
 
         # we've created the release bundle, sign it before we do anything else
         security unlock-keychain -p "${{ secrets.CHEESE_PAPER_CODE_SIGNING_KEYCHAIN_PASSWORD }}" cheese-paper-code-signing
-        codesign --options runtime --timestamp --deep -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" target/release/bundle/osx/cheese-paper.app/
+
+        # codesign timestamp seems to be randomly failing to connect:
+        # target/release/bundle/osx/cheese-paper.app/: A timestamp was expected but was not found.
+        # for now, we retry in a loop
+        retries=20
+        while ((retries > 0)); do
+          if codesign --options runtime --timestamp --deep -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" target/release/bundle/osx/cheese-paper.app/; then
+            echo "Successfully signed"
+            break
+          fi
+
+          echo "Signing attempt failed"
+          sleep 2
+          ((retries--))
+        done
+        if ((retries == 0)); then
+          echo "Failed to sign, cannot continue"
+          exit 1
+        fi
 
         # we also have to zip it, cd into the directory first to have the zip paths correct
         (cd "$(dirname "target/release/${{ matrix.build_name }}")" && zip -r "$(basename "${{ matrix.archive_name }}")" "$(basename "${{ matrix.build_name }}")" && mv "$(basename "${{ matrix.archive_name }}")" ../..)
@@ -98,7 +116,23 @@ jobs:
           --hide-extension "cheese-paper.app" --app-drop-link 600 185 \
           "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg" target/release/bundle/osx/
 
-        codesign --options runtime --timestamp -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg"
+
+        retries=20
+        while ((retries > 0)); do
+          if codesign --options runtime --timestamp -s "Developer ID Application: ${{ secrets.DEVELOPER_ID}}" "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg"; then
+            echo "Successfully signed"
+            break
+          fi
+
+          echo "Signing attempt failed"
+          sleep 2
+          ((retries--))
+        done
+        if ((retries == 0)); then
+          echo "Failed to sign, cannot continue"
+          exit 1
+        fi
+
         # submit the zip for notarization as well, but don't wait for it (or try to staple)
         xcrun notarytool submit "target/release/${{ matrix.archive_name }}" --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
         xcrun notarytool submit "target/release/Cheese Paper ${{ forgejo.ref_name }} Installer.dmg" --wait --apple-id "${{ secrets.APPLE_ID }}" --team-id NXS6W25QCW --password "${{ secrets.NOTARY_TOOL_PASS }}"
