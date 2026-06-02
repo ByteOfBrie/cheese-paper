@@ -372,7 +372,7 @@ impl SettingsData {
         }
 
         self.load_available_dictionaries()
-            .unwrap_or_else(|err| log::error!("Error loading availabel dictionaries: {err}"));
+            .unwrap_or_else(|err| log::error!("Error loading available dictionaries: {err}"));
     }
 
     /// Write from settings *values* to a toml table
