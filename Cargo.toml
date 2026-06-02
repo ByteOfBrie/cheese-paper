@@ -24,11 +24,14 @@ resources = ["resources/spellcheck/*"]
 lto = "fat"
 
 [features]
-default = ["update_checking"]
+default = ["update_checking", "vendored-libgit2", "vendored-openssl", "vendored-hunspell"]
 metrics = []
 schema_selection_dialogue = []
 update_checking = ["ureq", "semver"]
 polling = []
+vendored-libgit2 = ["git2/vendored-libgit2"]
+vendored-openssl = ["git2/vendored-openssl"]
+vendored-hunspell = ["hunspell-rs/bundled"]
 
 [dependencies]
 # file components
@@ -58,11 +61,11 @@ egui_dock = { git = "https://github.com/ByteOfBrie/egui_dock.git", branch = "egu
 flexi_logger = "0.31"
 directories = "6"
 rfd = "0.17"
-hunspell-rs = "0.4"
+hunspell-rs = { version = "0.4", default-features = false }
 notify = "8.1.0"
 notify-debouncer-full = "0.7"
 cow-utils = "0.1.3"
-git2 = { version = "0.20.2", features = ["vendored-libgit2", "vendored-openssl"] }
+git2 = "0.20"
 icu_casemap = "2.0.0"
 rand = "0.10"
 trash = "5"
