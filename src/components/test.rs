@@ -921,6 +921,69 @@ contents1
     );
 }
 
+/// Make sure unknown toml fields aren't overwritten, either from other tooling or
+/// being synced from another update
+#[test]
+fn test_other_metadata_ignored() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+    let file_text = r#"id = "1"
+name = "Other title"
+summary = """multiline block inside
+another multiline block
+"""
+some_other_value = "Not Cheese Paper"
+++++++++
+contents1
+"#;
+    // open and immediately drop the project (just creating the files)
+    Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/000-New_Scene.md"),
+        file_text,
+    )
+    .unwrap();
+
+    let mut project = Project::load(base_dir.path().join("test_project")).unwrap();
+    project.save().unwrap();
+
+    let scene_path = project
+        .objects
+        .get(&Rc::new("1".to_string()))
+        .unwrap()
+        .borrow()
+        .get_path();
+
+    let scene_id_loaded = SCHEMA.load_file(&scene_path, &mut project.objects).unwrap();
+
+    let scene = project.objects.get(&scene_id_loaded).unwrap();
+    let mut scene = scene.borrow_mut();
+
+    assert!(scene.get_type() == SCENE);
+    assert_eq!(scene.get_body().trim(), "contents1");
+    assert_eq!(
+        *scene.get_test_field(),
+        "multiline block inside\nanother multiline block\n"
+    );
+
+    assert!(
+        read_to_string(&scene_path)
+            .unwrap()
+            .contains(r#"notes = """#)
+    );
+
+    assert!(
+        read_to_string(&scene_path)
+            .unwrap()
+            .contains(r#"some_other_value = "Not Cheese Paper""#)
+    );
+}
+
 /// Make sure that the filename is kept when an object gets renamed
 #[test]
 fn test_name_from_filename() {

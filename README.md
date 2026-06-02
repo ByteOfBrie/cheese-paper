@@ -107,7 +107,7 @@ The outline export produces a single file containing your notes (but not story p
 
 For example:
 
-> # Robot with Frustrated Mechanic
+> # Unexpected Failure Mode
 > 
 > Story Summary:
 > 
