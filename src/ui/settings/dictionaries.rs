@@ -70,7 +70,7 @@ impl SettingsData {
         app_dict_folder_path.push(PathBuf::from("dictionaries"));
 
         if !std::fs::exists(&app_dict_folder_path)? {
-            std::fs::create_dir(&app_dict_folder_path)?;
+            std::fs::create_dir_all(&app_dict_folder_path)?;
         }
 
         dict_search_paths.push(app_dict_folder_path);
