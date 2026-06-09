@@ -148,41 +148,43 @@ impl UnknownReference {
 
             // Compare this reference to every object to see if it matches up
             for (id, object_refcell) in objects.iter() {
-                let object = object_refcell.borrow();
-
-                // If we have a known file object type and this doesn't match it (e.g., we're trying to
-                // resolve a character reference and this is a scene, give up)
-                if let Some(this_file_type) = self.file_type
-                    && this_file_type != object.get_type()
-                {
-                    continue;
-                }
-
-                let object_name = CASE_MAPPER.fold_string(&object.get_base().metadata.name);
-
-                if needle_name == object_name {
-                    // exact name match
-                    if prefix_len == WordMatch::Exact {
-                        // we've found two exact name matches, we can't distinguish between them, give up
-                        log::warn!(
-                            "Found multiple exact matches of name '{object_name}' while attempting \
-                             to resolve reference, giving up"
-                        );
-                        return None;
-                    } else {
-                        best_match_id = Some(id);
-                        prefix_len = WordMatch::Exact;
-                        found_multiple = false;
+                // The object holding the reference is already borrowed, but we can safely skip that
+                // (and otherwise, crashing would be a bad idea, it's okay to fail here)
+                if let Ok(object) = object_refcell.try_borrow() {
+                    // If we have a known file object type and this doesn't match it (e.g., we're trying to
+                    // resolve a character reference and this is a scene, give up)
+                    if let Some(this_file_type) = self.file_type
+                        && this_file_type != object.get_type()
+                    {
+                        continue;
                     }
-                } else if object_name.starts_with(&*needle_name) {
-                    if prefix_len == WordMatch::FullNeedleAsPrefix {
-                        // We could find an exact match later, keep going
-                        found_multiple = true;
-                    } else {
-                        // some full prefix matches probably *shouldn't* be resolved automatically:
-                        // https://codeberg.org/ByteOfBrie/cheese-paper/issues/119
-                        prefix_len = WordMatch::FullNeedleAsPrefix;
-                        best_match_id = Some(id);
+
+                    let object_name = CASE_MAPPER.fold_string(&object.get_base().metadata.name);
+
+                    if needle_name == object_name {
+                        // exact name match
+                        if prefix_len == WordMatch::Exact {
+                            // we've found two exact name matches, we can't distinguish between them, give up
+                            log::warn!(
+                                "Found multiple exact matches of name '{object_name}' while attempting \
+                             to resolve reference, giving up"
+                            );
+                            return None;
+                        } else {
+                            best_match_id = Some(id);
+                            prefix_len = WordMatch::Exact;
+                            found_multiple = false;
+                        }
+                    } else if object_name.starts_with(&*needle_name) {
+                        if prefix_len == WordMatch::FullNeedleAsPrefix {
+                            // We could find an exact match later, keep going
+                            found_multiple = true;
+                        } else {
+                            // some full prefix matches probably *shouldn't* be resolved automatically:
+                            // https://codeberg.org/ByteOfBrie/cheese-paper/issues/119
+                            prefix_len = WordMatch::FullNeedleAsPrefix;
+                            best_match_id = Some(id);
+                        }
                     }
                 }
             }
