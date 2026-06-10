@@ -866,6 +866,44 @@ fn test_load_markdown() {
     );
 }
 
+/// Load a project with only a text folder
+#[test]
+fn test_load_partial_project() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+    let sample_body = "sample body";
+
+    create_dir(base_dir.path().join("test_project")).unwrap();
+    create_dir(base_dir.path().join("test_project/text")).unwrap();
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/new-scene.md"),
+        sample_body,
+    )
+    .unwrap();
+
+    let project = Project::load(base_dir.path().join("test_project")).unwrap();
+
+    let text_child = project
+        .get_text_folder()
+        .borrow()
+        .get_base()
+        .children
+        .first()
+        .unwrap()
+        .clone();
+
+    assert_eq!(
+        project
+            .objects
+            .get(&text_child)
+            .unwrap()
+            .borrow()
+            .get_body()
+            .trim(),
+        sample_body
+    );
+}
+
 /// Make sure metadata gets filled in
 #[test]
 fn test_load_partial_metadata() {
