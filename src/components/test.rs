@@ -10,7 +10,7 @@ use crate::util::CheeseError;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::{OpenOptions, create_dir, read_dir, read_to_string};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -5747,4 +5747,142 @@ contents1
         scene1.get_file().canonicalize().unwrap(),
         folder_path.canonicalize().unwrap().join("000-scene.md"),
     );
+}
+
+/// Helper function to assert that a file has a particular string with a somewhat helpful
+/// error message
+fn assert_file_contains(file_path: &Path, contents: &str) {
+    let file_contents = read_to_string(file_path).unwrap();
+    assert!(
+        file_contents.contains(contents),
+        "Could not find expected string '{contents}' in \
+            {file_path:?}. Full contents:\n{file_contents}"
+    );
+}
+
+/// Test references working properly on load
+#[test]
+fn test_references() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    project.save().unwrap();
+
+    let project_path = project.get_path();
+    let text_path = project_path.join("text");
+    let characters_path = project_path.join("characters");
+
+    drop(project);
+
+    write_with_temp_file(
+        characters_path.join("000-Zoey.toml"),
+        r#"id = "1"
+name = "Zoey"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("001-Mira.toml"),
+        r#"id = "3"
+name = "Mira"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("002-Miriam.toml"),
+        r#"id = "4"
+name = "Miriam"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    let mut expected_povs = Vec::new();
+
+    let mut write_pov = |name: &str, pov: &str, expected: &str| {
+        let file_path = text_path.join(name);
+        write_with_temp_file(&file_path, format!("pov = \"{pov}\"\n++++++++\n")).unwrap();
+        expected_povs.push((file_path, format!("pov = \"{expected}\"")));
+    };
+
+    write_pov("000-known-full.md", "[Zoey|1]", "[Zoey|1]");
+    write_pov("001-known-partial.md", "Zoey|1", "[Zoey|1]");
+    write_pov("002-name-only.md", "Zoey", "[Zoey|1]");
+    write_pov("003-id-only.md", "|1", "[Zoey|1]");
+    write_pov("004-old-name.md", "[Not Zoey|1]", "[Zoey|1]");
+    write_pov("005-unknown-both.md", "[Rumi|2]", "[Rumi|2]");
+    write_pov("006-unknown-id.md", "[|2]", "[|2]");
+    write_pov("007-unknown-name.md", "Rumi", "[Rumi|]");
+    write_pov("008-short-name.md", "Zoe", "[Zoey|1]");
+    write_pov("009-ambiguous-name.md", "Mir", "[Mir|]");
+    write_pov("010-exact-name.md", "Mira", "[Mira|3]");
+
+    let mut project = Project::load(project_path).unwrap();
+    project.save().unwrap();
+
+    for (file_path, contents) in expected_povs {
+        assert_file_contains(file_path.as_path(), contents.as_str());
+    }
+}
+
+#[test]
+fn test_tracker_references() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    project.save().unwrap();
+    process_updates(&mut project);
+
+    let project_path = project.get_path();
+    let text_path = project_path.join("text");
+    let characters_path = project_path.join("characters");
+
+    write_with_temp_file(
+        characters_path.join("000-Zoey.toml"),
+        r#"id = "1"
+name = "Zoey"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    let write_pov = |name: &str, pov: &str| -> PathBuf {
+        let file_path = text_path.join(name);
+        write_with_temp_file(&file_path, format!("pov = \"{pov}\"\n++++++++\n")).unwrap();
+        file_path
+    };
+
+    let already_exists = write_pov("000-already-exists.md", "Zoey");
+    let created_later = write_pov("001-created_later.md", "Rumi");
+
+    process_updates(&mut project);
+
+    assert_file_contains(&already_exists, "pov = \"[Zoey|1]\"");
+    assert_file_contains(&created_later, "pov = \"[Rumi|]\"");
+
+    write_with_temp_file(
+        characters_path.join("001-Rumi.toml"),
+        r#"id = "2"
+name = "Rumi"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    process_updates(&mut project);
+
+    assert_file_contains(&created_later, "pov = \"[Rumi|2]\"");
 }

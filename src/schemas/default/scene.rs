@@ -136,6 +136,8 @@ impl FileObject for Scene {
             && let Some(known_pov) = pov_unknown_ref.resolve(objects)
         {
             *pov = ObjectReference::Known(known_pov);
+            drop(pov);
+            self.get_base_mut().file.modified = true;
         }
     }
 
