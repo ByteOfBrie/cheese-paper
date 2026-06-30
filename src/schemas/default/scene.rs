@@ -208,11 +208,14 @@ impl FileObject for Scene {
             // add in smart quotes, other platforms will insert some and it's easier to be consistent here
             // regexes from https://webapps.stackexchange.com/questions/166314/how-to-replace-dumb-quotes-with-smart-quotes-in-google-docs/169065#169065
             // quotes preceded by whitespace or at the start of a block are beginning quotes
-            let opening_double_quote = Regex::new(r#"((^|\s)\*{0,3})""#).unwrap();
+            //
+            // 1-3 asterisks or underscores immediately before the quotes are ignored, since they
+            // are probably intended to italicize or bold the quote
+            let opening_double_quote = Regex::new(r#"((^|\s)[\*_]{0,3})""#).unwrap();
             let closing_double_quote = Regex::new("\"").unwrap();
 
             // same thing for opening quotes
-            let opening_single_quote = Regex::new(r#"((^|\s)\*{0,3})'"#).unwrap();
+            let opening_single_quote = Regex::new(r#"((^|\s)[\*_]{0,3})'"#).unwrap();
             let closing_single_quote = Regex::new("'").unwrap();
 
             let body_text = opening_double_quote.replace_all(body_text_unprocessed, "$1“");

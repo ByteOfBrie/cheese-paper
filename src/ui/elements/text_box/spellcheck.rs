@@ -88,6 +88,9 @@ fn test_get_current_word() {
     assert_eq!(get_current_word("Alte Jakobstrasse", 17), 5..17);
 }
 
+// cow_utils is unhappy if we give it a `&[char; 2]` instead
+const WORD_IGNORED_CHARS: &[char] = &['*', '_'];
+
 pub fn trim_word_for_spellcheck(word: &str) -> (Cow<'_, str>, Range<usize>) {
     // Keep track of how much we trimmed in each step (since that shouldn't be
     // marked as misspelled). This could also be done by a regex, but that seems
@@ -97,7 +100,7 @@ pub fn trim_word_for_spellcheck(word: &str) -> (Cow<'_, str>, Range<usize>) {
     let trimmed_word = start_trimmed_word.trim_end_matches(|chr: char| chr.is_ascii_punctuation());
 
     // Rare case, allow for mid-word formatting changes (without unnecessary allocation)
-    let check_word = trimmed_word.cow_replace("*", "");
+    let check_word = trimmed_word.cow_replace(WORD_IGNORED_CHARS, "");
 
     let chars_trimmed_start = word.len() - start_trimmed_word.len();
     let chars_trimmed_end = start_trimmed_word.len() - trimmed_word.len();
@@ -118,8 +121,14 @@ fn test_trim_word_for_spellcheck() {
     assert_eq!(trim_word_for_spellcheck("*word*").0, "word");
     assert_eq!(trim_word_for_spellcheck("*word*").1, 1..5);
 
+    assert_eq!(trim_word_for_spellcheck("_word_").0, "word");
+    assert_eq!(trim_word_for_spellcheck("_word_").1, 1..5);
+
     assert_eq!(trim_word_for_spellcheck("*wo*rd").0, "word");
     assert_eq!(trim_word_for_spellcheck("*wo*rd").1, 1..6);
+
+    assert_eq!(trim_word_for_spellcheck("*wo_rd").0, "word");
+    assert_eq!(trim_word_for_spellcheck("*wo_rd").1, 1..6);
 }
 
 pub fn find_misspelled_words(text: &str, ctx: &EditorContext) -> Vec<(usize, usize)> {

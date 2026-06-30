@@ -110,7 +110,7 @@ fn format_rule_bold_italic(
     let mut bold = Vec::new();
     let mut italic = Vec::new();
 
-    static ASTERIX_GROUPS: SavedRegex = SavedRegex::new(|| Regex::new(r#"(\*+|\n)"#).unwrap());
+    static ASTERIX_GROUPS: SavedRegex = SavedRegex::new(|| Regex::new(r#"([\*_]+|\n)"#).unwrap());
 
     let mut italic_start = None;
     let mut bold_start = None;
@@ -119,7 +119,7 @@ fn format_rule_bold_italic(
         let ag = ag.get(0).unwrap();
 
         match ag.as_str() {
-            "*" => {
+            "*" | "_" => {
                 if let Some(start) = italic_start {
                     italic.push(StyleMarker {
                         idx: start,
@@ -136,7 +136,7 @@ fn format_rule_bold_italic(
                     italic_start = Some(ag.start());
                 }
             }
-            "**" => {
+            "**" | "__" => {
                 if let Some(start) = bold_start {
                     bold.push(StyleMarker {
                         idx: start,
@@ -153,7 +153,7 @@ fn format_rule_bold_italic(
                     bold_start = Some(ag.start());
                 }
             }
-            "***" => {
+            "***" | "___" | "*__" | "__*" | "_**" | "**_" => {
                 // Toggle both bold and italic
                 // This might not be correct but it's better than nothing, TBD:
                 if let Some(start) = bold_start {

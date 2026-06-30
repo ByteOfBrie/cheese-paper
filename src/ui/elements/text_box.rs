@@ -420,6 +420,10 @@ impl Text {
 
         let already_surrounded = match pattern {
             "*" => self.is_italic(&current_working_range),
+            "**" => {
+                self.is_formatted_generic(&current_working_range, pattern)
+                    || self.is_formatted_generic(&current_working_range, "__")
+            }
             _ => self.is_formatted_generic(&current_working_range, pattern),
         };
 
@@ -479,17 +483,26 @@ impl Text {
 
         match self.text.get(current_working_range.clone()) {
             Some(working_text) => {
-                // special case: we have exactly two characters and they're `*`:
-                if working_text.len() == 2 && working_text == "**" {
+                // special case: we have exactly two characters and they're `*` or `_`:
+                if working_text == "**" || working_text == "__" {
                     return true;
                 }
 
                 // validate that we have `*` (italic) or `***` (bold and italic) but not `**` (just bold)
-                let italic_start = working_text.starts_with("***")
+                //
+                // this is bad code but it isn't complex at least. this will not work for mixing
+                // underscores and asterisks (oh well)
+                let italic_start_asterisk = working_text.starts_with("***")
                     || (working_text.starts_with('*') && !working_text.starts_with("**"));
-                let italic_end = working_text.ends_with("***")
+                let italic_start_underscore = working_text.starts_with("___")
+                    || (working_text.starts_with('_') && !working_text.starts_with("__"));
+                let italic_end_asterisk = working_text.ends_with("***")
                     || (working_text.ends_with('*') && !working_text.ends_with("**"));
-                italic_start && italic_end
+                let italic_end_underscore = working_text.ends_with("___")
+                    || (working_text.ends_with('_') && !working_text.ends_with("__"));
+
+                (italic_start_asterisk || italic_start_underscore)
+                    && (italic_end_asterisk || italic_end_underscore)
             }
             None => {
                 log::error!("Encountered invalid index of text: {current_working_range:?}");
@@ -499,17 +512,17 @@ impl Text {
     }
 
     /// Gets the range of the current selection or word for hotkeys, filtering out punctuation that
-    /// isn't `*` (useful for format hotkeys)
+    /// isn't `*` or `_` (useful for format hotkeys)
     fn get_selection_range_trimmed(&self, cursor_range: &CCursorRange) -> Range<usize> {
         let selection_range = self.get_selection_range(cursor_range);
 
         let selection = self.get(selection_range.clone()).unwrap();
 
         let start_trimmed_selection = selection.trim_start_matches(|chr: char| {
-            (chr.is_ascii_punctuation() && chr != '*') || chr.is_whitespace()
+            (chr.is_ascii_punctuation() && chr != '*' && chr != '_') || chr.is_whitespace()
         });
         let trimmed_selection = start_trimmed_selection.trim_end_matches(|chr: char| {
-            (chr.is_ascii_punctuation() && chr != '*') || chr.is_whitespace()
+            (chr.is_ascii_punctuation() && chr != '*' && chr != '_') || chr.is_whitespace()
         });
 
         let chars_trimmed_start = selection.len() - start_trimmed_selection.len();
@@ -548,7 +561,8 @@ impl Text {
 
         // clamp down on whitespace at beginning and ending
         while (chars[starting_index].1.is_whitespace()
-            || (chars[starting_index].1.is_ascii_punctuation() && chars[starting_index].1 != '*'))
+            || (chars[starting_index].1.is_ascii_punctuation()
+                && !(chars[starting_index].1 == '*' || chars[starting_index].1 == '_')))
             && starting_index < ending_index
         {
             starting_index += 1;
@@ -556,7 +570,7 @@ impl Text {
 
         while (chars[ending_index - 1].1.is_whitespace()
             || (chars[ending_index - 1].1.is_ascii_punctuation()
-                && chars[ending_index - 1].1 != '*'))
+                && !(chars[ending_index - 1].1 == '*' || chars[ending_index - 1].1 == '_')))
             && starting_index <= ending_index
         {
             ending_index -= 1;
