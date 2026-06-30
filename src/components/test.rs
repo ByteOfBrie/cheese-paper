@@ -5,7 +5,7 @@ use crate::components::file_objects::FileObjectStore;
 
 use crate::components::file_objects::{FileID, FileObject, utils::write_with_temp_file};
 
-use crate::components::project::{Project, WATCHER_MSEC_DURATION};
+use crate::components::project::{ExportDepth, ExportOptions, Project, WATCHER_MSEC_DURATION};
 use crate::util::CheeseError;
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -5885,4 +5885,205 @@ file_type = "character""#,
     process_updates(&mut project);
 
     assert_file_contains(&created_later, "pov = \"[Rumi|2]\"");
+}
+
+#[test]
+fn test_export_outline() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    project.save().unwrap();
+
+    let project_path = project.get_path();
+    let text_path = project_path.join("text");
+    let characters_path = project_path.join("characters");
+
+    drop(project);
+
+    let folder1_path = text_path.join("000-background");
+    create_dir(&folder1_path).unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("metadata.toml"),
+        r#"file_type = "folder"
+compile_status = 0
+notes = "not in text export""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("000-background-scene.md"),
+        r#"background scene body"#,
+    )
+    .unwrap();
+
+    // create scenes that should appear
+
+    let folder1_path = text_path.join("001-scene1");
+    create_dir(&folder1_path).unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("metadata.toml"),
+        r#"file_type = "folder"
+summary = "fighting demons in a plane""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("000-before_fight.md"),
+        r#"summary = "eating snacks first"
+++++++++
+The kimbap roll"#,
+    )
+    .unwrap();
+
+    // write some characters too
+    write_with_temp_file(
+        characters_path.join("000-Zoey.toml"),
+        r#"name = "Zoey"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("001-Mira.toml"),
+        r#"name = "Mira"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("002-Rumi.toml"),
+        r#"id = "3"
+name = "Rumi"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    let mut project = Project::load(project_path).unwrap();
+    project.save().unwrap();
+
+    let outline_export = project.export_outline();
+
+    // outline should contain info about background scene
+    assert!(outline_export.contains("## background"));
+    assert!(outline_export.contains("Notes: not in text export"));
+    assert!(!outline_export.contains("background scene body"));
+
+    // outline should not contain scene text
+    assert!(outline_export.contains("Summary: eating snacks first"));
+    assert!(!outline_export.contains("kimbap"));
+
+    // characters should be present
+    assert!(outline_export.contains("## Zoey"));
+}
+
+#[test]
+fn test_export_text() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    let mut project = Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    project.save().unwrap();
+
+    let project_path = project.get_path();
+    let text_path = project_path.join("text");
+    let characters_path = project_path.join("characters");
+
+    drop(project);
+
+    let folder1_path = text_path.join("000-background");
+    create_dir(&folder1_path).unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("metadata.toml"),
+        r#"file_type = "folder"
+compile_status = 0
+notes = "not in text export""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("000-background-scene.md"),
+        r#"background scene body"#,
+    )
+    .unwrap();
+
+    // create scenes that should appear
+
+    let folder1_path = text_path.join("001-scene1");
+    create_dir(&folder1_path).unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("metadata.toml"),
+        r#"file_type = "folder"
+summary = "fighting demons in a plane""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        folder1_path.join("000-before_fight.md"),
+        r#"summary = "eating snacks first"
+++++++++
+The kimbap roll"#,
+    )
+    .unwrap();
+
+    // write some characters too
+    write_with_temp_file(
+        characters_path.join("000-Zoey.toml"),
+        r#"name = "Zoey"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("001-Mira.toml"),
+        r#"name = "Mira"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        characters_path.join("002-Rumi.toml"),
+        r#"id = "3"
+name = "Rumi"
+file_type = "character""#,
+    )
+    .unwrap();
+
+    let mut project = Project::load(project_path).unwrap();
+    project.save().unwrap();
+
+    let export = project.export_text(ExportOptions {
+        folder_title_depth: ExportDepth::All,
+        scene_title_depth: ExportDepth::All,
+        insert_breaks: true,
+    });
+
+    // outline should contain info about background scene
+    assert!(!export.contains("# background"));
+    assert!(!export.contains("Notes: not in text export"));
+    assert!(!export.contains("background scene body"));
+
+    // outline should contain scene titles and text
+    assert!(export.contains("## before fight"));
+    assert!(export.contains("kimbap"));
+
+    // but not metadata
+    assert!(!export.contains("Summary: eating snacks first"));
+
+    // characters should not be present as objects
+    assert!(!export.contains("## Zoey"));
 }
