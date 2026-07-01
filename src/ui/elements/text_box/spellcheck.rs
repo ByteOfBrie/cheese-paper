@@ -9,6 +9,15 @@ use std::ops::Range;
 /// whitespace) that is contained at that position
 pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
     let chars: Vec<_> = text.char_indices().collect();
+    let lookup_position = if position > chars.len() {
+        log::warn!(
+            "egui reported position at {position}, but current text only has {} characters",
+            chars.len()
+        );
+        chars.len()
+    } else {
+        position
+    };
 
     let mut before_pos_option = None;
 
@@ -27,7 +36,7 @@ pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
     // loop 2: examine ` ` (position = 0)
     //         whitespace, break
     // before_pos = 1
-    for (pos, chr) in chars[..position].iter().rev() {
+    for (pos, chr) in chars[..lookup_position].iter().rev() {
         if chr.is_whitespace() {
             // The last character we found was the correct spot, before_pos_option is already set
             break;
@@ -41,12 +50,12 @@ pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
     let before_pos = match before_pos_option {
         Some(pos) => pos,
         None => {
-            if position == chars.len() {
+            if lookup_position == chars.len() {
                 // special case, we're at the end of the file, we can't look at the index
                 text.len()
             } else {
                 // usual case, we have a "normal" position, find it
-                chars[position].0
+                chars[lookup_position].0
             }
         }
     };
@@ -55,7 +64,7 @@ pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
     // we use that character's byte offset of the end of our range, since it will be the end of our
     // range. This results in the slice grabbing the full word, but not spaces. If we don't find anything,
     // we use the full length of the text (byte version, not char version)
-    let after_pos = chars[position..]
+    let after_pos = chars[lookup_position..]
         .iter()
         .find_map(|(pos, chr)| {
             if chr.is_whitespace() {
