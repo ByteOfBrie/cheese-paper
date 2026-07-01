@@ -267,9 +267,15 @@ impl dyn Schema {
 
         let mut metadata = FileObjectMetadata::default();
 
-        let toml_header = metadata_str
-            .parse::<DocumentMut>()
-            .map_err(|err| cheese_error!("Error parsing {underlying_file:?}: {err}"))?;
+        let toml_header = match metadata_str.parse::<DocumentMut>() {
+            Ok(toml_header) => toml_header,
+            Err(err) => {
+                // We want to explicitly warn here because this is fairly likely to be something that
+                // the user cares about. Maybe it should be a popup of some kind?
+                log::warn!("Not loading {underlying_file:?}, could not parse toml header: {err}");
+                return Err(cheese_error!("Could not parse toml: {err}"));
+            }
+        };
 
         if !toml_header.contains_key("name") {
             let file_name = PathBuf::from(&basename)
