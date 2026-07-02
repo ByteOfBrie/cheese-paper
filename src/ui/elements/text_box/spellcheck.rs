@@ -9,6 +9,7 @@ use std::ops::Range;
 /// whitespace) that is contained at that position
 pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
     let chars: Vec<_> = text.char_indices().collect();
+
     let lookup_position = if position > chars.len() {
         log::warn!(
             "egui reported position at {position}, but current text only has {} characters",

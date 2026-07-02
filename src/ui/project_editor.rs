@@ -356,14 +356,14 @@ impl ProjectEditor {
         self.draw_menu(ui, state);
 
         if !self.editor_context.measurements.measured {
-            Panel::right("measurement panel").show_inside(ui, |ui| {
+            Panel::right("measurement panel").show(ui, |ui| {
                 self.editor_context.measurements.measure(ui);
             });
         }
 
         let dismiss = if let Some(message) = self.messages.front() {
             Panel::top("message panel")
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     message.ui(ui, &self.project, &mut self.editor_context)
                 })
                 .inner
@@ -375,7 +375,7 @@ impl ProjectEditor {
             self.messages.pop_front();
         }
 
-        Panel::left("project tree panel").show_inside(ui, |ui| {
+        Panel::left("project tree panel").show(ui, |ui| {
             self.side_panel(ui);
         });
 
@@ -472,7 +472,7 @@ impl ProjectEditor {
 
         let mut file_to_keep = None;
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.label(format!(
                 "Conflicting {} found. (ID: {})",
                 first_conflicting_file.file_type.type_name(),
@@ -618,7 +618,7 @@ impl ProjectEditor {
     fn draw_menu(&mut self, ui: &mut egui::Ui, state: &mut EditorState) {
         Panel::top("menu_bar_panel")
             .show_separator_line(false)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     ui.menu_button("File", |ui| {
                         ui.menu_button("New...", |ui| self.new_object_menu(ui));

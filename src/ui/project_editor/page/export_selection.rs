@@ -13,7 +13,7 @@ use crate::{
 impl Project {
     pub fn export_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let cheese_response = egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_export_selection(ui, ctx))
+            .show(ui, |ui| self.show_export_selection(ui, ctx))
             .inner;
         if cheese_response.modified {
             self.file.modified = true;

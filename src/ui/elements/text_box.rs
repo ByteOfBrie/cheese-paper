@@ -194,7 +194,7 @@ impl Text {
         // Keep track of where we're typing and if it's new, used in spellcheck logic later on
         if let Some(cursor_range) = output.cursor_range {
             // Primary cursor tells us where we're at in the text edit box
-            let primary_cursor_pos = cursor_range.primary.index;
+            let primary_cursor_pos: usize = cursor_range.primary.index.into();
             // Collect the character start and end boundaries (byte index)
             let current_word_pos = spellcheck::get_current_word(&self.text, primary_cursor_pos);
 
@@ -241,9 +241,8 @@ impl Text {
         if output.response.clicked_by(egui::PointerButton::Secondary)
             && let Some(cursor_range) = output.cursor_range
         {
-            let clicked_pos = cursor_range.primary.index;
-
-            let word_boundaries = spellcheck::get_current_word(&self.text, clicked_pos);
+            let word_boundaries =
+                spellcheck::get_current_word(&self.text, cursor_range.primary.index.into());
 
             let raw_word = &self.text[word_boundaries.clone()];
 
@@ -543,14 +542,14 @@ impl Text {
 
         // Simple case: no selection, just select the word
         if primary == secondary {
-            return spellcheck::get_current_word(&self.text, primary.index);
+            return spellcheck::get_current_word(&self.text, primary.index.into());
         }
 
         let chars: Vec<_> = self.text.char_indices().collect();
-        let mut starting_index = primary.index;
-        let mut ending_index = secondary.index;
+        let mut starting_index: usize = primary.index.into();
+        let mut ending_index: usize = secondary.index.into();
 
-        let starting_text = &chars[primary.index..secondary.index];
+        let starting_text = &chars[starting_index..ending_index];
 
         // if the selection is all whitespace, we should just return it
         if starting_text.iter().all(|pos| pos.1.is_whitespace()) {

@@ -554,7 +554,7 @@ impl CheesePaperApp {
             self.state.project_creation_error_message = None;
         }
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ScrollArea::vertical()
                     .id_salt("recent projects")
@@ -633,7 +633,7 @@ impl CheesePaperApp {
     }
 
     fn new_project_name_ui(&mut self, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             egui::Modal::new(egui::Id::new("new project name")).show(ui.ctx(), |ui| {
                 ui.heading("New Project");
 

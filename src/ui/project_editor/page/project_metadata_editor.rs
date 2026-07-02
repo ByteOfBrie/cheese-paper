@@ -5,7 +5,7 @@ use egui::ScrollArea;
 impl Project {
     pub fn metadata_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let cheese_response = egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_project_metadata_editor(ui, ctx))
+            .show(ui, |ui| self.show_project_metadata_editor(ui, ctx))
             .inner;
         if cheese_response.modified {
             self.file.modified = true;

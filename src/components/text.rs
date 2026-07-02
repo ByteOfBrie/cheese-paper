@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut, Range};
 use std::sync::atomic::AtomicUsize;
 
 use egui::TextBuffer;
+use egui::text::CharIndex;
 
 static GLOBAL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
@@ -84,12 +85,12 @@ impl TextBuffer for Text {
         &self.text
     }
 
-    fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
+    fn insert_text(&mut self, text: &str, char_index: CharIndex) -> usize {
         self.version += 1;
         <String as TextBuffer>::insert_text(&mut self.text, text, char_index)
     }
 
-    fn delete_char_range(&mut self, char_range: Range<usize>) {
+    fn delete_char_range(&mut self, char_range: Range<CharIndex>) {
         self.version += 1;
         <String as TextBuffer>::delete_char_range(&mut self.text, char_range)
     }

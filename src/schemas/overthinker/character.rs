@@ -191,11 +191,11 @@ impl FileObjectEditor for Character {
             .resizable(true)
             .default_size(200.0)
             .size_range(50.0..)
-            .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
+            .show(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
         egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_editor(ui, ctx))
+            .show(ui, |ui| self.show_editor(ui, ctx))
             .inner
             .append_to(&mut cheese_response);
 

@@ -47,16 +47,13 @@ bitflags = "2.9.1"
 open = "5"
 
 # ui
-# we're temprorarily going to an egui version that's a few commits ahead of `0.34` to fix
-# https://codeberg.org/ByteOfBrie/cheese-paper/issues/271
-# once there's a new egui release, we'll update to that and won't have to deal with this
-egui = { git = "https://github.com/emilk/egui.git", rev = "33e89e3" }
-eframe = { git = "https://github.com/emilk/egui.git", rev = "33e89e3", features = [
+egui ="0.35"
+eframe = { version = "0.35", features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 
-egui_ltreeview = { git = "https://github.com/ByteOfBrie/egui_ltreeview.git", branch = "egui_0.34_custom", features = ["persistence"] }
-egui_dock = { git = "https://github.com/ByteOfBrie/egui_dock.git", branch = "egui_0.34_custom" }
+egui_ltreeview = { version = "0.8", features = ["persistence"] }
+egui_dock = "0.20"
 
 flexi_logger = "0.31"
 directories = "6"

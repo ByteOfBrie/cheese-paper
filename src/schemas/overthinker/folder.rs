@@ -227,7 +227,7 @@ struct RenderData {
 impl FileObjectEditor for Folder {
     fn ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let cheese_response = egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_editor(ui, ctx))
+            .show(ui, |ui| self.show_editor(ui, ctx))
             .inner;
         self.process_response(&cheese_response);
         cheese_response

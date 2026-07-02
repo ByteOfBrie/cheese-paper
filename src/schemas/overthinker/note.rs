@@ -146,11 +146,11 @@ impl FileObjectEditor for Note {
             .resizable(true)
             .default_size(200.0)
             .size_range(50.0..)
-            .show_inside(ui, |ui| self.show_sidebar(ui, ctx, rdata))
+            .show(ui, |ui| self.show_sidebar(ui, ctx, rdata))
             .inner;
 
         egui::CentralPanel::default()
-            .show_inside(ui, |ui| self.show_text_editor(ui, ctx))
+            .show(ui, |ui| self.show_text_editor(ui, ctx))
             .inner
             .append_to(&mut cheese_response);
 
@@ -191,7 +191,7 @@ impl Note {
     ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
 
-        Panel::bottom("word_count").show_inside(ui, |ui| {
+        Panel::bottom("word_count").show(ui, |ui| {
             ui.add_space(4.0);
             let words = self.text.word_count(ctx);
             let text = format!("{words} Words");
