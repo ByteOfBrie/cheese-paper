@@ -9,6 +9,7 @@ use std::{fmt::Debug, path::PathBuf};
 pub struct DictionaryWrapper {
     dict: Dictionary,
     added_words: Vec<String>,
+    pub lang_code: Option<String>,
 }
 
 impl DictionaryWrapper {
@@ -58,9 +59,16 @@ impl DictionaryWrapper {
             cheese_error!("Error loading dictionary from {aff_path:?} and {dic_path:?}:\n{err}")
         })?;
 
+        let lang_code = dic_path
+            .file_name()
+            .and_then(|file_name| file_name.to_str())
+            .and_then(|file_name_str| file_name_str.split_once('_'))
+            .map(|(lang_name, _)| lang_name.to_owned());
+
         Ok(Self {
             dict,
             added_words: Vec::new(),
+            lang_code,
         })
     }
 

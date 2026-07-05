@@ -136,17 +136,14 @@ impl DictionaryState {
     }
 
     pub fn add_file_object_name(&mut self, object_name: impl AsRef<str>) {
-        if let Some(dictionary) = &mut self.dictionary {
-            for part in object_name.as_ref().split(&[' ', '/'][..]) {
-                let trimmed = part.trim_matches('"');
-
-                if self.old_characters_and_places.contains(trimmed) || !dictionary.check(trimmed) {
-                    self.characters_and_places.insert(trimmed.to_string());
-                }
-            }
+        for part in object_name.as_ref().split(&[' ', '/'][..]) {
+            let trimmed = part.trim_matches('"');
+            self.characters_and_places.insert(trimmed.to_string());
         }
     }
 
+    /// Make sure that we've added all of the character/place names that should be added and remove
+    /// all of the character/place names that shouldn't be in there anymore
     pub fn resync_file_names(&mut self) {
         let names_to_remove: Vec<String> = self
             .added_file_object_names
@@ -175,18 +172,34 @@ impl DictionaryState {
                 .collect();
 
             for file_object_word in names_to_add {
-                if !dictionary.check(&file_object_word) {
-                    match dictionary.add(&file_object_word, None, None) {
-                        Ok(_) => {
-                            self.added_file_object_names.insert(file_object_word);
-                        }
-                        Err(err) => {
-                            log::error!(
-                                "Could not add word {file_object_word} from file object to dictionary: {err}"
-                            );
-                        }
-                    };
-                }
+                let (possessive_word, affix) = if dictionary.lang_code.as_deref() == Some("en")
+                    && !file_object_word.ends_with("'s'")
+                {
+                    // We try to be smart and have a `'s` if we're in English
+                    // This might eventually cause us to remove something we'd like to keep, but that's
+                    // probably rare: https://github.com/helix-editor/spellbook/issues/18
+                    let possessive_word = format!("{file_object_word}'s");
+                    (Some(possessive_word), Some("M"))
+
+                    // Any non-english languages that should *always* have an affix should also
+                    // be included, but I'm not confident enough in my knowledge of other languages
+                    // to add them
+                } else {
+                    (None, None)
+                };
+
+                // Our dictionary wrapper will be smart about this, we just try to add everything.
+                match dictionary.add(&file_object_word, possessive_word.as_deref(), affix) {
+                    Ok(true) => {
+                        self.added_file_object_names.insert(file_object_word);
+                    }
+                    Ok(false) => {}
+                    Err(err) => {
+                        log::error!(
+                            "Could not add word {file_object_word} from file object to dictionary: {err}"
+                        );
+                    }
+                };
             }
         }
     }
@@ -836,7 +849,7 @@ impl ProjectEditor {
         // or separately, making it smaller but separate)? not sure if this will even be an issue
         // so I'm not thinking too hard about it right now
         if current_time.duration_since(self.editor_context.dictionary_state.last_dictionary_update)
-            > Duration::from_secs(20)
+            > Duration::from_secs(5)
         {
             self.update_spellcheck_file_object_names();
             self.editor_context.dictionary_state.resync_file_names();
