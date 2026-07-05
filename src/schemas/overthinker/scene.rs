@@ -122,6 +122,16 @@ impl FileObject for Scene {
         self.text = data.trim().to_string().into();
     }
 
+    fn text_word_count(&self, ctx: &mut EditorContext) -> usize {
+        self.text.word_count(ctx)
+    }
+
+    fn include_in_export(&self) -> bool {
+        self.metadata
+            .compile_status
+            .contains(CompileStatus::INCLUDE)
+    }
+
     fn get_base(&self) -> &BaseFileObject {
         &self.base
     }

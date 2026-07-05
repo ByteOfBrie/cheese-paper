@@ -2,6 +2,7 @@ mod export_selection;
 pub mod file_object_editor;
 mod help;
 mod project_metadata_editor;
+mod statistics;
 
 use crate::ui::prelude::*;
 
@@ -24,6 +25,7 @@ pub enum Page {
     Settings(bool), // bool for is it project-local
     Export,
     Help,
+    Statistics,
 }
 
 impl Page {
@@ -32,6 +34,7 @@ impl Page {
     const SETTINGS_ID: &str = "settings";
     const PL_SETTINGS_ID: &str = "project_local_settings";
     const HELP_ID: &str = "help";
+    const STATISTICS_ID: &str = "statistics";
 
     /// Get an id from a string. This (and its reverse, `get_id`) could be replaced by `From`
     /// (and `Into`), but this seems like it might be more explicit?
@@ -42,6 +45,7 @@ impl Page {
             Self::SETTINGS_ID => Self::Settings(false),
             Self::PL_SETTINGS_ID => Self::Settings(true),
             Self::HELP_ID => Self::Help,
+            Self::STATISTICS_ID => Self::Statistics,
             _ => Self::FileObject(FileID::new(id.to_owned())),
         }
     }
@@ -53,6 +57,7 @@ impl Page {
             Self::Settings(false) => Self::SETTINGS_ID,
             Self::Settings(true) => Self::PL_SETTINGS_ID,
             Self::Help => Self::HELP_ID,
+            Self::Statistics => Self::STATISTICS_ID,
             Self::FileObject(id) => id,
         }
     }
@@ -72,6 +77,7 @@ impl Page {
             Self::FileObject(_) => true,
             Self::ProjectMetadata => true,
             Self::Help => false,
+            Self::Statistics => false,
         }
     }
 
@@ -145,6 +151,7 @@ impl OpenPage {
             Page::Settings(false) => "Settings".into(),
             Page::Settings(true) => "Project Settings".into(),
             Page::Help => "Help".into(),
+            Page::Statistics => "Statistics".into(),
         };
 
         let text = if self.keep { text } else { text.italics() };
@@ -189,6 +196,7 @@ impl OpenPage {
             Page::Export => project.export_ui(ui, ctx),
             Page::Settings(project_local) => page_data.settings_page.ui(ui, ctx, *project_local),
             Page::Help => page_data.help_page.ui(ui, ctx),
+            Page::Statistics => project.statistics_ui(ui, ctx),
         };
 
         self.keep |= modified;
@@ -202,58 +210,60 @@ impl OpenPage {
                 None
             };
 
-            let next_element = match focus_shift {
+            let next_element_option = match focus_shift {
                 FocusShiftDirection::Next => {
                     if let Some(current_index) = current_element_index {
                         if let Some(element) = page_tabable_ids.get(current_index + 1) {
-                            element
+                            Some(element)
                         } else {
-                            page_tabable_ids.first().unwrap()
+                            page_tabable_ids.first()
                         }
                     } else {
-                        page_tabable_ids.first().unwrap()
+                        page_tabable_ids.first()
                     }
                 }
                 FocusShiftDirection::Previous => {
                     if let Some(current_index) = current_element_index {
                         if let Some(new_index) = current_index.checked_sub(1) {
                             if let Some(element) = page_tabable_ids.get(new_index) {
-                                element
+                                Some(element)
                             } else {
-                                page_tabable_ids.last().unwrap()
+                                page_tabable_ids.last()
                             }
                         } else {
-                            page_tabable_ids.last().unwrap()
+                            page_tabable_ids.last()
                         }
                     } else {
-                        page_tabable_ids.last().unwrap()
+                        page_tabable_ids.last()
                     }
                 }
                 FocusShiftDirection::Same => {
                     if let Some(last_id) = &page_data.last_selected_id {
-                        last_id
+                        Some(last_id)
                     } else {
-                        page_tabable_ids.first().unwrap()
+                        page_tabable_ids.first()
                     }
                 }
             };
 
-            ui.memory_mut(|mem| mem.request_focus(*next_element));
+            if let Some(next_element) = next_element_option {
+                ui.memory_mut(|mem| mem.request_focus(*next_element));
 
-            // For terrible reasons that I don't (yet) understand, tabbing back to the menu seems to
-            // happen two frames later, which means that our focus shift gets overwritten. so, we
-            // schedule an action for next frame, where we schedule the action again to actually
-            // request focus. this will only matter for *one* element, but we seem to need it there
-            // we've already requested focus once, so we should generally be able to type, and the
-            // behavior of spamming tab seems fine from my testing
-            let next_element_copy = *next_element;
-            ctx.actions.schedule(move |editor, ctx| {
-                editor.editor_context.actions.schedule(move |_editor, ctx| {
-                    ctx.memory_mut(|mem| mem.request_focus(next_element_copy));
+                // For terrible reasons that I don't (yet) understand, tabbing back to the menu seems to
+                // happen two frames later, which means that our focus shift gets overwritten. so, we
+                // schedule an action for next frame, where we schedule the action again to actually
+                // request focus. this will only matter for *one* element, but we seem to need it there
+                // we've already requested focus once, so we should generally be able to type, and the
+                // behavior of spamming tab seems fine from my testing
+                let next_element_copy = *next_element;
+                ctx.actions.schedule(move |editor, ctx| {
+                    editor.editor_context.actions.schedule(move |_editor, ctx| {
+                        ctx.memory_mut(|mem| mem.request_focus(next_element_copy));
+                    });
+                    ctx.request_repaint();
                 });
-                ctx.request_repaint();
-            });
-            ui.request_repaint();
+                ui.request_repaint();
+            }
         }
 
         // Update the currently selected element if we need to do that

@@ -102,6 +102,12 @@ impl FileObject for Folder {
         String::new()
     }
 
+    fn include_in_export(&self) -> bool {
+        self.metadata
+            .compile_status
+            .contains(CompileStatus::INCLUDE)
+    }
+
     fn get_base(&self) -> &BaseFileObject {
         &self.base
     }

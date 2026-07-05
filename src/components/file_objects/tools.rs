@@ -1,12 +1,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::Add;
 use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::cheese_error;
 use crate::components::file_objects::utils::{get_index_from_name, write_with_temp_file};
-// use crate::components::file_objects::{Character, Folder, Place, Scene};
+use crate::components::text::Text;
 use crate::util::CheeseError;
 use egui_ltreeview::DirPosition;
 use std::ffi::OsString;
@@ -32,6 +33,31 @@ fn recursive_remove_from_objects(
     }
 
     obj
+}
+
+#[derive(Debug, Default)]
+pub struct ProjectStatistics {
+    pub last_update: Option<Instant>,
+    pub word_count: WordCountInfo,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WordCountInfo {
+    pub export: usize,
+    pub non_export: usize,
+    pub all_fields: usize,
+}
+
+impl Add for WordCountInfo {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            export: self.export + rhs.export,
+            non_export: self.non_export + rhs.non_export,
+            all_fields: self.all_fields + rhs.all_fields,
+        }
+    }
 }
 
 impl dyn FileObject {
@@ -385,6 +411,39 @@ impl dyn FileObject {
             child
                 .borrow_mut()
                 .process_path_update(self.get_path(), objects);
+        }
+    }
+
+    /// Word counts for this object and it's children
+    pub fn word_counts(&self, objects: &FileObjectStore, ctx: &mut EditorContext) -> WordCountInfo {
+        let children_word_counts = self
+            .children(objects)
+            .map(|child| child.borrow().word_counts(objects, ctx))
+            .fold(WordCountInfo::default(), |acc, item| acc + item);
+
+        let mut self_all_fields = 0;
+
+        self.as_editor().for_each_textbox(&mut |text: &Text, _| {
+            self_all_fields += text.word_count(ctx);
+        });
+
+        let self_text_word_count = self.text_word_count(ctx);
+        self_all_fields -= self_text_word_count;
+
+        if self.include_in_export() {
+            WordCountInfo {
+                export: children_word_counts.export + self_text_word_count,
+                non_export: children_word_counts.non_export,
+                all_fields: children_word_counts.all_fields + self_all_fields,
+            }
+        } else {
+            WordCountInfo {
+                export: 0,
+                non_export: children_word_counts.export
+                    + children_word_counts.non_export
+                    + self_text_word_count,
+                all_fields: children_word_counts.all_fields + self_all_fields,
+            }
         }
     }
 

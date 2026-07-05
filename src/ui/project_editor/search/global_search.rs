@@ -37,6 +37,7 @@ pub fn ui(ui: &mut Ui, project: &Project, ctx: &mut EditorContext) -> Response {
                 Page::Export => unreachable!(),
                 Page::Settings(_) => unreachable!(),
                 Page::Help => unreachable!(),
+                Page::Statistics => unreachable!(),
             })
             .filter(|(_, _, tbsr)| !tbsr.finds.is_empty())
             .collect();

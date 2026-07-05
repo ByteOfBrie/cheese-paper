@@ -8,8 +8,10 @@ use crate::components::schema::FileType;
 
 use crate::components::project::ExportOptions;
 use crate::ui::FileObjectEditor;
+use crate::ui::prelude::EditorContext;
 
 pub use tools::{FileID, FileObjectStore};
+pub use tools::{ProjectStatistics, WordCountInfo};
 
 use crate::util::CheeseError;
 use std::fmt::Debug;
@@ -67,6 +69,18 @@ pub trait FileObject: Debug {
 
     fn id(&self) -> &Rc<String> {
         &self.get_base().metadata.id
+    }
+
+    /// Gets the word count of what will go in the export. Scenes should provide their
+    /// own implemntation
+    fn text_word_count(&self, _ctx: &mut EditorContext) -> usize {
+        0
+    }
+
+    /// Whether this object will be exported, scenes and folders should implement
+    /// TODO: can this be used for making generate_export more generic?
+    fn include_in_export(&self) -> bool {
+        false
     }
 
     fn resolve_references(&mut self, _objects: &FileObjectStore) {}

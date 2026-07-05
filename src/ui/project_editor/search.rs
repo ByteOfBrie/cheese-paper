@@ -139,6 +139,7 @@ impl Project {
             Page::Export => None,
             Page::Settings(_) => None,
             Page::Help => None,
+            Page::Statistics => None,
         }
     }
 }

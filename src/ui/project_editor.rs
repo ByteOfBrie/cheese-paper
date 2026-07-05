@@ -6,6 +6,7 @@ pub mod page;
 pub mod search;
 mod util;
 
+use crate::components::file_objects::ProjectStatistics;
 use crate::ui::message::Message;
 use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
@@ -266,6 +267,7 @@ pub struct EditorContext {
     pub actions: Actions,
     pub measurements: Measurements,
     pub focus_jumper: FocusJumper,
+    pub statistics: ProjectStatistics,
 
     /// version number. increment to trigger a project-wide formatting refresh
     pub render_version: usize,
@@ -698,6 +700,10 @@ impl ProjectEditor {
                         if ui.button("Help").clicked() {
                             self.set_editor_tab(&Page::Help, true);
                         }
+
+                        if ui.button("View Word Count").clicked() {
+                            self.set_editor_tab(&Page::Statistics, true);
+                        }
                     });
                 });
             });
@@ -966,6 +972,7 @@ impl ProjectEditor {
                 actions,
                 focus_jumper: FocusJumper::default(),
                 measurements: Measurements::default(),
+                statistics: ProjectStatistics::default(),
                 references,
                 render_version: 0,
                 ignore_version: OnceCell::new(),
