@@ -81,7 +81,7 @@ impl Debug for ProjectEditor {
 
 #[derive(Debug)]
 pub struct DictionaryState {
-    pub dictionary: Option<Dictionary>,
+    pub dictionary: Option<DictionaryWrapper>,
     /// The words that are explictly ignored, are stored in the data toml file
     ignored_words: HashSet<String>,
     characters_and_places: HashSet<String>,
@@ -94,7 +94,7 @@ pub struct DictionaryState {
 }
 
 impl DictionaryState {
-    pub fn new(dictionary: Option<Dictionary>) -> Self {
+    pub fn new(dictionary: Option<DictionaryWrapper>) -> Self {
         Self {
             dictionary,
             ignored_words: HashSet::new(),
@@ -121,7 +121,7 @@ impl DictionaryState {
         if let Some(dictionary) = &mut self.dictionary
             && !dictionary.check(ignored_word)
         {
-            if let Err(err) = dictionary.add(ignored_word) {
+            if let Err(err) = dictionary.add(ignored_word, None, None) {
                 log::error!("Could not add word {ignored_word} to dictionary: {err}");
             };
             self.ignored_words.insert(ignored_word.to_string());
@@ -148,27 +148,23 @@ impl DictionaryState {
     }
 
     pub fn resync_file_names(&mut self) {
-        let names_to_remove = self
+        let names_to_remove: Vec<String> = self
             .added_file_object_names
-            .difference(&self.characters_and_places);
+            .difference(&self.characters_and_places)
+            .map(|s| s.to_owned())
+            .collect();
 
-        if names_to_remove.count() != 0
-            && let Some(dictionary) = &self.dictionary
-            && let Ok(mut new_dictionary) = dictionary.try_clone()
+        if !names_to_remove.is_empty()
+            && let Some(dictionary) = &mut self.dictionary
         {
-            // we have words added to the dictionary that need to be removed now, the only way we can do
-            // this is to freshly clone the dictionary and add everything back (until we do #277)
-
-            for word in &self.ignored_words {
-                if !new_dictionary.check(word)
-                    && let Err(err) = new_dictionary.add(word)
-                {
-                    log::error!("Could not add already ignored word {word} to dictionary: {err}");
+            for word in &names_to_remove {
+                if !dictionary.remove(word) {
+                    log::warn!(
+                        "Tried to remove \"{word}\" from dictionary, but it was already gone"
+                    );
                 }
+                self.added_file_object_names.retain(|e| e != word);
             }
-
-            self.added_file_object_names.clear();
-            self.dictionary = Some(new_dictionary);
         }
 
         if let Some(dictionary) = &mut self.dictionary {
@@ -180,8 +176,8 @@ impl DictionaryState {
 
             for file_object_word in names_to_add {
                 if !dictionary.check(&file_object_word) {
-                    match dictionary.add(&file_object_word) {
-                        Ok(()) => {
+                    match dictionary.add(&file_object_word, None, None) {
+                        Ok(_) => {
                             self.added_file_object_names.insert(file_object_word);
                         }
                         Err(err) => {

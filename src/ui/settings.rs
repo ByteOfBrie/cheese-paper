@@ -497,7 +497,7 @@ impl SettingsData {
     }
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
-    pub fn load_dictionary(&mut self) -> Option<Dictionary> {
+    pub fn load_dictionary(&mut self) -> Option<DictionaryWrapper> {
         self.selected_dictionary.error_message = None;
 
         let selection = self.selected_dictionary.get_value().clone();
@@ -707,7 +707,7 @@ impl Settings {
     }
 
     /// Try to load the dictionary corresponding to the selected dictionary from the filesystem
-    pub fn load_dictionary(&self) -> Option<Dictionary> {
+    pub fn load_dictionary(&self) -> Option<DictionaryWrapper> {
         let mut data = self.data.borrow_mut();
 
         data.load_dictionary()

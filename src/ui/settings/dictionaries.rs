@@ -56,8 +56,8 @@ impl TryFrom<PathBuf> for AvailableDictionary {
 }
 
 impl AvailableDictionary {
-    pub fn load(&self) -> Result<Dictionary, CheeseError> {
-        Dictionary::new(self.aff_path.clone(), self.dic_path.clone())
+    pub fn load(&self) -> Result<DictionaryWrapper, CheeseError> {
+        DictionaryWrapper::new(self.aff_path.clone(), self.dic_path.clone())
     }
 }
 
