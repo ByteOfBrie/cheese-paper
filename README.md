@@ -23,14 +23,14 @@ git lfs install
 git lfs pull
 ```
 
-Cheese Paper relies on bindgen for now (in the dependency chain for hunspell), which means that `libclang` must be installed to compile. For more information, see [rust-bindgen's requirements](https://rust-lang.github.io/rust-bindgen/requirements.html)
-
 Finally, use cargo to build and run:
 
 ```
-cargo build
-cargo run
+cargo build --release
+cargo run --release
 ```
+
+(Note that if you are intending to actually use the Cheese Paper you built, it *should* be a release build, especially if you're writing in a language that isn't English, otherwise the spellcheck suggestions may be slow (e.g., French spelling suggestions will be quite slow otherwise))
 
 There are more complex commands to deal with packaging, but many of these are awful and complex and I don't think anyone else should suffer through that. For anyone who also wishes to suffer, look at the release workflow (but you brought this upon yourself)
 
