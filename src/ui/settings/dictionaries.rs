@@ -115,13 +115,20 @@ impl SettingsData {
         }
 
         for search_path in &dict_search_paths {
-            for entry in std::fs::read_dir(search_path)? {
-                let path = entry?.path();
+            match std::fs::read_dir(search_path) {
+                Ok(entries) => {
+                    for entry in entries {
+                        let path = entry?.path();
 
-                if let Ok(dict) = AvailableDictionary::try_from(path)
-                    && !self.available_dict.contains(&dict)
-                {
-                    self.available_dict.push(dict);
+                        if let Ok(dict) = AvailableDictionary::try_from(path)
+                            && !self.available_dict.contains(&dict)
+                        {
+                            self.available_dict.push(dict);
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::debug!("Could not read dictionary location: {search_path:?}: {err}");
                 }
             }
         }
