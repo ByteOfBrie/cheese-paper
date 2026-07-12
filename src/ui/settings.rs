@@ -7,9 +7,7 @@ use crate::ui::prelude::*;
 
 use dictionaries::AvailableDictionary;
 
-use crate::components::file_objects::utils::{
-    create_dir_if_missing, process_name_for_filename, write_with_temp_file,
-};
+use crate::components::file_objects::utils::{process_name_for_filename, write_with_temp_file};
 
 use std::fs::read_dir;
 use std::time::SystemTime;
@@ -769,7 +767,11 @@ impl Settings {
         let mut dest_path = data.themes_path().join(file_name);
         dest_path.add_extension("toml");
 
-        write_with_temp_file(create_dir_if_missing(&dest_path)?, config.to_string())
+        if !std::fs::exists(data.themes_path())? {
+            std::fs::create_dir_all(data.themes_path())?;
+        }
+
+        write_with_temp_file(&dest_path, config.to_string())
             .map_err(|err| cheese_error!("Error while saving app settings\n{}", err))?;
 
         Ok(())
