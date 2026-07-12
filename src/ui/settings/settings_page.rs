@@ -410,12 +410,41 @@ impl SettingsPage {
                         .settings
                         .save_current_theme(&self.random_theme_name)
                         .err();
+                    // if the theme saved successfully, load the config and change the theme
                     if self.random_theme_save_error.is_none() {
-                        ctx.actions.schedule(|project_editor, _| {
-                            if let Err(err) = project_editor.editor_context.settings.load() {
-                                log::error!("Error encountered while reloading settings: {err}");
+                        let random_theme_name = self.random_theme_name.clone();
+                        ctx.actions.schedule(move |project_editor, ctx| {
+                            match project_editor.editor_context.settings.load() {
+                                Ok(()) => {
+                                    let mut theme_index_option = None;
+                                    for (index, (theme_name, _)) in project_editor
+                                        .editor_context
+                                        .settings
+                                        .data
+                                        .borrow()
+                                        .available_themes
+                                        .iter()
+                                        .enumerate()
+                                    {
+                                        if *theme_name == random_theme_name {
+                                            theme_index_option = Some(index);
+                                        }
+                                    }
+                                    if let Some(theme_index) = theme_index_option {
+                                        project_editor
+                                            .editor_context
+                                            .settings
+                                            .select_theme(ThemeSelection::Preset(theme_index))
+                                            .unwrap();
+                                    }
+                                    project_editor.update_theme(ctx);
+                                }
+                                Err(err) => {
+                                    log::error!("Error encountered while reloading settings: {err}")
+                                }
                             }
                         });
+                        update = true;
                     }
                 }
                 cheese_response.tabable_ids.push(response.id);
