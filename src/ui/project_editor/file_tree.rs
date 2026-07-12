@@ -1,8 +1,15 @@
 use super::ProjectEditor;
 
-use crate::ui::prelude::*;
+use crate::{
+    components::{
+        file_objects::utils::process_name_for_filename,
+        project::{ExportDepth, ExportOptions},
+    },
+    ui::prelude::*,
+};
 
 use egui_ltreeview::{Action, DirPosition, NodeBuilder, TreeView};
+use rfd::FileDialog;
 
 /// Temporary solution. Point to the schema statically here.
 /// Eventually, a solution for loading the schema when opening the project will be needed
@@ -18,6 +25,9 @@ enum ContextMenuActions {
         parent: FileID,
         position: DirPosition<FileID>,
         file_type: FileType,
+    },
+    Export {
+        id: FileID,
     },
 }
 
@@ -66,6 +76,16 @@ impl dyn FileObject {
                             file_type,
                         });
                         ui.close();
+                    }
+                }
+
+                if parent_id.is_some() && self.get_type().exportable() {
+                    ui.separator();
+
+                    if ui.button("Export").clicked() {
+                        actions.push(ContextMenuActions::Export {
+                            id: self.id().clone(),
+                        });
                     }
                 }
 
@@ -262,6 +282,53 @@ pub fn ui(editor: &mut ProjectEditor, ui: &mut egui::Ui) {
             } => {
                 if let Err(err) = editor.project.create_object(file_type, &parent, position) {
                     log::error!("Encountered error while trying to add child: {err}");
+                }
+            }
+            ContextMenuActions::Export { id } => {
+                let project_title = &editor.project.base_metadata.name;
+                let export_object = editor.project.objects.get(&id).unwrap().borrow();
+                let suggested_title = format!(
+                    "{}-{}.md",
+                    process_name_for_filename(project_title),
+                    process_name_for_filename(&export_object.get_title())
+                );
+                let export_location_option = FileDialog::new()
+                    .set_title(format!("Export {project_title}"))
+                    .set_directory(&editor.editor_context.data.data.borrow().last_export_folder)
+                    .set_file_name(suggested_title)
+                    .save_file();
+
+                // we're exporting a folder or even just a scene, we won't include titles
+                // unless the file object overrode this already
+                let export_options = ExportOptions {
+                    folder_title_depth: ExportDepth::None,
+                    scene_title_depth: ExportDepth::None,
+                    insert_breaks: editor.project.metadata.export.insert_break_at_end,
+                };
+
+                if let Some(export_location) = export_location_option {
+                    let mut export_string = String::new();
+                    export_object.generate_export(
+                        1,
+                        &mut export_string,
+                        &editor.project.objects,
+                        &export_options,
+                        false,
+                    );
+                    if let Err(err) = std::fs::write(&export_location, export_string) {
+                        log::error!("Error while attempting to write outline: {err}");
+                    }
+
+                    editor
+                        .editor_context
+                        .data
+                        .data
+                        .borrow_mut()
+                        .last_export_folder = export_location
+                        .parent()
+                        .map(|val| val.to_path_buf())
+                        .unwrap_or_default();
+                    editor.editor_context.data.modified = true;
                 }
             }
         }

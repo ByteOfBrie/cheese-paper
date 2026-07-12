@@ -38,6 +38,7 @@ impl Note {
         identifier: Self::IDENTIFIER,
         is_folder: false,
         has_body: true,
+        exportable: false,
         type_name: "Note",
         empty_string_name: "New Note",
         extension: "md",

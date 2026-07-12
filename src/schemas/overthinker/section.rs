@@ -37,6 +37,7 @@ impl Section {
         identifier: Self::IDENTIFIER,
         is_folder: true,
         has_body: false,
+        exportable: false,
         type_name: "Section",
         empty_string_name: "New Section",
         extension: "toml",

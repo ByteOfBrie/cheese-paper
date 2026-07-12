@@ -37,6 +37,8 @@ pub struct FileTypeInfo {
 
     has_body: bool,
 
+    exportable: bool,
+
     type_name: &'static str,
 
     empty_string_name: &'static str,
@@ -84,6 +86,10 @@ impl FileTypeInfo {
 
     pub fn has_body(&self) -> bool {
         self.has_body
+    }
+
+    pub fn exportable(&self) -> bool {
+        self.exportable
     }
 
     pub fn type_name(&self) -> &'static str {

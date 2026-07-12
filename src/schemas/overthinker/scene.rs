@@ -43,6 +43,7 @@ impl Scene {
         identifier: Self::IDENTIFIER,
         is_folder: false,
         has_body: true,
+        exportable: true,
         type_name: "Scene",
         empty_string_name: "New Scene",
         extension: "md",

@@ -37,6 +37,7 @@ impl Folder {
         identifier: Self::IDENTIFIER,
         is_folder: true,
         has_body: false,
+        exportable: true,
         type_name: "Folder",
         empty_string_name: "New Folder",
         extension: "toml",

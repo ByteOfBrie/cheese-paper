@@ -50,6 +50,7 @@ impl Character {
         identifier: Self::IDENTIFIER,
         is_folder: false,
         has_body: false,
+        exportable: false,
         type_name: "Character",
         empty_string_name: "New Character",
         extension: "toml",

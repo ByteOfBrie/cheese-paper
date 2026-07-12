@@ -40,6 +40,7 @@ impl Place {
         identifier: Self::IDENTIFIER,
         is_folder: true,
         has_body: false,
+        exportable: false,
         type_name: "Place",
         empty_string_name: "New Place",
         extension: "toml",

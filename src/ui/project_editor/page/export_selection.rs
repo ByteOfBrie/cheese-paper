@@ -143,7 +143,7 @@ impl Project {
             if let Some(export_location) = export_location_option {
                 let export_contents = self.export_text(export_options);
                 if let Err(err) = std::fs::write(&export_location, export_contents) {
-                    log::error!("Error while attempting to write outline: {err}");
+                    log::error!("Error while attempting to write text: {err}");
                 }
 
                 ctx.data.data.borrow_mut().last_export_folder = export_location
