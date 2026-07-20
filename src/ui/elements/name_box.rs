@@ -25,6 +25,9 @@ impl NameBox {
                         .id_salt("name")
                         .hint_text(empty_text),
                 );
+                edit_response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, edit_response.enabled(), "name")
+                });
                 if ctx.focus_jumper.recieve(&"name_edit_field") {
                     edit_response.request_focus();
                 }
@@ -52,6 +55,9 @@ impl NameBox {
                     empty_text
                 });
                 let response = ui.button("🖊");
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), "rename")
+                });
                 if response.clicked() || ui.input(|i| i.key_pressed(egui::Key::F2)) {
                     self.edit_content = text.clone();
                     self.editing = true;

@@ -268,6 +268,9 @@ impl Section {
                             let response =
                                 ui.add(|ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx));
                             cheese_response.process_response(&response, true);
+                            response.widget_info(|| {
+                                WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "summary")
+                            });
                         });
 
                     egui::CollapsingHeader::new("Notes")
@@ -275,6 +278,9 @@ impl Section {
                         .show(ui, |ui| {
                             let response = ui.add(|ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx));
                             cheese_response.process_response(&response, true);
+                            response.widget_info(|| {
+                                WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "notes")
+                            });
                         });
                 }
                 Tab::Export => {
@@ -303,7 +309,7 @@ impl Section {
                             always - include the title for this, even if the project export settings differ
                             never - do not include the title for this, even if the export settings differ";
 
-                            ui.label("Include Title  ℹ").on_hover_text(INCLUDE_TITLE_MESSAGE);
+                            let label_resp = ui.label("Include Title  ℹ").on_hover_text(INCLUDE_TITLE_MESSAGE);
 
                             let title_combobox_response =
                                 egui::ComboBox::from_id_salt("Include Title")
@@ -329,6 +335,7 @@ impl Section {
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
                             cheese_response.tabable_ids.push(title_combobox_response.response.id);
+                            title_combobox_response.response.labelled_by(label_resp.id);
                         });
 
                         // We don't have an actual response here so we have to manually process
@@ -349,7 +356,7 @@ impl Section {
                             always - include a divider after this, even if the project export settings differ
                             never - do not include a divider after this, even if the export settings differ";
 
-                            ui.label("Break at End  ℹ").on_hover_text(INCLUDE_BREAK_MESSAGE);
+                            let label_resp = ui.label("Break at End  ℹ").on_hover_text(INCLUDE_BREAK_MESSAGE);
 
                             let break_combobox_response =
                                 egui::ComboBox::from_id_salt("Break at End")
@@ -375,6 +382,7 @@ impl Section {
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
                             cheese_response.tabable_ids.push(break_combobox_response.response.id);
+                            break_combobox_response.response.labelled_by(label_resp.id);
                         });
 
                         // We don't have an actual response here so we have to manually process

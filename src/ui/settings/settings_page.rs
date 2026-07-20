@@ -22,16 +22,18 @@ pub struct SettingsPage {
 }
 
 impl Setting<bool> {
-    fn ui<'a>(
-        &'a mut self,
-        ui: &mut Ui,
-        atoms: impl egui::IntoAtoms<'a>,
-        project_local: bool,
-    ) -> CheeseResponse {
+    fn ui<'a>(&'a mut self, ui: &mut Ui, atoms: &'a str, project_local: bool) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
 
         ui.horizontal(|ui| {
             let response = ui.button("⟲");
+            response.widget_info(|| {
+                WidgetInfo::labeled(
+                    egui::WidgetType::Button,
+                    ui.is_enabled(),
+                    format!("reset {atoms}"),
+                )
+            });
             if response.clicked() {
                 self.reset_value(project_local);
                 // The egui response doesn't show as "changed", so we set it manually
@@ -56,12 +58,12 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
     fn dropdown(
         &mut self,
         ui: &mut Ui,
-        id_salt: &'static str,
+        description: &'static str,
         options: impl Iterator<Item = T>,
         project_local: bool,
     ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
-        let inner_response = egui::ComboBox::from_id_salt(id_salt)
+        let inner_response = egui::ComboBox::from_id_salt(description)
             .selected_text(self.interface_value(project_local).as_ref())
             .show_ui(ui, |ui| {
                 for option in options {
@@ -73,6 +75,10 @@ impl<T: PartialEq + Clone + AsRef<str> + std::fmt::Debug> Setting<T> {
                     cheese_response.process_response(&response, false);
                 }
             });
+
+        inner_response.response.widget_info(|| {
+            WidgetInfo::labeled(egui::WidgetType::ComboBox, ui.is_enabled(), description)
+        });
 
         cheese_response.tabable_ids.push(inner_response.response.id);
 
@@ -155,10 +161,11 @@ impl SettingsPage {
 
         let mut cheese_response = CheeseResponse::default();
 
-        ui.label("Font Size");
+        let font_size_label = ui.label("Font Size");
 
         let response = ui.text_edit_singleline(&mut settings_data.font_size.interface_value);
         cheese_response.process_response(&response, true);
+        response.labelled_by(font_size_label.id);
 
         if let Some(err) = &settings_data.font_size.error_message {
             ui.label(RichText::new(err).color(Color32::RED));
@@ -214,7 +221,7 @@ impl SettingsPage {
 
             cheese_response.extend(settings_data.selected_dictionary.dropdown(
                 ui,
-                "Dictionary Selection Dropdown",
+                "Dictionary",
                 options.into_iter(),
                 false,
             ));
@@ -284,7 +291,7 @@ impl SettingsPage {
 
         cheese_response.extend(settings_data.selected_dictionary.dropdown(
             ui,
-            "Dictionary Selection Dropdown",
+            "Dictionary",
             options.into_iter(),
             true,
         ));
@@ -320,6 +327,13 @@ impl SettingsPage {
                 ctx.settings.select_theme(ThemeSelection::Default).unwrap();
                 update = true;
             }
+            response.widget_info(|| {
+                WidgetInfo::labeled(
+                    egui::WidgetType::Button,
+                    response.enabled(),
+                    "Default theme",
+                )
+            });
             cheese_response.tabable_ids.push(response.id);
         });
 
@@ -336,6 +350,9 @@ impl SettingsPage {
                     .unwrap();
                 update = true;
             }
+            response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), "Light theme")
+            });
             cheese_response.tabable_ids.push(response.id);
         });
 
@@ -350,12 +367,23 @@ impl SettingsPage {
                 ctx.settings.select_theme(ThemeSelection::Random).unwrap();
                 update = true;
             }
+            response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), "Random theme")
+            });
             cheese_response.tabable_ids.push(response.id);
         });
 
         layout::horizontal_heading(ui, |ui| {
             layout::heading(ui, "Available Presets");
-            if ui.button("reload").clicked() {
+            let reload_button = ui.button("reload");
+            reload_button.widget_info(|| {
+                WidgetInfo::labeled(
+                    egui::WidgetType::Button,
+                    reload_button.enabled(),
+                    "reload themes",
+                )
+            });
+            if reload_button.clicked() {
                 ctx.actions.schedule(move |project_editor, ctx| {
                     project_editor
                         .editor_context
@@ -385,6 +413,13 @@ impl SettingsPage {
                         ui.label("  ");
                     }
                     let response = ui.button(name);
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(
+                            egui::WidgetType::Button,
+                            response.enabled(),
+                            format!("{name} theme"),
+                        )
+                    });
                     if response.clicked() {
                         ctx.settings
                             .select_theme(ThemeSelection::Preset(idx))
@@ -399,12 +434,26 @@ impl SettingsPage {
         ui.separator();
 
         if matches!(selected, ThemeSelection::Random) {
-            ui.label("Save random theme as preset ?");
+            ui.label("Save random theme as preset?");
             ui.horizontal(|ui| {
-                ui.label("name : ");
+                ui.label("name: ");
                 let response = ui.text_edit_singleline(&mut self.random_theme_name);
+                response.widget_info(|| {
+                    WidgetInfo::labeled(
+                        egui::WidgetType::TextEdit,
+                        response.enabled(),
+                        "random theme save name",
+                    )
+                });
                 cheese_response.tabable_ids.push(response.id);
                 let response = ui.button("Save");
+                response.widget_info(|| {
+                    WidgetInfo::labeled(
+                        egui::WidgetType::Button,
+                        response.enabled(),
+                        "Save random theme",
+                    )
+                });
                 if response.clicked() {
                     self.random_theme_save_error = ctx
                         .settings

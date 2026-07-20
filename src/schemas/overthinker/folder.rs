@@ -308,7 +308,7 @@ impl Folder {
                             always - include the title for this, even if the project export settings differ
                             never - do not include the title for this, even if the export settings differ";
 
-                            ui.label("Include Title  ℹ").on_hover_text(INCLUDE_TITLE_MESSAGE);
+                            let label_resp = ui.label("Include Title  ℹ").on_hover_text(INCLUDE_TITLE_MESSAGE);
 
                             let title_combobox_response =
                                 egui::ComboBox::from_id_salt("Include Title")
@@ -334,6 +334,7 @@ impl Folder {
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
                             cheese_response.tabable_ids.push(title_combobox_response.response.id);
+                            title_combobox_response.response.labelled_by(label_resp.id);
                         });
 
                         // We don't have an actual response here so we have to manually process
@@ -354,7 +355,7 @@ impl Folder {
                             always - include a divider after this, even if the project export settings differ
                             never - do not include a divider after this, even if the export settings differ";
 
-                            ui.label("Break at End  ℹ").on_hover_text(INCLUDE_BREAK_MESSAGE);
+                            let label_resp = ui.label("Break at End  ℹ").on_hover_text(INCLUDE_BREAK_MESSAGE);
 
                             let break_combobox_response =
                                 egui::ComboBox::from_id_salt("Break at End")
@@ -380,6 +381,7 @@ impl Folder {
                             // We want to be able to tab to the box, but it doesn't get a process_response
                             // call because that needs to be handled below
                             cheese_response.tabable_ids.push(break_combobox_response.response.id);
+                            break_combobox_response.response.labelled_by(label_resp.id);
                         });
 
                         // We don't have an actual response here so we have to manually process

@@ -262,6 +262,9 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                     );
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "summary")
+                    });
                     cheese_response.process_response(&response, true);
                 });
 
@@ -272,6 +275,9 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                     );
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "notes")
+                    });
                     cheese_response.process_response(&response, true);
                 });
         });
@@ -282,28 +288,33 @@ impl Character {
     fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            ui.label("Goals");
+            let label = ui.label("Goals");
             let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.goal.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Appearance");
+            let label = ui.label("Appearance");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Persona");
+            let label = ui.label("Persona");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.persona.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Interior");
+            let label = ui.label("Interior");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.interior.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Narrative Role");
+            let label = ui.label("Narrative Role");
             let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.role.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
         });
         cheese_response
     }

@@ -15,7 +15,7 @@ pub use {
         settings::Settings,
     },
     crate::util::{CheeseError, DictionaryWrapper},
-    egui::{Response, Ui},
+    egui::{Response, Ui, WidgetInfo},
     regex::Regex,
     std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc},
 };

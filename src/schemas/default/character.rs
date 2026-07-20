@@ -263,6 +263,9 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                     );
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "summary")
+                    });
                     cheese_response.process_response(&response, true);
                 });
 
@@ -273,6 +276,9 @@ impl Character {
                         egui::vec2(ui.available_width(), min_height),
                         |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                     );
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "notes")
+                    });
                     cheese_response.process_response(&response, true);
                 });
         });
@@ -283,29 +289,34 @@ impl Character {
     fn show_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            ui.label("Appearance");
+            let label = ui.label("Appearance");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Personality");
+            let label = ui.label("Personality");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.personality.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Goals");
+            let label = ui.label("Goals");
             let response: egui::Response = ui.add(|ui: &'_ mut Ui| self.metadata.goal.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Conflicts");
+            let label = ui.label("Conflicts");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.conflict.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
 
-            ui.label("Habits");
+            let label = ui.label("Habits");
             let response: egui::Response =
                 ui.add(|ui: &'_ mut Ui| self.metadata.habits.ui(ui, ctx));
             cheese_response.process_response(&response, true);
+            response.labelled_by(label.id);
         });
         cheese_response
     }

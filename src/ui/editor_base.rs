@@ -642,7 +642,8 @@ impl CheesePaperApp {
                 } else {
                     log::error!("Could not get current folder in new project dialogue");
                 }
-                if ui.button("Select").clicked() {
+                let response = ui.button("Select");
+                if response.clicked() {
                     let selected_dir = FileDialog::new()
                         .set_title("Project Parent Folder")
                         .set_directory(self.state.new_project_dir.clone().unwrap_or_default())
@@ -652,11 +653,27 @@ impl CheesePaperApp {
                         self.state.new_project_dir = selected_dir;
                     }
                 }
+                response.widget_info(|| {
+                    WidgetInfo::labeled(
+                        egui::WidgetType::Button,
+                        response.enabled(),
+                        "Select Project Parent folder",
+                    )
+                });
 
                 ui.separator();
 
                 ui.label("Project Name:");
-                ui.text_edit_singleline(&mut self.state.new_project_name);
+                let project_name_response =
+                    ui.text_edit_singleline(&mut self.state.new_project_name);
+
+                project_name_response.widget_info(|| {
+                    WidgetInfo::labeled(
+                        egui::WidgetType::TextEdit,
+                        response.enabled(),
+                        "Project Name",
+                    )
+                });
 
                 #[cfg(feature = "schema_selection_dialogue")]
                 {
@@ -664,7 +681,7 @@ impl CheesePaperApp {
                     // the selection dialogue to the users in release builds. Release builds will still
                     // be able to load these projectss without any issues
                     ui.label("Project Schema:");
-                    egui::ComboBox::from_id_salt("schema selection dropdown")
+                    let combobox_resp = egui::ComboBox::from_id_salt("schema selection dropdown")
                         .selected_text(self.state.new_project_schema.get_schema_name())
                         .show_ui(ui, |ui| {
                             for schema in crate::schemas::SCHEMA_LIST {
@@ -675,6 +692,14 @@ impl CheesePaperApp {
                                 );
                             }
                         });
+
+                    combobox_resp.response.widget_info(|| {
+                        WidgetInfo::labeled(
+                            egui::WidgetType::ComboBox,
+                            response.enabled(),
+                            "Schema selection",
+                        )
+                    });
 
                     ui.separator();
 

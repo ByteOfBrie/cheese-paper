@@ -247,21 +247,25 @@ impl Place {
         ScrollArea::vertical()
             .id_salt("main metadata")
             .show(ui, |ui| {
-                ui.label("Connection To Story");
+                let label = ui.label("Connection To Story");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.connection.ui(ui, ctx));
                 cheese_response.process_response(&response, true);
+                response.labelled_by(label.id);
 
-                ui.label("Description");
+                let label = ui.label("Description");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.description.ui(ui, ctx));
                 cheese_response.process_response(&response, true);
+                response.labelled_by(label.id);
 
-                ui.label("Appearance");
+                let label = ui.label("Appearance");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.appearance.ui(ui, ctx));
                 cheese_response.process_response(&response, true);
+                response.labelled_by(label.id);
 
-                ui.label("Other Senses");
+                let label = ui.label("Other Senses");
                 let response = ui.add(|ui: &'_ mut Ui| self.metadata.other_senses.ui(ui, ctx));
                 cheese_response.process_response(&response, true);
+                response.labelled_by(label.id);
             });
         cheese_response
     }

@@ -174,14 +174,19 @@ impl FileObjectEditor for Note {
 
 impl Note {
     fn show_text_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
-        ScrollArea::vertical()
+        let response = ScrollArea::vertical()
             .id_salt("text")
             .auto_shrink(egui::Vec2b { x: false, y: false })
             .show(ui, |ui| {
                 ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| self.text.ui(ui, ctx))
-                    .into()
             })
-            .inner
+            .inner;
+
+        response.widget_info(|| {
+            WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "notes")
+        });
+
+        response.into()
     }
 
     fn show_sidebar(
@@ -243,6 +248,9 @@ impl Note {
                     |ui: &'_ mut Ui| self.metadata.subject.ui(ui, ctx),
                 );
                 cheese_response.process_response(&response, true);
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "subject")
+                });
             });
 
         egui::CollapsingHeader::new("Commentary")
@@ -253,6 +261,9 @@ impl Note {
                     |ui: &'_ mut Ui| self.metadata.commentary.ui(ui, ctx),
                 );
                 cheese_response.process_response(&response, true);
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "commentary")
+                });
             });
         cheese_response
     }

@@ -318,14 +318,19 @@ impl FileObjectEditor for Scene {
 
 impl Scene {
     fn show_text_editor(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
-        ScrollArea::vertical()
+        let text_resp = ScrollArea::vertical()
             .id_salt("text")
             .auto_shrink(egui::Vec2b { x: false, y: false })
             .show(ui, |ui| {
                 ui.add_sized(ui.available_size(), |ui: &'_ mut Ui| self.text.ui(ui, ctx))
-                    .into()
             })
-            .inner
+            .inner;
+
+        text_resp.widget_info(|| {
+            WidgetInfo::labeled(egui::WidgetType::TextEdit, text_resp.enabled(), "scene")
+        });
+
+        text_resp.into()
     }
 
     fn show_sidebar(
@@ -386,8 +391,8 @@ impl Scene {
             let mut pov = object_pov.clone();
 
             ui.horizontal(|ui| {
-                ui.label("POV ");
-                egui::ComboBox::from_id_salt("metadata pov")
+                let pov_label_id = ui.label("POV ");
+                let pov_combobox = egui::ComboBox::from_id_salt("metadata pov")
                     .selected_text(match &pov {
                         ObjectReference::Known(known_current_pov) => {
                             if let Some(current_pov_name) = ctx
@@ -421,6 +426,8 @@ impl Scene {
                             );
                         }
                     });
+
+                pov_combobox.response.labelled_by(pov_label_id.id);
             });
 
             // We don't have an actual response here so we have to manually process
@@ -452,6 +459,11 @@ impl Scene {
                     egui::vec2(ui.available_width(), min_height),
                     |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                 );
+
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "summary")
+                });
+
                 cheese_response.process_response(&response, true);
             });
 
@@ -462,6 +474,11 @@ impl Scene {
                     egui::vec2(ui.available_width(), min_height),
                     |ui: &'_ mut Ui| self.metadata.notes.ui(ui, ctx),
                 );
+
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "notes")
+                });
+
                 cheese_response.process_response(&response, true);
             });
         cheese_response
@@ -494,7 +511,7 @@ impl Scene {
                 always - include the title for this, even if the project export settings differ
                 never - do not include the title for this, even if the export settings differ";
 
-                ui.label("Include Title  ℹ")
+                let label_resp = ui.label("Include Title  ℹ")
                     .on_hover_text(INCLUDE_TITLE_MESSAGE);
 
                 let title_combobox_response = egui::ComboBox::from_id_salt("Include Title")
@@ -508,6 +525,7 @@ impl Scene {
                 // We want to be able to tab to the box, but it doesn't get a process_response
                 // call because that needs to be handled below
                 cheese_response.tabable_ids.push(title_combobox_response.response.id);
+                title_combobox_response.response.labelled_by(label_resp.id);
             });
 
             // We don't have an actual response here so we have to manually process
@@ -529,7 +547,7 @@ impl Scene {
                     always - include a divider after this, even if the project export settings differ
                     never - do not include a divider after this, even if the export settings differ";
 
-                ui.label("Break at End  ℹ")
+                let label_resp = ui.label("Break at End  ℹ")
                     .on_hover_text(INCLUDE_BREAK_MESSAGE);
 
                 let break_combobox_response = egui::ComboBox::from_id_salt("Break at End")
@@ -543,6 +561,7 @@ impl Scene {
                 // We want to be able to tab to the box, but it doesn't get a process_response
                 // call because that needs to be handled below
                 cheese_response.tabable_ids.push(break_combobox_response.response.id);
+                break_combobox_response.response.labelled_by(label_resp.id);
             });
 
             // We don't have an actual response here so we have to manually process

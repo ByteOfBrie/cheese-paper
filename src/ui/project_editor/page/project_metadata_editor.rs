@@ -27,6 +27,9 @@ impl Project {
                     .desired_width(f32::INFINITY),
             );
             cheese_response.process_response(&response, true);
+            response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "story title")
+            });
 
             // Special case: update the title if we've changed it:
             if response.changed() {
@@ -40,6 +43,9 @@ impl Project {
                     .desired_width(f32::INFINITY),
             );
             cheese_response.process_response(&response, true);
+            response.widget_info(|| {
+                WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "genre")
+            });
 
             ui.horizontal(|ui| {
                 let half_width = ui.available_width() / 2.0;
@@ -51,6 +57,9 @@ impl Project {
                         .desired_width(half_width),
                 );
                 cheese_response.process_response(&response, true);
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "author name")
+                });
 
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.metadata.email)
@@ -59,6 +68,9 @@ impl Project {
                         .desired_width(half_width),
                 );
                 cheese_response.process_response(&response, true);
+                response.widget_info(|| {
+                    WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "author email")
+                });
             });
 
             // extract the height from some arbitrary text box, it shouldn't matter much
@@ -79,6 +91,13 @@ impl Project {
                         |ui: &'_ mut Ui| self.metadata.summary.ui(ui, ctx),
                     );
                     cheese_response.process_response(&response, true);
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(
+                            egui::WidgetType::TextEdit,
+                            ui.is_enabled(),
+                            "story summary",
+                        )
+                    });
                 });
 
             egui::CollapsingHeader::new("Notes")
@@ -90,6 +109,13 @@ impl Project {
                     );
 
                     cheese_response.process_response(&response, true);
+                    response.widget_info(|| {
+                        WidgetInfo::labeled(
+                            egui::WidgetType::TextEdit,
+                            ui.is_enabled(),
+                            "story notes",
+                        )
+                    });
                 });
         });
         cheese_response
