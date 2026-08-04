@@ -6,10 +6,12 @@ mod schemas;
 mod ui;
 mod util;
 
+use std::sync::Arc;
+
 use crate::ui::CheesePaperApp;
 
 use directories::ProjectDirs;
-use eframe::NativeOptions;
+use eframe::{NativeOptions, egui_wgpu::WgpuSetup, wgpu};
 use flexi_logger::{Duplicate, FileSpec, Logger, WriteMode, colored_opt_format, opt_format};
 
 fn main() -> eframe::Result {
@@ -63,11 +65,41 @@ fn main() -> eframe::Result {
         egui::ViewportBuilder::default().with_app_id("gay.brie.CheesePaper")
     };
 
-    let native_options = NativeOptions {
+    let mut native_options = NativeOptions {
         persistence_path: Some(egui_data_path),
         viewport,
         ..Default::default()
     };
+
+    // To fix https://codeberg.org/ByteOfBrie/cheese-paper/issues/318, we need to override
+    // native_options.wgpu_options.wgpu_setup.device_descriptor.required_limits.max_texture_dimension_3d
+    //
+    // Since Cheese Paper doesn't use *any* 3d rendering, we can simply set this to 0, but it's
+    // exceptionally annoying to get to that value. This is a copy of the relevant value that gets
+    // set in egui-wgpu, but with `max_texture_dimension_3d` set to 0 (and a different label)
+    //
+    // https://github.com/emilk/egui/blob/0.35.0/crates/egui-wgpu/src/setup.rs#L256-L273
+    if let WgpuSetup::CreateNew(wgpu_setup_creator) = &mut native_options.wgpu_options.wgpu_setup {
+        wgpu_setup_creator.device_descriptor = Arc::new(|adapter| {
+            let base_limits = if adapter.get_info().backend == wgpu::Backend::Gl {
+                wgpu::Limits::downlevel_webgl2_defaults()
+            } else {
+                wgpu::Limits::default()
+            };
+
+            wgpu::DeviceDescriptor {
+                label: Some("cheese-paper egui wgpu device"),
+                required_limits: wgpu::Limits {
+                    // When using a depth buffer, we have to be able to create a texture
+                    // large enough for the entire surface, and we want to support 4k+ displays.
+                    max_texture_dimension_2d: 8192,
+                    max_texture_dimension_3d: 0,
+                    ..base_limits
+                },
+                ..Default::default()
+            }
+        })
+    }
 
     eframe::run_native(
         "Cheese Paper",
