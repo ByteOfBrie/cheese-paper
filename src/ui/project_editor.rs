@@ -794,6 +794,7 @@ impl ProjectEditor {
                 .max_height(ui.available_height())
                 .show(ui, |ui| {
                     file_tree::ui(self, ui);
+                    ui.add_space(20.0)
                 });
         }
     }
