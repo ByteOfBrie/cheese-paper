@@ -56,7 +56,10 @@ impl Data {
             return;
         }
 
-        self.data.borrow_mut().last_export_folder = latest_export.to_owned();
+        self.data
+            .borrow_mut()
+            .last_export_folder
+            .clone_from(&latest_export);
     }
 
     pub fn pop_most_recent_project(&self) -> Option<PathBuf> {
@@ -124,15 +127,16 @@ impl InnerData {
                     panic!("Could not parse toml data file: {err}");
                 }
             },
-            Err(err) => match err.kind() {
-                std::io::ErrorKind::NotFound => DocumentMut::new(),
-                _ => {
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    DocumentMut::new()
+                } else {
                     // We have to panic here because an error means that we failed to load an existing
                     // data file, so we can't overwrite it without losing data
                     log::error!("Unknown error while reading editor data: {err}");
                     panic!("Unknown error while reading editor data: {err}");
                 }
-            },
+            }
         };
 
         let mut data = Self {
@@ -178,19 +182,19 @@ impl InnerData {
         if let Some(last_project_parent_folder_value) = table.get("last_project_parent_folder")
             && let Some(last_export_folder) = last_project_parent_folder_value.as_str()
         {
-            self.last_project_parent_folder = PathBuf::from(last_export_folder)
+            self.last_project_parent_folder = PathBuf::from(last_export_folder);
         }
 
         if let Some(last_export_folder_value) = table.get("last_export_folder")
             && let Some(last_export_folder) = last_export_folder_value.as_str()
         {
-            self.last_export_folder = PathBuf::from(last_export_folder)
+            self.last_export_folder = PathBuf::from(last_export_folder);
         }
 
         if let Some(update_ignore_version_value) = table.get("update_ignore_version")
             && let Some(update_ignore_version) = update_ignore_version_value.as_str()
         {
-            self.update_ignore_version = update_ignore_version.to_owned();
+            update_ignore_version.clone_into(&mut self.update_ignore_version);
         }
 
         if let Some(last_open_file_ids) = table
@@ -213,7 +217,7 @@ impl InnerData {
                     let open_file_ids = file_id_list
                         .iter()
                         .filter_map(|val| val.as_str())
-                        .map(|val| val.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect();
 
                     self.last_open_file_ids
@@ -237,7 +241,7 @@ impl InnerData {
     /// Save the data in this object to a table
     fn save(&mut self) {
         let mut recent_projects = toml_edit::Array::new();
-        for project in self.recent_projects_all.iter() {
+        for project in &self.recent_projects_all {
             recent_projects.push(project.to_string_lossy().to_string());
         }
         self.toml.insert("recent_projects", value(recent_projects));
@@ -262,7 +266,7 @@ impl InnerData {
         );
 
         let mut last_open_file_ids = toml_edit::InlineTable::new();
-        for (project_id, (open_file_ids, current_tab)) in self.last_open_file_ids.iter() {
+        for (project_id, (open_file_ids, current_tab)) in &self.last_open_file_ids {
             let open_file_ids_arr = toml_edit::Array::from_iter(open_file_ids.iter());
             let mut open_tab_info = toml_edit::Array::new();
             open_tab_info.push(open_file_ids_arr);
@@ -803,11 +807,11 @@ impl CheesePaperApp {
     }
 
     fn open_project(&mut self, project: Project) {
-        self.state.data.data.borrow_mut().last_project_parent_folder = project
+        project
             .get_path()
             .parent()
             .expect("Project path should always have a parent")
-            .to_owned();
+            .clone_into(&mut self.state.data.data.borrow_mut().last_project_parent_folder);
 
         let path = project.get_path();
 
@@ -893,14 +897,19 @@ impl CheesePaperApp {
         if let Some(project_editor) = &self.project_editor
             && let Some(ignored_version) = project_editor.editor_context.ignore_version.get()
         {
-            self.state.data.data.borrow_mut().update_ignore_version = ignored_version.clone();
+            self.state
+                .data
+                .data
+                .borrow_mut()
+                .update_ignore_version
+                .clone_from(ignored_version);
             self.state.data.modified = true;
         }
 
         self.update_open_tabs();
 
         if let Err(err) = self.state.save() {
-            log::error!("Error while attempting to save editor state: {err}")
+            log::error!("Error while attempting to save editor state: {err}");
         }
     }
 }

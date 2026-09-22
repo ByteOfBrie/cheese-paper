@@ -94,8 +94,7 @@ pub fn check_for_updates(update_ignore_version: &str) -> Option<Option<Message>>
             Ok(update_ignore_version) => std::cmp::max(update_ignore_version, current_version),
             Err(err) => {
                 log::debug!(
-                    "Could not parse saved version in data: {}, err: {err}",
-                    update_ignore_version
+                    "Could not parse saved version in data: {update_ignore_version}, err: {err}",
                 );
                 current_version
             }

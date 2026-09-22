@@ -50,7 +50,7 @@ impl Place {
     pub fn from_base(base: BaseFileObject) -> Result<Self, CheeseError> {
         let mut place = Self {
             base,
-            metadata: Default::default(),
+            metadata: PlaceMetadata::default(),
         };
 
         match place.load_metadata() {
@@ -61,9 +61,8 @@ impl Place {
             }
             Err(err) => {
                 log::error!(
-                    "Error while loading object-specific metadata for {:?}: {}",
+                    "Error while loading object-specific metadata for {:?}: {err}",
                     place.base.file,
-                    &err
                 );
                 return Err(err);
             }
@@ -143,7 +142,7 @@ impl FileObject for Place {
         write_outline_property("Other Senses", &self.metadata.other_senses, export_string);
         write_outline_property("Notes", &self.metadata.notes, export_string);
 
-        for child_id in self.get_base().children.iter() {
+        for child_id in &self.get_base().children {
             objects.get(child_id).unwrap().borrow().generate_outline(
                 depth + 1,
                 export_string,
@@ -205,10 +204,10 @@ impl FileObjectEditor for Place {
     }
 
     fn provide_spellcheck_additions(&self) -> Vec<&str> {
-        if !self.base.metadata.name.is_empty() {
-            vec![&self.base.metadata.name]
-        } else {
+        if self.base.metadata.name.is_empty() {
             vec![]
+        } else {
+            vec![&self.base.metadata.name]
         }
     }
 }

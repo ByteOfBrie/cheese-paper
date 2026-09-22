@@ -53,8 +53,8 @@ impl Scene {
     pub fn from_base(base: BaseFileObject, body: Option<String>) -> Result<Self, CheeseError> {
         let mut scene = Self {
             base,
-            metadata: Default::default(),
-            text: body.map(|s| s.into()).unwrap_or_default(),
+            metadata: SceneMetadata::default(),
+            text: body.map(std::convert::Into::into).unwrap_or_default(),
         };
 
         match scene.load_metadata() {
@@ -65,9 +65,8 @@ impl Scene {
             }
             Err(err) => {
                 log::error!(
-                    "Error while loading object-specific metadata for {:?}: {}",
+                    "Error while loading object-specific metadata for {:?}: {err}",
                     scene.base.file,
-                    &err
                 );
                 return Err(err);
             }
@@ -104,14 +103,14 @@ impl FileObject for Scene {
                 self.metadata.pov = Rc::new(RefCell::new(ObjectReference::new(
                     pov,
                     Some(&super::Character::TYPE_INFO),
-                )))
+                )));
             }
             None => modified = true,
         }
 
         match metadata_extract_u64(self.base.toml_header.as_table(), "compile_status", true)? {
             Some(compile_status) => {
-                self.metadata.compile_status = CompileStatus::from_bits_retain(compile_status)
+                self.metadata.compile_status = CompileStatus::from_bits_retain(compile_status);
             }
             None => modified = true,
         }
@@ -226,7 +225,7 @@ impl FileObject for Scene {
             let closing_double_quote = Regex::new("\"").unwrap();
 
             // same thing for opening quotes
-            let opening_single_quote = Regex::new(r#"((^|\s)[\*_]{0,3})'"#).unwrap();
+            let opening_single_quote = Regex::new(r"((^|\s)[\*_]{0,3})'").unwrap();
             let closing_single_quote = Regex::new("'").unwrap();
 
             let body_text = opening_double_quote.replace_all(body_text_unprocessed, "$1“");
@@ -417,7 +416,7 @@ impl Scene {
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut pov, ObjectReference::None, "None");
                         for (character_reference, name) in
-                            ctx.references.for_type(&super::Character::TYPE_INFO).iter()
+                            ctx.references.for_type(&super::Character::TYPE_INFO)
                         {
                             ui.selectable_value(
                                 &mut pov,
@@ -431,11 +430,11 @@ impl Scene {
             });
 
             // We don't have an actual response here so we have to manually process
-            if pov != *object_pov {
+            if pov == *object_pov {
+                false
+            } else {
                 *object_pov = pov;
                 true
-            } else {
-                false
             }
         };
 

@@ -46,7 +46,7 @@ impl Style {
             StyleOption::NewLine => self.newline = marker.on,
             StyleOption::SearchHighlight => self.search_highlight = marker.on,
             StyleOption::SearchHighlightFocus => self.search_highlight_focus = marker.on,
-            _ => (),
+            StyleOption::None => (),
         }
     }
 }
@@ -71,10 +71,10 @@ fn format_from_style(egui_style: &egui::Style, text_style: &Style) -> egui::text
     };
 
     if strong {
-        format.color = egui_style.visuals.strong_text_color()
+        format.color = egui_style.visuals.strong_text_color();
     } else {
-        format.color = egui_style.visuals.text_color()
-    };
+        format.color = egui_style.visuals.text_color();
+    }
 
     if misspelled {
         format.underline = Stroke {
@@ -102,6 +102,7 @@ fn format_from_style(egui_style: &egui::Style, text_style: &Style) -> egui::text
 }
 
 // format rules
+static ASTERIX_GROUPS: SavedRegex = SavedRegex::new(|| Regex::new(r"([\*_]+|\n)").unwrap());
 
 fn format_rule_bold_italic(
     text: &str,
@@ -109,8 +110,6 @@ fn format_rule_bold_italic(
 ) -> (Vec<StyleMarker>, Vec<StyleMarker>) {
     let mut bold = Vec::new();
     let mut italic = Vec::new();
-
-    static ASTERIX_GROUPS: SavedRegex = SavedRegex::new(|| Regex::new(r#"([\*_]+|\n)"#).unwrap());
 
     let mut italic_start = None;
     let mut bold_start = None;
@@ -211,7 +210,7 @@ fn format_rule_newlines(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
             idx: (idx + 1),
             style: StyleOption::NewLine,
             on: true,
-        })
+        });
     }
 
     res
@@ -237,12 +236,11 @@ fn format_rule_spellcheck(text: &str, ctx: &EditorContext) -> Vec<StyleMarker> {
         .collect()
 }
 
+static MULTIPLE_SPACES_REGEX: SavedRegex = SavedRegex::new(|| Regex::new(r"[^ \n](  +)").unwrap());
+
 /// Finds multiple spaces in a row that are not at the start of the line
 fn format_rule_multiple_spaces(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
     let mut res = Vec::new();
-
-    static MULTIPLE_SPACES_REGEX: SavedRegex =
-        SavedRegex::new(|| Regex::new(r#"[^ \n](  +)"#).unwrap());
 
     for ag in MULTIPLE_SPACES_REGEX.captures_iter(text) {
         let ag = ag.get(1).unwrap();
@@ -262,12 +260,12 @@ fn format_rule_multiple_spaces(text: &str, _ctx: &EditorContext) -> Vec<StyleMar
     res
 }
 
+static SPACES_BEFORE_PUNCTUATION_REGEX: SavedRegex =
+    SavedRegex::new(|| Regex::new(r"[^ \n]( +)[.,?!]").unwrap());
+
 /// Finds multiple spaces in a row before a punctuation marker
 fn format_rule_spaces_before_punctuation(text: &str, _ctx: &EditorContext) -> Vec<StyleMarker> {
     let mut res = Vec::new();
-
-    static SPACES_BEFORE_PUNCTUATION_REGEX: SavedRegex =
-        SavedRegex::new(|| Regex::new(r#"[^ \n]( +)[.,?!]"#).unwrap());
 
     for ag in SPACES_BEFORE_PUNCTUATION_REGEX.captures_iter(text) {
         let ag = ag.get(1).unwrap();
@@ -386,7 +384,7 @@ pub fn compute_layout_job(
         text_style.update(&marker);
     }
 
-    debug_assert!(start == text.len());
+    debug_assert_eq!(start, text.len());
 
     job
 }

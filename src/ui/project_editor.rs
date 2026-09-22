@@ -52,7 +52,7 @@ pub struct TypingStatus {
 pub struct ProjectEditor {
     pub project: Project,
 
-    /// List of tabs that are open (egui::Dock requires state to be stored this way)
+    /// List of tabs that are open (`egui::Dock` requires state to be stored this way)
     dock_state: DockState<OpenPage>,
 
     pub editor_context: EditorContext,
@@ -69,13 +69,16 @@ pub struct ProjectEditor {
 }
 
 impl Debug for ProjectEditor {
-    /// Manual implementation because TreeViewState doesn't implement debug
+    /// Manual implementation because `TreeViewState` doesn't implement debug
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ProjectEditor")
             .field("project", &self.project)
             .field("dock_state", &self.dock_state)
             .field("editor_context", &self.editor_context)
             .field("tracker", &self.tracker)
+            .field("messages", &self.messages)
+            .field("tree_state", &self.tree_state)
+            .field("current_open_tab", &self.current_open_tab)
             .finish()
     }
 }
@@ -124,7 +127,7 @@ impl DictionaryState {
         {
             if let Err(err) = dictionary.add(ignored_word, None, None) {
                 log::error!("Could not add word {ignored_word} to dictionary: {err}");
-            };
+            }
             self.ignored_words.insert(ignored_word.to_string());
             true
         } else {
@@ -149,7 +152,7 @@ impl DictionaryState {
         let names_to_remove: Vec<String> = self
             .added_file_object_names
             .difference(&self.characters_and_places)
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect();
 
         if !names_to_remove.is_empty()
@@ -200,7 +203,7 @@ impl DictionaryState {
                             "Could not add word {file_object_word} from file object to dictionary: {err}"
                         );
                     }
-                };
+                }
             }
         }
     }
@@ -411,7 +414,7 @@ impl ProjectEditor {
 
         // If there aren't any tabs open, reflect that state
         if self.dock_state.iter_all_tabs().next().is_none() {
-            self.current_open_tab = None
+            self.current_open_tab = None;
         }
 
         if let Some(open_tab) = &self.current_open_tab
@@ -500,7 +503,7 @@ impl ProjectEditor {
                     .id_salt("conflicting files")
                     .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
-                            for conflicting_file in conflicting_file_vec.iter() {
+                            for conflicting_file in conflicting_file_vec {
                                 let mut label_text = format!("File: {:?}", conflicting_file.path);
 
                                 if let Some(metadata) = &conflicting_file.metadata
@@ -547,13 +550,12 @@ impl ProjectEditor {
                                     break;
                                 }
 
-                                if start.elapsed() > WINDOWS_SLEEP_DURATION {
-                                    panic!(
-                                        "Could not remove conflicting file {:?}, even \
-                                        after {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
-                                        conflicting_file.path
-                                    );
-                                }
+                                assert!(
+                                    start.elapsed() < WINDOWS_SLEEP_DURATION,
+                                    "Could not remove conflicting file {:?}, even after \
+                                    {WINDOWS_SLEEP_DURATION:?} sec of retries: {err}",
+                                    conflicting_file.path
+                                );
 
                                 thread::sleep(Duration::from_millis(20));
                             }
@@ -599,7 +601,7 @@ impl ProjectEditor {
                             "Could not find parent of removed file object {} at {:?}",
                             keep_file.file_id,
                             keep_file.path
-                        )
+                        );
                     }
                 }
             }
@@ -668,14 +670,11 @@ impl ProjectEditor {
         if open_tabs.len() > 1
             && let Some((_, current_tab)) = self.dock_state.find_active_focused()
         {
-            let current_pos = match open_tabs.iter().position(|val| val == current_tab) {
-                Some(current_pos) => current_pos,
-                None => {
-                    log::error!(
-                        "Could not move current tab: focused tab is not in the list of tabs (cheese paper logic error)"
-                    );
-                    return None;
-                }
+            let Some(current_pos) = open_tabs.iter().position(|val| val == current_tab) else {
+                log::error!(
+                    "Could not move current tab: focused tab is not in the list of tabs (cheese paper logic error)"
+                );
+                return None;
             };
 
             let new_pos = match tab_move {
@@ -715,7 +714,7 @@ impl ProjectEditor {
                         }
 
                         ui.menu_button("Recent Projects", |ui| {
-                            for project in state.data.data.borrow().recent_projects_on_disk.iter() {
+                            for project in &state.data.data.borrow().recent_projects_on_disk {
                                 if ui.button(project.to_string_lossy()).clicked() {
                                     state.closing_project = true;
                                     state.next_project = Some(project.clone());
@@ -870,7 +869,7 @@ impl ProjectEditor {
                 .max_height(ui.available_height())
                 .show(ui, |ui| {
                     file_tree::ui(self, ui);
-                    ui.add_space(20.0)
+                    ui.add_space(20.0);
                 });
         }
     }
@@ -990,7 +989,7 @@ impl ProjectEditor {
             Ok(mut tracker) => {
                 if let Err(err) = tracker.snapshot("Startup") {
                     log::warn!("Failed to snapshot tracker: {err}");
-                };
+                }
                 Some(tracker)
             }
             Err(err) => {
@@ -1006,7 +1005,7 @@ impl ProjectEditor {
         // with that later
         let mut dictionary_state = DictionaryState::new(settings.load_dictionary());
 
-        for ignored_word in data.data.borrow().custom_dictionary.iter() {
+        for ignored_word in &data.data.borrow().custom_dictionary {
             dictionary_state.add_ignored(ignored_word.as_str());
         }
 
@@ -1065,7 +1064,7 @@ impl ProjectEditor {
             },
             messages: VecDeque::new(),
             tracker,
-            tree_state: Default::default(),
+            tree_state: TreeViewState::default(),
             current_open_tab: None,
         };
 

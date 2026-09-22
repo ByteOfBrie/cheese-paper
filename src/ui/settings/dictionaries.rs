@@ -44,7 +44,7 @@ impl TryFrom<PathBuf> for AvailableDictionary {
         let name = path
             .file_prefix()
             .and_then(|s| s.to_str())
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .ok_or(())?;
 
         Ok(Self {
@@ -88,16 +88,17 @@ impl SettingsData {
                 String::from("/usr/local/share/:/usr/share/")
             };
 
-            for parent_search_dir in parent_search_dirs.split(":") {
+            for parent_search_dir in parent_search_dirs.split(':') {
                 let dict_dir = Path::new(parent_search_dir).join("hunspell");
                 if dict_dir.exists() {
                     dict_search_paths.insert(dict_dir);
                 }
             }
 
-            let data_home = env::var("XDG_DATA_HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| env::home_dir().unwrap().join(".local/share"));
+            let data_home = env::var("XDG_DATA_HOME").map_or_else(
+                |_| env::home_dir().unwrap().join(".local/share"),
+                PathBuf::from,
+            );
             let home_dict_dir = data_home.join("hunspell");
             if home_dict_dir.exists() {
                 dict_search_paths.insert(home_dict_dir);

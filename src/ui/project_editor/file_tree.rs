@@ -326,7 +326,7 @@ pub fn ui(editor: &mut ProjectEditor, ui: &mut egui::Ui) {
                         .borrow_mut()
                         .last_export_folder = export_location
                         .parent()
-                        .map(|val| val.to_path_buf())
+                        .map(std::path::Path::to_path_buf)
                         .unwrap_or_default();
                     editor.editor_context.data.modified = true;
                 }

@@ -41,9 +41,9 @@ pub fn get_current_word(text: &str, position: usize) -> Range<usize> {
         if chr.is_whitespace() {
             // The last character we found was the correct spot, before_pos_option is already set
             break;
-        } else {
-            before_pos_option = Some(*pos);
         }
+
+        before_pos_option = Some(*pos);
     }
 
     // if we started on a whitespace character, we'll still have None, so the start of the range is

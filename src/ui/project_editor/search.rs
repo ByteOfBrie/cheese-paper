@@ -98,7 +98,7 @@ impl Searchable<'_> {
                     .for_each_textbox(&mut search_function);
             }
             Searchable::ProjectMetadata(metadata) => {
-                metadata.for_each_textbox(&mut search_function)
+                metadata.for_each_textbox(&mut search_function);
             }
         }
     }

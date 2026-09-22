@@ -25,6 +25,7 @@ impl Debug for ProjectTracker {
                     .head()
                     .map(|head| head.name().unwrap_or_default().to_string()),
             )
+            .field("Snapshot Time", &self.snapshot_time)
             .finish()
     }
 }

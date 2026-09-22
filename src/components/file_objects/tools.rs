@@ -277,7 +277,7 @@ impl dyn FileObject {
         }
     }
 
-    /// Called by all of the generate_outline functions, keeps the formatting consistent
+    /// Called by all of the `generate_outline` functions, keeps the formatting consistent
     pub fn write_title(&self, depth: u64, export_string: &mut String) {
         // file object title (at the appropriate header level)
         for _ in 0..depth {
@@ -524,7 +524,7 @@ impl dyn FileObject {
         if self.get_base().index.is_some() {
             let calculated_filename = self.calculate_filename();
             if self.get_base().file.basename != calculated_filename {
-                self.set_filename(calculated_filename, objects)?
+                self.set_filename(calculated_filename, objects)?;
             }
         }
 

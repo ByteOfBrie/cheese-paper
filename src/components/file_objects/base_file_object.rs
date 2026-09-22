@@ -185,9 +185,10 @@ impl FileObjectMetadata {
 impl BaseFileObject {
     /// Calculates the filename for a particular object
     pub fn calculate_filename(&self, file_type: FileType) -> OsString {
-        let base_name: &str = match self.metadata.name.is_empty() {
-            false => &self.metadata.name,
-            true => file_type.empty_string_name(),
+        let base_name: &str = if self.metadata.name.is_empty() {
+            file_type.empty_string_name()
+        } else {
+            &self.metadata.name
         };
 
         let mut basename = match self.index {

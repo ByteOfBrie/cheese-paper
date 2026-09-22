@@ -2,7 +2,7 @@ use egui::ScrollArea;
 
 use crate::ui::prelude::*;
 
-/// This should probably have RenderedText, but it's currently broken. See #290
+/// This should probably have `RenderedText`, but it's currently broken. See #290
 #[derive(Debug, Default)]
 pub struct HelpPage {}
 

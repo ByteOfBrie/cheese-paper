@@ -98,7 +98,7 @@ impl TextBox {
                 search_result,
                 search_result_focus,
                 &self.style,
-            )
+            );
         }
 
         self.layout_job.clone()
@@ -204,7 +204,7 @@ impl Text {
             } else if ctx.typing_status.is_new_word
                 && current_word_pos.contains(&ctx.typing_status.current_word.start)
             {
-                ctx.typing_status.current_word = current_word_pos
+                ctx.typing_status.current_word = current_word_pos;
             } else if !current_word_pos.contains(&primary_cursor_pos) {
                 // we're editing a word elsewhere
                 ctx.typing_status.is_new_word = false;
@@ -324,7 +324,7 @@ impl Text {
         });
 
         // process hotkeys like ctrl-b and ctrl-i:
-        if let Some(focused_window) = ui.ctx().memory(|i| i.focused())
+        if let Some(focused_window) = ui.ctx().memory(egui::Memory::focused)
             && focused_window == output.response.id
             && let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), output.response.id)
             && let Some(output_cursor_range) = state.cursor.char_range()
@@ -350,7 +350,7 @@ impl Text {
         }
 
         // Check for page up and page down
-        if let Some(focused_window) = ui.ctx().memory(|i| i.focused())
+        if let Some(focused_window) = ui.ctx().memory(egui::Memory::focused)
             && focused_window == output.response.id
             && let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), output.response.id)
             && let Some(output_cursor_range) = state.cursor.char_range()
@@ -462,15 +462,12 @@ impl Text {
             return false;
         }
 
-        match self.text.get(current_working_range.clone()) {
-            Some(working_text) => {
-                // check if we start end end with the pattern
-                working_text.starts_with(pattern) && working_text.ends_with(pattern)
-            }
-            None => {
-                log::error!("Encountered invalid index of text: {current_working_range:?}");
-                false
-            }
+        if let Some(working_text) = self.text.get(current_working_range.clone()) {
+            // check if we start end end with the pattern
+            working_text.starts_with(pattern) && working_text.ends_with(pattern)
+        } else {
+            log::error!("Encountered invalid index of text: {current_working_range:?}");
+            false
         }
     }
 
@@ -483,33 +480,30 @@ impl Text {
             return false;
         }
 
-        match self.text.get(current_working_range.clone()) {
-            Some(working_text) => {
-                // special case: we have exactly two characters and they're `*` or `_`:
-                if working_text == "**" || working_text == "__" {
-                    return true;
-                }
-
-                // validate that we have `*` (italic) or `***` (bold and italic) but not `**` (just bold)
-                //
-                // this is bad code but it isn't complex at least. this will not work for mixing
-                // underscores and asterisks (oh well)
-                let italic_start_asterisk = working_text.starts_with("***")
-                    || (working_text.starts_with('*') && !working_text.starts_with("**"));
-                let italic_start_underscore = working_text.starts_with("___")
-                    || (working_text.starts_with('_') && !working_text.starts_with("__"));
-                let italic_end_asterisk = working_text.ends_with("***")
-                    || (working_text.ends_with('*') && !working_text.ends_with("**"));
-                let italic_end_underscore = working_text.ends_with("___")
-                    || (working_text.ends_with('_') && !working_text.ends_with("__"));
-
-                (italic_start_asterisk || italic_start_underscore)
-                    && (italic_end_asterisk || italic_end_underscore)
+        if let Some(working_text) = self.text.get(current_working_range.clone()) {
+            // special case: we have exactly two characters and they're `*` or `_`:
+            if working_text == "**" || working_text == "__" {
+                return true;
             }
-            None => {
-                log::error!("Encountered invalid index of text: {current_working_range:?}");
-                false
-            }
+
+            // validate that we have `*` (italic) or `***` (bold and italic) but not `**` (just bold)
+            //
+            // this is bad code but it isn't complex at least. this will not work for mixing
+            // underscores and asterisks (oh well)
+            let italic_start_asterisk = working_text.starts_with("***")
+                || (working_text.starts_with('*') && !working_text.starts_with("**"));
+            let italic_start_underscore = working_text.starts_with("___")
+                || (working_text.starts_with('_') && !working_text.starts_with("__"));
+            let italic_end_asterisk = working_text.ends_with("***")
+                || (working_text.ends_with('*') && !working_text.ends_with("**"));
+            let italic_end_underscore = working_text.ends_with("___")
+                || (working_text.ends_with('_') && !working_text.ends_with("__"));
+
+            (italic_start_asterisk || italic_start_underscore)
+                && (italic_end_asterisk || italic_end_underscore)
+        } else {
+            log::error!("Encountered invalid index of text: {current_working_range:?}");
+            false
         }
     }
 
@@ -597,7 +591,7 @@ impl Text {
     /// but this works.
     fn clean_up_quotes(&mut self) {
         static SMART_QUOTE_REMOVAL_REGEX: SavedRegex =
-            SavedRegex::new(|| Regex::new(r#"[“”‘’]"#).unwrap());
+            SavedRegex::new(|| Regex::new(r"[“”‘’]").unwrap());
 
         // Iterate through the string backwards so we don't invalidate our own indexes
         for (replacement, replace_range) in SMART_QUOTE_REMOVAL_REGEX

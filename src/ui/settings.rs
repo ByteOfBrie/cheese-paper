@@ -303,7 +303,7 @@ impl SettingsData {
                 log::debug!("Found font size setting but could not parse: {font_size_item:?}");
                 self.font_size.error_message =
                     Some(format!("Could not parse as float: {font_size_item}"));
-            };
+            }
         }
 
         if let Some(reopen_last_item) = table.get("reopen_last")
@@ -521,7 +521,7 @@ impl SettingsData {
                         let dictionary_error_message = format!(
                             "An error was encountered loading dictionary {dict_selection:?}: {err}"
                         );
-                        log::error!("{}", dictionary_error_message);
+                        log::error!("{dictionary_error_message}");
                         self.selected_dictionary.error_message = Some(dictionary_error_message);
                     }
                 }
@@ -650,18 +650,18 @@ impl Settings {
             if now >= next_apply {
                 data.next_apply = None;
                 return (true, false);
-            } else {
-                ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
             }
+
+            ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
         }
 
         if let Some(next_apply) = data.pl_next_apply {
             if now >= next_apply {
                 data.pl_next_apply = None;
                 return (true, true);
-            } else {
-                ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
             }
+
+            ctx.request_repaint_after(next_apply.duration_since(now).unwrap());
         }
 
         (false, false)
@@ -736,7 +736,7 @@ impl Settings {
                         "there does not exist a custom theme with index {idx}"
                     ))?
                     .1
-                    .clone()
+                    .clone();
             }
         }
         data.selected_theme = selection;

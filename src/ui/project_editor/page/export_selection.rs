@@ -9,6 +9,18 @@ use crate::{
     ui::prelude::*,
 };
 
+const SCENE_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
+    max depth in the tree where scenes will have their titles included (as headings).
+    0 means no scenes will have their titles included as headings
+    1 means that only top level scenes will have their titles included
+    2 means that scenes at the top level or directly inside top level folders";
+
+const FOLDER_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
+    max depth in the tree where folders will have their titles included (as headings).
+    0 means no folders will have their titles included as headings
+    1 means that only top level folders will have their titles included
+    2 means that folders at the top level or directly inside top level folders";
+
 //This probably shouldn't be a part of Project but it's easy enough right now
 impl Project {
     pub fn export_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
@@ -30,24 +42,20 @@ impl Project {
         ui.label("Project Export Selection");
 
         egui::Grid::new("Export Options")
-            .num_columns(2).spacing(Vec2{x: 5.0, y:10.0})
+            .num_columns(2)
+            .spacing(Vec2 { x: 5.0, y: 10.0 })
             .show(ui, |ui| {
-                let response = ui.checkbox(
-                    &mut self.metadata.export.include_all_folder_titles,
-                    "Include All Folder Titles",
-                )
-                .on_hover_text(
-                    "If this is checked, the title from every folder will be included \
+                let response = ui
+                    .checkbox(
+                        &mut self.metadata.export.include_all_folder_titles,
+                        "Include All Folder Titles",
+                    )
+                    .on_hover_text(
+                        "If this is checked, the title from every folder will be included \
                     in the export (as headings)",
-                );
+                    );
                 cheese_response.process_response(&response, true);
                 ui.end_row();
-
-                const FOLDER_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
-                    max depth in the tree where folders will have their titles included (as headings).
-                    0 means no folders will have their titles included as headings
-                    1 means that only top level folders will have their titles included
-                    2 means that folders at the top level or directly inside top level folders";
 
                 ui.add_enabled_ui(!self.metadata.export.include_all_folder_titles, |ui| {
                     ui.label("Include Folder Title Depth  ℹ")
@@ -64,23 +72,17 @@ impl Project {
                 });
                 ui.end_row();
 
-
-                let response = ui.checkbox(
-                    &mut self.metadata.export.include_all_scene_titles,
-                    "Include All Scene Titles",
-                )
-                .on_hover_text(
-                    "If checked, the title of every scene will be included \
+                let response = ui
+                    .checkbox(
+                        &mut self.metadata.export.include_all_scene_titles,
+                        "Include All Scene Titles",
+                    )
+                    .on_hover_text(
+                        "If checked, the title of every scene will be included \
                     in the export (as headings)",
-                );
+                    );
                 cheese_response.process_response(&response, true);
                 ui.end_row();
-
-                const SCENE_DEPTH_MESSAGE: &str = "If the previous checkbox is unset, this sets the \
-                    max depth in the tree where scenes will have their titles included (as headings).
-                    0 means no scenes will have their titles included as headings
-                    1 means that only top level scenes will have their titles included
-                    2 means that scenes at the top level or directly inside top level folders";
 
                 ui.add_enabled_ui(!self.metadata.export.include_all_scene_titles, |ui| {
                     ui.label("Include Scene Title Depth  ℹ")
@@ -97,11 +99,15 @@ impl Project {
                 });
                 ui.end_row();
 
-                let response = ui.checkbox(
-                    &mut self.metadata.export.insert_break_at_end,
-                    "Insert break between consecutive scenes",
-                ).on_hover_text("If checked, insert break (horizontal line) between scenes. If this is \
-                    not set, two consecutive scenes will only have a newline in the final export");
+                let response = ui
+                    .checkbox(
+                        &mut self.metadata.export.insert_break_at_end,
+                        "Insert break between consecutive scenes",
+                    )
+                    .on_hover_text(
+                        "If checked, insert break (horizontal line) between scenes. If this is \
+                    not set, two consecutive scenes will only have a newline in the final export",
+                    );
                 cheese_response.process_response(&response, true);
             });
 
@@ -148,7 +154,7 @@ impl Project {
 
                 ctx.data.data.borrow_mut().last_export_folder = export_location
                     .parent()
-                    .map(|val| val.to_path_buf())
+                    .map(std::path::Path::to_path_buf)
                     .unwrap_or_default();
                 ctx.data.modified = true;
             }

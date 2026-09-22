@@ -60,7 +60,7 @@ impl Eq for FileTypeInfo {}
 
 impl Hash for FileTypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.identifier.hash(state)
+        self.identifier.hash(state);
     }
 }
 

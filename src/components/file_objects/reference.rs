@@ -97,17 +97,16 @@ impl ObjectReference {
 
     pub fn to_display(&self, objects: &FileObjectStore) -> String {
         match self {
-            Self::Known(file_id) => match objects.get(file_id) {
-                Some(referenced_object) => {
+            Self::Known(file_id) => {
+                if let Some(referenced_object) = objects.get(file_id) {
                     referenced_object.borrow().get_base().metadata.name.clone()
-                }
-                None => {
+                } else {
                     log::error!(
                         "Could not find file ID {file_id} for reference while attempting to save"
                     );
                     String::from("Error finding character's name")
                 }
-            },
+            }
             Self::Unknown(unknown) => {
                 if unknown.name.is_empty() {
                     String::from("Unknown")
@@ -147,7 +146,7 @@ impl UnknownReference {
             let needle_name = CASE_MAPPER.fold_string(&self.name);
 
             // Compare this reference to every object to see if it matches up
-            for (id, object_refcell) in objects.iter() {
+            for (id, object_refcell) in objects {
                 // The object holding the reference is already borrowed, but we can safely skip that
                 // (and otherwise, crashing would be a bad idea, it's okay to fail here)
                 if let Ok(object) = object_refcell.try_borrow() {
@@ -170,11 +169,11 @@ impl UnknownReference {
                              to resolve reference, giving up"
                             );
                             return None;
-                        } else {
-                            best_match_id = Some(id);
-                            prefix_len = WordMatch::Exact;
-                            found_multiple = false;
                         }
+
+                        best_match_id = Some(id);
+                        prefix_len = WordMatch::Exact;
+                        found_multiple = false;
                     } else if object_name.starts_with(&*needle_name) {
                         if prefix_len == WordMatch::FullNeedleAsPrefix {
                             // We could find an exact match later, keep going
@@ -193,7 +192,7 @@ impl UnknownReference {
                 if prefix_len == WordMatch::Exact {
                     log::error!(
                         "Found multiple exact matches late in the program, should be impossible"
-                    )
+                    );
                 }
                 log::debug!(
                     "Found multiple instances of name '{needle_name}' while attempting \
@@ -221,10 +220,9 @@ impl UnknownReference {
                     && this_file_type != object.get_type()
                 {
                     log::warn!(
-                        "Found object with id {}, but it has type {:?}, was expecting type {:?}",
-                        &self.id,
+                        "Found object with id {}, but it has type {:?}, was expecting type {this_file_type:?}",
+                        self.id,
                         std::convert::Into::<FileType>::into(object.get_type()),
-                        this_file_type
                     );
                     None
                 } else {

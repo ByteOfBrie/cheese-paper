@@ -54,15 +54,18 @@ impl Schema for OverthinkerSchema {
 
                 _ => Err(cheese_error!("Unknown file type: {file_type_str}")),
             },
-            None => match filename.is_dir() {
-                true => Ok(&Folder::TYPE_INFO),
-                false => match filename.extension().and_then(|ext| ext.to_str()) {
-                    Some("md") => Ok(&Scene::TYPE_INFO),
-                    _ => Err(cheese_error!(
-                        "Unspecified file type file type while attempting to read {filename:?}"
-                    )),
-                },
-            },
+            None => {
+                if filename.is_dir() {
+                    Ok(&Folder::TYPE_INFO)
+                } else {
+                    match filename.extension().and_then(|ext| ext.to_str()) {
+                        Some("md") => Ok(&Scene::TYPE_INFO),
+                        _ => Err(cheese_error!(
+                            "Unspecified file type file type while attempting to read {filename:?}"
+                        )),
+                    }
+                }
+            }
         }
     }
 
@@ -95,7 +98,7 @@ impl Schema for OverthinkerSchema {
         base: BaseFileObject,
         body: Option<String>,
     ) -> Result<Box<dyn FileObject>, CheeseError> {
-        assert!(body.is_some() == file_type.has_body());
+        assert_eq!(body.is_some(), file_type.has_body());
 
         match file_type.identifier {
             Character::IDENTIFIER => Ok(Box::new(character::Character::from_base(base)?)),

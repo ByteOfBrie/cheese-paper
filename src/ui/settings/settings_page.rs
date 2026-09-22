@@ -489,7 +489,9 @@ impl SettingsPage {
                                     project_editor.update_theme(ctx);
                                 }
                                 Err(err) => {
-                                    log::error!("Error encountered while reloading settings: {err}")
+                                    log::error!(
+                                        "Error encountered while reloading settings: {err}"
+                                    );
                                 }
                             }
                         });

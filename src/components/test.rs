@@ -112,7 +112,7 @@ fn get_id_from_file(filename: &Path) -> Option<FileID> {
         Ok((metadata_str, file_body)) => (metadata_str, file_body),
         Err(err) => {
             if !filename.is_dir() {
-                log::error!("Failed to read file {:?}: {:?}", &underlying_file, err);
+                log::error!("Failed to read file {underlying_file:?}: {err:?}");
             }
             return None;
         }
@@ -2392,8 +2392,7 @@ fn test_move_to_child() {
     );
 
     assert!(immediate_move.err().unwrap().to_string().contains(&format!(
-        "attempted to move {} into itself",
-        &top_level_folder_id
+        "attempted to move {top_level_folder_id} into itself",
     )));
 
     // Try to move into a folder contained within a child:
@@ -2406,8 +2405,7 @@ fn test_move_to_child() {
     );
 
     assert!(child_move.err().unwrap().to_string().contains(&format!(
-        "attempted to move {} into itself",
-        &top_level_folder_id
+        "attempted to move {top_level_folder_id} into itself",
     )));
 
     // Make sure nothing moved on disk:

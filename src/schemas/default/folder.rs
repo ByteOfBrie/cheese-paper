@@ -47,7 +47,7 @@ impl Folder {
     pub fn from_base(base: BaseFileObject) -> Result<Self, CheeseError> {
         let mut folder = Self {
             base,
-            metadata: Default::default(),
+            metadata: FolderMetadata::default(),
         };
 
         let modified = folder.load_metadata().map_err(|err| {
@@ -90,7 +90,7 @@ impl FileObject for Folder {
 
         match metadata_extract_u64(self.base.toml_header.as_table(), "compile_status", true)? {
             Some(compile_status) => {
-                self.metadata.compile_status = CompileStatus::from_bits_retain(compile_status)
+                self.metadata.compile_status = CompileStatus::from_bits_retain(compile_status);
             }
             None => modified = true,
         }
@@ -130,7 +130,7 @@ impl FileObject for Folder {
         write_outline_property("Summary", &self.metadata.summary, export_string);
         write_outline_property("Notes", &self.metadata.notes, export_string);
 
-        for child_id in self.get_base().children.iter() {
+        for child_id in &self.get_base().children {
             objects.get(child_id).unwrap().borrow().generate_outline(
                 depth + 1,
                 export_string,
@@ -174,7 +174,7 @@ impl FileObject for Folder {
             // case we shouldn't include the break here. Since we don't have any information about
             // what comes next, we just have to wait for the title to be drawn
 
-            for child_id in self.get_base().children.iter() {
+            for child_id in &self.get_base().children {
                 // Keep passing the include_break status forwards along with any updates to it
                 include_break_next = objects.get(child_id).unwrap().borrow().generate_export(
                     depth + 1,

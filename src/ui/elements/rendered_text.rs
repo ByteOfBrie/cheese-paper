@@ -36,7 +36,7 @@ impl RenderedText {
                 compute_layout_job(&self.text, ctx, style, ui.available_width()),
                 ctx.render_version,
                 style.clone(),
-            ))
+            ));
         }
 
         // TODO: determine if egui actually expects us to use fonts_mut here
@@ -56,7 +56,7 @@ fn compute_layout_job(
     let font_id = egui::TextStyle::Body.resolve(egui_style);
 
     let mut job = LayoutJob::simple(
-        "".to_string(),
+        String::new(),
         font_id.clone(),
         egui_style.visuals.text_color(),
         wrap_width,

@@ -267,7 +267,7 @@ impl OpenPage {
         }
 
         // Update the currently selected element if we need to do that
-        if let Some(focused) = ui.memory(|i| i.focused())
+        if let Some(focused) = ui.memory(egui::Memory::focused)
             && Some(focused) != page_data.last_selected_id
             && page_tabable_ids.contains(&focused)
         {

@@ -52,7 +52,7 @@ impl dyn Schema {
 
     /// Move a child between two folders, `source_file_id` and `dest_file_id`
     ///
-    /// This can't be part of the FileObject trait because ownership is complicated between
+    /// This can't be part of the `FileObject` trait because ownership is complicated between
     /// the
     pub fn move_child(
         &self,
@@ -75,13 +75,10 @@ impl dyn Schema {
             .get(moving_file_id)
             .expect("objects should contain moving file id");
 
-        let moving_index = match moving.borrow().get_base().index {
-            Some(index) => index,
-            None => {
-                return Err(cheese_error!(
-                    "attempted to move {moving_file_id:} into itself"
-                ));
-            }
+        let Some(moving_index) = moving.borrow().get_base().index else {
+            return Err(cheese_error!(
+                "attempted to move {moving_file_id:} into itself"
+            ));
         };
         // * shouldn't move something where it already is
         if source_file_id == dest_file_id && moving_index == new_index {
@@ -114,7 +111,7 @@ impl dyn Schema {
         Ok(())
     }
 
-    /// Helper function called by move_child for the parts that are not safe to return early (including
+    /// Helper function called by `move_child` for the parts that are not safe to return early (including
     /// errors). If something goes wrong, it will panic
     fn create_index_and_move_on_disk(
         &self,
@@ -250,14 +247,15 @@ impl dyn Schema {
         let mut modified = false;
 
         // If the filename is a directory, we need to look for the underlying file
-        let underlying_file = match filename.is_dir() {
-            true => filename.join(FOLDER_METADATA_FILE_NAME),
-            false => filename.to_path_buf(),
+        let underlying_file = if filename.is_dir() {
+            filename.join(FOLDER_METADATA_FILE_NAME)
+        } else {
+            filename.to_path_buf()
         };
 
         let (metadata_str, file_body) = read_file_contents(&underlying_file).or_else(|err| {
             if filename.is_dir() {
-                Ok(("".to_string(), None))
+                Ok((String::new(), None))
             } else {
                 Err(cheese_error!(
                     "Failed to read file {underlying_file:?}: {err}"
@@ -278,21 +276,21 @@ impl dyn Schema {
         };
 
         if !toml_header.contains_key("name") {
-            let file_name = PathBuf::from(&basename)
+            let basename_string = PathBuf::from(&basename)
                 .file_stem()
                 .unwrap_or_default()
                 .to_string_lossy()
                 .into_owned();
-            let name_to_parse = if let Some((prefix, suffix)) = file_name.split_once('-') {
+            let name_to_parse = if let Some((prefix, suffix)) = basename_string.split_once('-') {
                 match prefix.parse::<i64>() {
                     Ok(_) => suffix,
-                    Err(_) => file_name.as_str(),
+                    Err(_) => basename_string.as_str(),
                 }
             } else {
-                file_name.as_str()
+                basename_string.as_str()
             };
 
-            metadata.name = name_to_parse.replace("_", " ").trim().to_string();
+            metadata.name = name_to_parse.replace('_', " ").trim().to_string();
             if !metadata.name.is_empty() {
                 modified = true;
             }

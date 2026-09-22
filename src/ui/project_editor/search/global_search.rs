@@ -34,10 +34,7 @@ pub fn ui(ui: &mut Ui, project: &Project, ctx: &mut EditorContext) -> Response {
                     Some((*id, file_object_name, tbsr))
                 }
                 Page::ProjectMetadata => Some((*id, String::from("Project Metadata"), tbsr)),
-                Page::Export => unreachable!(),
-                Page::Settings(_) => unreachable!(),
-                Page::Help => unreachable!(),
-                Page::Statistics => unreachable!(),
+                Page::Export | Page::Help | Page::Settings(_) | Page::Statistics => unreachable!(),
             })
             .filter(|(_, _, tbsr)| !tbsr.finds.is_empty())
             .collect();

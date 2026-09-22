@@ -48,8 +48,8 @@ impl Note {
     pub fn from_base(base: BaseFileObject, body: Option<String>) -> Result<Self, CheeseError> {
         let mut scene = Self {
             base,
-            metadata: Default::default(),
-            text: body.map(|s| s.into()).unwrap_or_default(),
+            metadata: NoteMetadata::default(),
+            text: body.map(std::convert::Into::into).unwrap_or_default(),
         };
 
         match scene.load_metadata() {
@@ -60,9 +60,8 @@ impl Note {
             }
             Err(err) => {
                 log::error!(
-                    "Error while loading object-specific metadata for {:?}: {}",
+                    "Error while loading object-specific metadata for {:?}: {err}",
                     scene.base.file,
-                    &err
                 );
                 return Err(err);
             }

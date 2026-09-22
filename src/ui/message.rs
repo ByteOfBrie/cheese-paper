@@ -70,7 +70,7 @@ impl UpdateMessage {
                     if let Err(err) = ctx.ignore_version.set(self.release.tag_name.clone()) {
                         log::warn!(
                             "Tried to set ignore version twice, should not be possible: {err}"
-                        )
+                        );
                     }
                     true
                 } else {

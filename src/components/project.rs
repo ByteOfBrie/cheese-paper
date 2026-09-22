@@ -58,7 +58,7 @@ impl PartialEq for ConflictingFileInfo {
     }
 }
 
-/// An entire project. This is somewhat file_object like, but we don't implement everything,
+/// An entire project. This is somewhat `file_object` like, but we don't implement everything,
 /// so it's separate (for now)
 #[derive(Debug)]
 pub struct Project {
@@ -97,11 +97,11 @@ pub struct ProjectMetadata {
 #[derive(Debug)]
 pub struct ProjectExportSettings {
     pub include_all_folder_titles: bool,
-    /// how many levels deep to include folder titles, ignored if include_all_folder_titles is set
+    /// how many levels deep to include folder titles, ignored if `include_all_folder_titles` is set
     pub include_folder_title_depth: u64,
 
     pub include_all_scene_titles: bool,
-    /// how many levels deep to include scene titles, ignored if include_all_scene_titles is set
+    /// how many levels deep to include scene titles, ignored if `include_all_scene_titles` is set
     pub include_scene_title_depth: u64,
 
     pub insert_break_at_end: bool,
@@ -271,9 +271,9 @@ impl Project {
             return Err(cheese_error!(
                 "attempted to initialize {project_path:?}, which already exists"
             ));
-        } else {
-            std::fs::create_dir(&project_path)?;
         }
+
+        std::fs::create_dir(&project_path)?;
 
         let text = schema.create_top_level_folder(project_path.clone(), "Text")?;
         let characters = schema.create_top_level_folder(project_path.clone(), "Characters")?;
@@ -401,21 +401,20 @@ impl Project {
             DocumentMut::new()
         };
 
-        let schema_identifier: String = match toml_header.get("schema") {
-            Some(item) => match item.as_str() {
+        let schema_identifier = if let Some(item) = toml_header.get("schema") {
+            match item.as_str() {
                 Some(s) => s.to_string(),
                 None => {
                     return Err(cheese_error!(
                         "Invalid value found for 'schema' key: {item:?}"
                     ));
                 }
-            },
-            None => {
-                log::warn!("Project does not have a schema configured. Using default schema");
-                toml_header["schema"] = toml_edit::value(DEFAULT_SCHEMA.get_schema_identifier());
-                file_info.modified = true;
-                DEFAULT_SCHEMA.get_schema_identifier().to_string()
             }
+        } else {
+            log::warn!("Project does not have a schema configured. Using default schema");
+            toml_header["schema"] = toml_edit::value(DEFAULT_SCHEMA.get_schema_identifier());
+            file_info.modified = true;
+            DEFAULT_SCHEMA.get_schema_identifier().to_string()
         };
 
         let schema = resolve_schema(&schema_identifier)?;
@@ -461,7 +460,7 @@ impl Project {
 
         let metadata_modified = project.load_metadata()?;
         if metadata_modified {
-            project.file.modified = true
+            project.file.modified = true;
         }
 
         project.clean_up_orphaned_objects();
@@ -529,7 +528,7 @@ impl Project {
         }
 
         for result in results {
-            result?
+            result?;
         }
 
         Ok(())
@@ -724,7 +723,7 @@ impl Project {
             object_path
         };
 
-        for (id, file_object) in self.objects.iter() {
+        for (id, file_object) in &self.objects {
             if file_object.borrow().get_path() == compare_path {
                 return Some(id.clone());
             }
@@ -733,7 +732,7 @@ impl Project {
         None
     }
 
-    /// Given a FileID, try to find the FileID of its parent
+    /// Given a `FileID`, try to find the `FileID` of its parent
     pub fn find_object_parent(&self, needle: &FileID) -> Option<FileID> {
         for object in self.objects.values() {
             if object.borrow().get_base().children.contains(needle) {
@@ -783,7 +782,7 @@ impl Project {
                     export_string.push_str(&format!("# {}\n\n", folder.get_base().metadata.name));
                 }
 
-                for child_id in folder.get_base().children.iter() {
+                for child_id in &folder.get_base().children {
                     self.objects
                         .get(child_id)
                         .unwrap()
@@ -804,14 +803,13 @@ impl Project {
 
         let mut include_break = false;
 
-        for child_id in self
+        for child_id in &self
             .objects
             .get(&self.top_level_folders[TEXT_FOLDER_POSITION])
             .unwrap()
             .borrow()
             .get_base()
             .children
-            .iter()
         {
             include_break = self
                 .objects
@@ -941,7 +939,7 @@ impl Project {
         self.last_added_event.is_some()
     }
 
-    /// Counterpart to receive_updates, should only be called immediately before a save
+    /// Counterpart to `receive_updates`, should only be called immediately before a save
     pub fn process_updates(&mut self) -> bool {
         // Once we stop getting updates, we can process the list of events
 
@@ -1222,7 +1220,7 @@ impl Project {
         // not find cycles, but if there are cycles in our tree we have bigger problems
         for file_object in self.objects.values() {
             let file_object = file_object.borrow();
-            for child in file_object.get_base().children.iter() {
+            for child in &file_object.get_base().children {
                 if !dangling.remove(child) {
                     // If we try to remove an object twice, it means that two objects own it, so we
                     // (presumably) have either a duplicated file (most likely) or a cycle (somehow).
@@ -1257,7 +1255,7 @@ impl Project {
                     let mut found_in_parent = false;
                     for contained_file_result in parent_dir_contents {
                         if let Ok(file_entry) = contained_file_result.inspect_err(|err| {
-                            log::warn!("Could not read file in directory, skipping: {err}")
+                            log::warn!("Could not read file in directory, skipping: {err}");
                         }) {
                             let mut fake_objects: FileObjectStore = HashMap::new();
                             // Try to load every file in that directory again, ignoring the result
@@ -1274,7 +1272,7 @@ impl Project {
                                     log::debug!(
                                         "could not load file while processing \
                                         duplicates of {duplicated_id}: {err}"
-                                    )
+                                    );
                                 })
                             {
                                 let file_type = fake_objects
@@ -1329,7 +1327,7 @@ impl Project {
 
                     // There might be a better way to do this (since we're dropping it anyway), but
                     // this is easy
-                    for child in removed_object.borrow().get_base().children.iter() {
+                    for child in &removed_object.borrow().get_base().children {
                         queue_to_remove.push_back(child.clone());
                     }
                 } else {

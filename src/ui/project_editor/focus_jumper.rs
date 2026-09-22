@@ -25,7 +25,7 @@ pub struct FocusJumper {
 
 impl FocusJumper {
     pub fn send<T: Into<FocusTarget>>(&mut self, target: T) {
-        self.target = Some(target.into())
+        self.target = Some(target.into());
     }
 
     pub fn recieve<T: Into<FocusTarget> + Clone>(&mut self, current: &T) -> bool {

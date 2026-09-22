@@ -106,17 +106,15 @@ impl DictionaryWrapper {
 
             self.added_words.push(word.as_ref().to_string());
             Ok(true)
+        } else if self.check(word.as_ref()) {
+            Ok(false)
         } else {
-            if self.check(word.as_ref()) {
-                Ok(false)
-            } else {
-                self.dict.add(word.as_ref()).map_err(|err| {
-                    cheese_error!("Error when adding '{}' to dictionary: {err}", word.as_ref())
-                })?;
+            self.dict.add(word.as_ref()).map_err(|err| {
+                cheese_error!("Error when adding '{}' to dictionary: {err}", word.as_ref())
+            })?;
 
-                self.added_words.push(word.as_ref().to_string());
-                Ok(true)
-            }
+            self.added_words.push(word.as_ref().to_string());
+            Ok(true)
         }
     }
 

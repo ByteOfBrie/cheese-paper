@@ -13,7 +13,7 @@ impl std::fmt::Debug for Actions {
 
 impl Actions {
     pub fn schedule(&mut self, f: impl FnOnce(&mut ProjectEditor, &egui::Context) + 'static) {
-        self.0.push(Box::new(f))
+        self.0.push(Box::new(f));
     }
 
     pub fn get(&mut self) -> Vec<Box<ActionFunction>> {

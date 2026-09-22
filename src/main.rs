@@ -15,14 +15,11 @@ use eframe::{NativeOptions, egui_wgpu::WgpuSetup, wgpu};
 use flexi_logger::{Duplicate, FileSpec, Logger, WriteMode, colored_opt_format, opt_format};
 
 fn main() -> eframe::Result {
-    let project_dirs = match ProjectDirs::from("", "", "cheese-paper") {
-        Some(dirs) => dirs,
-        None => {
-            eprintln!(
-                "Could not load home directories, which should always exist, we cannot log yet, giving up"
-            );
-            panic!("home directories should always exist");
-        }
+    let Some(project_dirs) = ProjectDirs::from("", "", "cheese-paper") else {
+        eprintln!(
+            "Could not load home directories, which should always exist, we cannot log yet, giving up"
+        );
+        panic!("home directories should always exist");
     };
 
     let egui_data_path = project_dirs.data_dir().join("egui");
@@ -49,7 +46,7 @@ fn main() -> eframe::Result {
         Err(err) => {
             eprintln!("Could not create logger: {err}");
         }
-    };
+    }
 
     let icon_data_res =
         eframe::icon_data::from_png_bytes(include_bytes!("../resources/cheese-paper-icon.png"));
@@ -98,7 +95,7 @@ fn main() -> eframe::Result {
                 },
                 ..Default::default()
             }
-        })
+        });
     }
 
     eframe::run_native(

@@ -60,7 +60,7 @@ impl Character {
     pub fn from_base(base: BaseFileObject) -> Result<Self, CheeseError> {
         let mut character = Self {
             base,
-            metadata: Default::default(),
+            metadata: CharacterMetadata::default(),
         };
 
         match character.load_metadata() {
@@ -71,9 +71,8 @@ impl Character {
             }
             Err(err) => {
                 log::error!(
-                    "Error while loading object-specific metadata for {:?}: {}",
+                    "Error while loading object-specific metadata for {:?}: {err}",
                     character.base.file,
-                    &err
                 );
                 return Err(err);
             }
@@ -225,10 +224,10 @@ impl FileObjectEditor for Character {
     }
 
     fn provide_spellcheck_additions(&self) -> Vec<&str> {
-        if !self.base.metadata.name.is_empty() {
-            vec![&self.base.metadata.name]
-        } else {
+        if self.base.metadata.name.is_empty() {
             vec![]
+        } else {
+            vec![&self.base.metadata.name]
         }
     }
 }

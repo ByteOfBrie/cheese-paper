@@ -49,17 +49,17 @@ impl NameBox {
                     self.editing = false;
                 }
             } else {
-                ui.label(if !text.is_empty() {
-                    text.as_str()
-                } else {
+                ui.label(if text.is_empty() {
                     empty_text
+                } else {
+                    text.as_str()
                 });
                 let response = ui.button("🖊");
                 response.widget_info(|| {
                     WidgetInfo::labeled(egui::WidgetType::Button, response.enabled(), "rename")
                 });
                 if response.clicked() || ui.input(|i| i.key_pressed(egui::Key::F2)) {
-                    self.edit_content = text.clone();
+                    self.edit_content.clone_from(text);
                     self.editing = true;
                     ctx.focus_jumper.send("name_edit_field");
                 }

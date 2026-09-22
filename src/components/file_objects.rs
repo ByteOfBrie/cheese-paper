@@ -78,7 +78,7 @@ pub trait FileObject: Debug {
     }
 
     /// Whether this object will be exported, scenes and folders should implement
-    /// TODO: can this be used for making generate_export more generic?
+    /// TODO: can this be used for making `generate_export` more generic?
     fn include_in_export(&self) -> bool {
         false
     }
@@ -90,7 +90,7 @@ pub trait FileObject: Debug {
     /// pulls from the file object instead of an argument (otherwise it's slightly tricky to do ownership)
     fn load_metadata(&mut self) -> Result<bool, CheeseError>;
 
-    /// Writes the current type-specific metadata to the BaseFileObjects toml_header
+    /// Writes the current type-specific metadata to the `BaseFileObject`'s `toml_header`
     fn write_metadata(&mut self, objects: &FileObjectStore);
 
     fn as_editor(&self) -> &dyn FileObjectEditor;

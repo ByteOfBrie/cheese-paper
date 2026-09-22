@@ -31,7 +31,7 @@ pub fn truncate_name(name: &str, max_length: usize) -> &str {
     }
 
     // split by word, go with increasingly fewer words
-    let split_name: Vec<&str> = name.split(" ").collect();
+    let split_name: Vec<&str> = name.split(' ').collect();
     for number_of_words in (1..split_name.len()).rev() {
         // construct the split text into a temporary string
         let shortened = &split_name[..number_of_words].join(" ");
@@ -58,8 +58,8 @@ fn test_truncate_name() {
 /// Translates a name into something we can put on disk
 pub fn process_name_for_filename(name: &str) -> String {
     // get rid of spaces in names for editing convenience
-    let name = name.replace(" ", "_");
-    let name = name.replace("'", "");
+    let name = name.replace(' ', "_");
+    let name = name.replace('\'', "");
 
     // Characters that might be annoying to escape/handle sometimes, avoid including them at all
     let dangerous_character_filter = Regex::new(r#"[./\?%*:|"<>\x7F\x00-\x1F]"#).unwrap();
@@ -182,6 +182,8 @@ pub fn create_dir_if_missing(dest_path: &Path) -> std::io::Result<&Path> {
     Ok(dest_path)
 }
 
+const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+
 /// Atomically write a file
 pub fn write_with_temp_file<P: AsRef<Path>>(
     dest_path: P,
@@ -212,9 +214,7 @@ pub fn write_with_temp_file<P: AsRef<Path>>(
             "Could not write to tempfile for {:?}: {err}",
             dest_path.as_ref()
         ));
-    };
-
-    const WINDOWS_SLEEP_DURATION: Duration = Duration::from_millis(500);
+    }
 
     if cfg!(windows) {
         // We have to potentially retry on windows because antivirus software can
@@ -356,13 +356,10 @@ pub fn write_outline_property(property_name: &str, property: &str, export_string
 
 /// Reads the contents of a file from disk
 pub fn read_file_contents(file_to_read: &Path) -> Result<(String, Option<String>), CheeseError> {
-    let extension = match file_to_read.extension() {
-        Some(val) => val,
-        None => {
-            return Err(cheese_error!(
-                "Could not read extension of {file_to_read:?}"
-            ));
-        }
+    let Some(extension) = file_to_read.extension() else {
+        return Err(cheese_error!(
+            "Could not read extension of {file_to_read:?}"
+        ));
     };
 
     let file_data = std::fs::read_to_string(file_to_read)?;
@@ -385,7 +382,7 @@ pub fn read_file_contents(file_to_read: &Path) -> Result<(String, Option<String>
 static TRASH_CTX: OnceLock<TrashContext> = OnceLock::new();
 
 /// Wrapper around trash objects so we get the correct call for MacOS, see
-/// https://github.com/Byron/trash-rs/blob/1dca80069ec9d91bf14143c9649e680741ee159a/src/macos/mod.rs#L13-L21
+/// <https://github.com/Byron/trash-rs/blob/1dca80069ec9d91bf14143c9649e680741ee159a/src/macos/mod.rs#L13-L21>
 pub fn delete(path: impl AsRef<Path>) -> Result<(), trash::Error> {
     TRASH_CTX
         .get_or_init(|| {

@@ -60,7 +60,7 @@ fn update_widget_theme(
     }
 }
 
-/// Most of the colors from https://docs.rs/egui/latest/egui/style/struct.Visuals.html
+/// Most of the colors from <https://docs.rs/egui/latest/egui/style/struct.Visuals.html>
 /// doesn't implement everything (because that requires more work), more can be added later
 /// as requested/desired
 #[derive(Debug, Default, Clone)]
@@ -80,7 +80,7 @@ pub struct Theme {
 
     extreme_bg_color: Option<Color32>,
 
-    /// Default: extreme_bg_color
+    /// Default: `extreme_bg_color`
     text_edit_bg_color: Option<Color32>,
 
     warn_fg_color: Option<Color32>,
@@ -192,7 +192,7 @@ impl Theme {
     pub fn load(theme_table: &dyn TableLike) -> Self {
         let light_mode = theme_table
             .get("light_mode")
-            .and_then(|r| r.as_bool())
+            .and_then(toml_edit::Item::as_bool)
             .unwrap_or_default();
         let override_text_color = read_color32(theme_table, "override_text_color");
         let weak_text_color = read_color32(theme_table, "weak_text_color");

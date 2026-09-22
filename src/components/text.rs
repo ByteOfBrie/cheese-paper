@@ -36,7 +36,7 @@ impl Text {
     }
 
     pub fn downcast(buffer: &dyn TextBuffer) -> &Self {
-        assert!(buffer.type_id() == std::any::TypeId::of::<Text>());
+        assert_eq!(buffer.type_id(), std::any::TypeId::of::<Text>());
         unsafe { &*(buffer as *const dyn TextBuffer as *const Text) }
     }
 
@@ -92,7 +92,7 @@ impl TextBuffer for Text {
 
     fn delete_char_range(&mut self, char_range: Range<CharIndex>) {
         self.version += 1;
-        <String as TextBuffer>::delete_char_range(&mut self.text, char_range)
+        <String as TextBuffer>::delete_char_range(&mut self.text, char_range);
     }
 
     fn type_id(&self) -> TypeId {
