@@ -3,7 +3,7 @@ use crate::components::file_objects::{FileInfo, FileObjectMetadata};
 use crate::components::schema::{FileType, Schema};
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
@@ -407,7 +407,22 @@ impl dyn Schema {
 
             let mut file_object = self.load_file_object(file_type, base, file_body)?;
 
-            file_object.rescan_indexing(objects, false);
+            let children_are_unique: bool = file_object
+                .get_base()
+                .children
+                .iter()
+                .collect::<HashSet<_>>()
+                .len()
+                == file_object.get_base().children.len();
+
+            if children_are_unique {
+                file_object.rescan_indexing(objects, false);
+            } else {
+                // We might panic if we try to rescan indexing here (e.g., same name and index)
+                // We're relying on duplicate detection *later* to catch this, which will bring it
+                // to the UI. We can skip indexing for now because we'll do that globally later
+                log::warn!("Found duplicate children inside of file object {file_object}");
+            }
 
             objects.insert(file_id.clone(), RefCell::new(file_object));
 

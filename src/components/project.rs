@@ -485,6 +485,10 @@ impl Project {
         // We should only save when the project is healthy, when there are conflicting
         // files the user must manage them before we can continue
         if !self.conflicting_files.is_empty() {
+            log::error!(
+                "Cannot save, would potentially overwrite conflicting files: {:?}",
+                self.conflicting_files
+            );
             return Err(cheese_error!(
                 "Tried to save with conflicting files! Stopping to avoid overwriting"
             ));
@@ -1097,38 +1101,10 @@ impl Project {
                 path_to_load
             };
 
-            match self.schema.load_file(&event_path, &mut self.objects) {
-                Ok(file_id) => {
-                    let parent_path = get_parent_path(&event_path);
-                    let parent_id_option = self.find_object_by_path(parent_path);
+            match self.load_file(&event_path) {
+                Ok(parent_id_option) => {
                     if let Some(parent_id) = parent_id_option {
-                        let parent_object = self.objects.get(&parent_id).unwrap();
-                        let parent_has_child = parent_object
-                            .borrow()
-                            .get_base()
-                            .children
-                            .contains(&file_id);
-                        // Most of the time, we only load a given file object once, but if
-                        // the event that we're loading was *generated* by cheese-paper,
-                        // we won't have removed it from the parent in `remove_path_from_parent`,
-                        // (because the file object's path has already changed and won't match
-                        // the event we see on disk)
-                        // We can guard against this, at the cost of sometimes being buggy when
-                        // we get duplicates of a file added in the same folder
-                        if !parent_has_child {
-                            parent_object
-                                .borrow_mut()
-                                .get_base_mut()
-                                .children
-                                .push(file_id);
-                        }
-
                         file_objects_needing_rescan.insert(parent_id);
-                    } else {
-                        log::debug!(
-                            "Could not find parent object: {parent_path:?} while processing updates. \
-                                Ignoring for now, maybe it will appear later (or be cleaned up)"
-                        );
                     }
                 }
                 Err(err) => log::debug!("Could not load {event_path:?}: {err}"),
@@ -1182,6 +1158,44 @@ impl Project {
         self.resolve_references();
 
         true
+    }
+
+    pub fn load_file(&mut self, filename: &Path) -> Result<Option<FileID>, CheeseError> {
+        let file_id = self.schema.load_file(filename, &mut self.objects)?;
+        let parent_path = get_parent_path(filename);
+        let parent_id_option = self.find_object_by_path(parent_path);
+
+        if let Some(parent_id) = parent_id_option {
+            let parent_object = self.objects.get(&parent_id).unwrap();
+            let parent_has_child = parent_object
+                .borrow()
+                .get_base()
+                .children
+                .contains(&file_id);
+            // Most of the time, we only load a given file object once, but if
+            // the event that we're loading was *generated* by cheese-paper,
+            // we won't have removed it from the parent in `remove_path_from_parent`,
+            // (because the file object's path has already changed and won't match
+            // the event we see on disk)
+            // We can guard against this, at the cost of sometimes being buggy when
+            // we get duplicates of a file added in the same folder
+            if !parent_has_child {
+                log::debug!("load file: adding {file_id} to parent {parent_id}");
+                parent_object
+                    .borrow_mut()
+                    .get_base_mut()
+                    .children
+                    .push(file_id);
+            }
+
+            Ok(Some(parent_id))
+        } else {
+            log::debug!(
+                "Could not find parent object: {parent_path:?} of loaded file {file_id}. \
+                Ignoring in `load_file`, maybe it will appear later"
+            );
+            Ok(None)
+        }
     }
 
     pub fn clean_up_orphaned_objects(&mut self) {
@@ -1405,7 +1419,7 @@ impl Project {
 }
 
 /// Get the parent of a path to a file object
-fn get_parent_path(object_path: &Path) -> &Path {
+pub fn get_parent_path(object_path: &Path) -> &Path {
     // This function has two `except`s, but both should always succeed by cheese paper logic
     let object_base = if object_path.ends_with("metadata.toml") {
         object_path.parent().expect("path should have a parent")

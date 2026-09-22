@@ -2689,6 +2689,44 @@ qwerty"#,
     assert!(!project.conflicting_files.is_empty());
 }
 
+/// Ensure that we detect two files with the same ID on project load
+#[test]
+fn test_id_conflict_load_renumbered() {
+    let base_dir = tempfile::TempDir::new().unwrap();
+
+    // open and immediately drop the project (just creating the files)
+    Project::new(
+        SCHEMA,
+        base_dir.path().to_path_buf(),
+        "test project".to_string(),
+    )
+    .unwrap();
+
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/000-file1.md"),
+        r#"id = "1"
+++++++++
+asdfjkl"#,
+    )
+    .unwrap();
+
+    // If we used `001-` as the index, it would panic in fix_indexing because the second file load
+    // will set the filename of index 1, which then results in trying to rename the first file to
+    // the second file.
+    write_with_temp_file(
+        base_dir.path().join("test_project/text/001-file1.md"),
+        r#"id = "1"
+++++++++
+qwerty"#,
+    )
+    .unwrap();
+
+    let project = Project::load(base_dir.path().join("test_project")).unwrap();
+
+    // Immediately on load, we expect the project to have discovered the error
+    assert!(!project.conflicting_files.is_empty());
+}
+
 /// Ensure that we move a new file into the folder, it is non-harmful
 ///
 /// We would *actually* like to detect this as a conflicting file, but the logic required

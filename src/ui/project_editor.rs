@@ -7,6 +7,7 @@ pub mod search;
 mod util;
 
 use crate::components::file_objects::ProjectStatistics;
+use crate::components::project::get_parent_path;
 use crate::ui::message::Message;
 use crate::ui::project_editor::measurements::Measurements;
 use crate::ui::settings::ThemeSelection;
@@ -525,6 +526,7 @@ impl ProjectEditor {
         });
 
         if let Some(keep_file) = file_to_keep {
+            log::debug!("Processing files with same ID: {conflicting_file_vec:?}");
             log::debug!("ID conflict, keeping file: {keep_file:?}");
             let current_conflicting_files = self.project.conflicting_files.pop().unwrap();
 
@@ -562,7 +564,81 @@ impl ProjectEditor {
                             );
                         }
                     }
+
+                    // Once we've removed it on disk, try to remove it from the parent
+                    // In the case where there are multiple objects with the same parent,
+                    // we'll just remove one of them and fix it later
+
+                    let parent_path = get_parent_path(&conflicting_file.path);
+                    if let Some(parent_id) = self.project.find_object_by_path(parent_path) {
+                        let mut parent_object =
+                            self.project.objects.get(&parent_id).unwrap().borrow_mut();
+
+                        let child_position_option = parent_object
+                            .get_base()
+                            .children
+                            .iter()
+                            .position(|id| *id == keep_file.file_id);
+
+                        if let Some(child_position) = child_position_option {
+                            parent_object.get_base_mut().children.remove(child_position);
+                            log::debug!(
+                                "Removed file id {} at path {:?} from parent",
+                                keep_file.file_id,
+                                conflicting_file.path
+                            );
+                        } else {
+                            log::warn!(
+                                "Could not remove file id {} at path {:?} from parent",
+                                conflicting_file.file_id,
+                                conflicting_file.path
+                            );
+                        }
+                    } else {
+                        log::error!(
+                            "Could not find parent of removed file object {} at {:?}",
+                            keep_file.file_id,
+                            keep_file.path
+                        )
+                    }
                 }
+            }
+
+            let kept_parent_path = keep_file
+                .path
+                .parent()
+                .expect("absolute path of file object should have parent");
+
+            // quick safety check that we have a valid path
+            assert!(
+                self.project.find_object_by_path(kept_parent_path).is_some(),
+                "kept file object not found by parent"
+            );
+
+            // We reload the file to ensure we have the right one, this will take care of setting
+            // path, index, and contents correctly
+            match self.project.load_file(&keep_file.path) {
+                Ok(parent_id_option) => {
+                    if let Some(parent_id) = &parent_id_option {
+                        let parent = self.project.objects.get(parent_id).unwrap().borrow();
+                        log::warn!("Parent: {parent}");
+                        log::warn!("Parent's children: {:?}", parent.get_base().children);
+                    }
+                    if parent_id_option.is_none() {
+                        log::error!(
+                            "Saved conflicting file at {:?} somehow did not have parent when loaded",
+                            keep_file.path
+                        );
+                        panic!(
+                            "Saved conflicting file at {:?} somehow did not have parent when loaded",
+                            keep_file.path
+                        );
+                    }
+                }
+                Err(err) => log::debug!(
+                    "Could not load conflicting file to keep {:?}: {err}",
+                    keep_file.path
+                ),
             }
 
             // We finished the queue, now we have to finish the work from
