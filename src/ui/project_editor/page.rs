@@ -325,7 +325,7 @@ impl OpenPage {
             });
 
             if page_data.search.redo_search {
-                page_data.search.search_results = Some(HashMap::new());
+                page_data.search.search_results.clear();
 
                 if let Some(searchable) = project.get_searchable(&self.page) {
                     searchable.search(&self.page, &mut page_data.search);

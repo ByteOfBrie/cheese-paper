@@ -908,8 +908,7 @@ impl ProjectEditor {
         // BY THE POWER OF IF LET CHAINS
         if self.editor_context.search.goto_focus
             && let Some((uid, _word_find)) = &self.editor_context.search.focus.as_ref()
-            && let Some(search_results) = &self.editor_context.search.search_results.as_ref()
-            && let Some(focused_text_box) = search_results.get(uid)
+            && let Some(focused_text_box) = self.editor_context.search.search_results.get(uid)
         {
             self.set_editor_tab(&focused_text_box.page.clone(), false);
         }

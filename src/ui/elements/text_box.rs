@@ -46,8 +46,7 @@ impl TextBox {
         }
 
         if ctx.search.active
-            && let Some(search_results) = ctx.search.search_results.as_mut()
-            && let Some(sr) = search_results.get_mut(&text.struct_uid)
+            && let Some(sr) = ctx.search.search_results.get_mut(&text.struct_uid)
             && sr.text_version != text.version
         {
             *sr = textbox_search::search(text, &sr.page, &sr.box_name, &ctx.search.find_text);
@@ -72,23 +71,22 @@ impl TextBox {
             self.redo_layout = true;
         }
 
-        let (mut search_result, mut search_result_focus) = (None, None);
+        let search_result = if ctx.search.active {
+            ctx.search.search_results.get(&text.struct_uid)
+        } else {
+            None
+        };
 
-        if ctx.search.active {
-            search_result = ctx
-                .search
-                .search_results
-                .as_ref()
-                .and_then(|sr| sr.get(&text.struct_uid));
-
-            search_result_focus = ctx.search.focus.as_ref().and_then(|(uid, word_find)| {
-                if *uid == text.struct_uid {
-                    Some(word_find)
-                } else {
-                    None
-                }
-            });
-        }
+        // Not sure if we should be checking for search result existing here, but this
+        // is the same behavior as the previous code
+        let search_result_focus = if ctx.search.active
+            && let Some((uid, word_find)) = &ctx.search.focus
+            && *uid == text.struct_uid
+        {
+            Some(word_find)
+        } else {
+            None
+        };
 
         if self.redo_layout {
             self.redo_layout = false;

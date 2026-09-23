@@ -16,7 +16,7 @@ pub struct Search {
 
     pub redo_search: bool,
 
-    pub search_results: Option<HashMap<TextUID, TextBoxSearchResult>>,
+    pub search_results: HashMap<TextUID, TextBoxSearchResult>,
 
     pub focus: Option<(TextUID, WordFind)>,
 
@@ -83,11 +83,7 @@ impl Searchable<'_> {
 
         let mut search_function = |text: &'_ Text, box_name: &'_ str| {
             let search_result = textbox_search::search(text, page, box_name, &search.find_text);
-            search
-                .search_results
-                .as_mut()
-                .unwrap()
-                .insert(text.id(), search_result);
+            search.search_results.insert(text.id(), search_result);
         };
 
         match self {
@@ -106,7 +102,7 @@ impl Searchable<'_> {
 
 impl ProjectEditor {
     pub fn search(&mut self) {
-        self.editor_context.search.search_results = Some(HashMap::new());
+        self.editor_context.search.search_results.clear();
 
         let object_iter =
             self.project.objects.iter().map(|(id, file_object)| {

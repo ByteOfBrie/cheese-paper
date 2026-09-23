@@ -25,40 +25,40 @@ pub fn ui(ui: &mut Ui, project: &Project, ctx: &mut EditorContext) -> Response {
         gs.redo_search = true;
     }
 
-    if let Some(search_results) = &mut ctx.search.search_results {
-        let mut items: Vec<(TextUID, String, &TextBoxSearchResult)> = search_results
-            .iter()
-            .filter_map(|(id, tbsr)| match &tbsr.page {
-                Page::FileObject(tab_id) => {
-                    let file_object_name = project.objects.get(tab_id)?.borrow().get_title();
-                    Some((*id, file_object_name, tbsr))
-                }
-                Page::ProjectMetadata => Some((*id, String::from("Project Metadata"), tbsr)),
-                Page::Export | Page::Help | Page::Settings(_) | Page::Statistics => unreachable!(),
-            })
-            .filter(|(_, _, tbsr)| !tbsr.finds.is_empty())
-            .collect();
-
-        items.sort_by_key(|(_, file_object_name, tbsr)| (file_object_name.clone(), &tbsr.box_name));
-
-        let mut file_object_id: Option<String> = None;
-
-        for (id, file_object_name, tbsr) in items {
-            if file_object_id.as_ref() != Some(&file_object_name) {
-                file_object_id = Some(file_object_name.clone());
-                ui.colored_label(Color32::LIGHT_GREEN, &file_object_name);
+    let mut items: Vec<(TextUID, String, &TextBoxSearchResult)> = ctx
+        .search
+        .search_results
+        .iter()
+        .filter_map(|(id, tbsr)| match &tbsr.page {
+            Page::FileObject(tab_id) => {
+                let file_object_name = project.objects.get(tab_id)?.borrow().get_title();
+                Some((*id, file_object_name, tbsr))
             }
+            Page::ProjectMetadata => Some((*id, String::from("Project Metadata"), tbsr)),
+            Page::Export | Page::Help | Page::Settings(_) | Page::Statistics => unreachable!(),
+        })
+        .filter(|(_, _, tbsr)| !tbsr.finds.is_empty())
+        .collect();
 
-            ui.colored_label(Color32::LIGHT_BLUE, &tbsr.box_name);
+    items.sort_by_key(|(_, file_object_name, tbsr)| (file_object_name.clone(), &tbsr.box_name));
 
-            for word_find in &tbsr.finds {
-                if word_find.ui(ui).clicked() {
-                    ctx.search.focus = Some((id, word_find.clone()));
-                    ctx.search.goto_focus = true;
+    let mut file_object_id: Option<String> = None;
 
-                    // trigger a formatting refresh
-                    ctx.render_version += 1;
-                }
+    for (id, file_object_name, tbsr) in items {
+        if file_object_id.as_ref() != Some(&file_object_name) {
+            file_object_id = Some(file_object_name.clone());
+            ui.colored_label(Color32::LIGHT_GREEN, &file_object_name);
+        }
+
+        ui.colored_label(Color32::LIGHT_BLUE, &tbsr.box_name);
+
+        for word_find in &tbsr.finds {
+            if word_find.ui(ui).clicked() {
+                ctx.search.focus = Some((id, word_find.clone()));
+                ctx.search.goto_focus = true;
+
+                // trigger a formatting refresh
+                ctx.render_version += 1;
             }
         }
     }
