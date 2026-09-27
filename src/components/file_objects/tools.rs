@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::mem::swap;
 use std::ops::Add;
 use std::rc::Rc;
 use std::thread;
@@ -344,10 +345,16 @@ impl dyn FileObject {
         }
     }
 
+    /// Attempt to rename the underlying file and update all of the children with the new path.
+    /// If returning an error, none of the children will have been updated. Depending on filesystem
+    /// details, the file may or may not have been actually moved, current assumptions are based around
+    /// `std::fs::rename` only returning an error if the move did not happen
+    ///
+    /// Caller is responsible for either panicking out or resetting the file object's path to the original
     fn move_on_disk(
         &mut self,
-        old_path: PathBuf,
-        new_path: PathBuf,
+        old_path: &Path,
+        new_path: &Path,
         objects: &FileObjectStore,
     ) -> Result<(), CheeseError> {
         if new_path == old_path {
@@ -362,7 +369,7 @@ impl dyn FileObject {
         }
 
         if old_path.exists()
-            && let Err(err) = std::fs::rename(old_path.as_path(), new_path.as_path())
+            && let Err(err) = std::fs::rename(old_path, new_path)
         {
             if cfg!(windows) && err.kind() == std::io::ErrorKind::PermissionDenied {
                 let start = Instant::now();
@@ -373,7 +380,7 @@ impl dyn FileObject {
                 );
 
                 loop {
-                    if std::fs::rename(old_path.as_path(), new_path.as_path()).is_ok() {
+                    if std::fs::rename(old_path, new_path).is_ok() {
                         break;
                     }
 
@@ -396,7 +403,7 @@ impl dyn FileObject {
         for child in self.children(objects) {
             child
                 .borrow_mut()
-                .process_path_update(self.get_path(), objects);
+                .process_path_update(new_path.to_path_buf(), objects);
         }
 
         Ok(())
@@ -450,7 +457,7 @@ impl dyn FileObject {
     /// Change the filename in the base object and on disk, processing any required updates
     pub fn set_filename(
         &mut self,
-        new_filename: OsString,
+        mut new_filename: OsString,
         objects: &FileObjectStore,
     ) -> Result<(), CheeseError> {
         let old_path = self.get_path();
@@ -463,17 +470,20 @@ impl dyn FileObject {
             return Ok(());
         }
 
-        self.get_base_mut().file.basename = new_filename;
+        // use `std::mem::swap` so we can undo if there are errors
+        swap(&mut self.get_base_mut().file.basename, &mut new_filename);
 
-        if let Err(err) = self.move_on_disk(old_path, new_path, objects) {
+        self.move_on_disk(&old_path, &new_path, objects).inspect_err(|err| {
             log::error!(
-                "failed to set filename of {self} to {:?}",
+                "failed to set filename of {self} to {:?}: {err}",
                 self.get_base().file.basename
             );
-            return Err(err);
-        }
 
-        Ok(())
+            log::error!(
+                "Could not rename from {old_path:?} to {new_path:?}: Setting filename of {self} back to {new_filename:?}, can safely continue"
+            );
+            self.get_base_mut().file.basename = new_filename;
+        })
     }
 
     /// Processes the actual move on disk of this file object. Does *not* handle any logic about
@@ -481,14 +491,18 @@ impl dyn FileObject {
     pub fn move_object(
         &mut self,
         new_index: usize,
-        new_path: PathBuf,
+        mut new_path: PathBuf,
         objects: &FileObjectStore,
     ) -> Result<(), CheeseError> {
         let old_path = self.get_path();
 
+        // save old index and use `std::mem::swap` so we can undo if there are errors
+        let old_index = self.get_base().index;
+
         self.get_base_mut().index = Some(new_index);
-        self.get_base_mut().file.dirname = new_path;
-        self.get_base_mut().file.basename = self.calculate_filename();
+        swap(&mut self.get_base_mut().file.dirname, &mut new_path);
+        let mut new_filename = self.calculate_filename();
+        swap(&mut self.get_base_mut().file.basename, &mut new_filename);
         let new_path = self.get_path();
 
         if new_path == old_path {
@@ -499,7 +513,15 @@ impl dyn FileObject {
 
         log::debug!("moving {self} from {old_path:#?} to {new_path:?}");
 
-        self.move_on_disk(old_path, new_path, objects)
+        self.move_on_disk(&old_path, &new_path, objects)
+            .inspect_err(|err| {
+                log::error!("Could not move from {old_path:?} to {new_path:?}: {err}");
+                log::error!("Undoing move, can still continue");
+
+                self.get_base_mut().index = old_index;
+                self.get_base_mut().file.dirname = new_path;
+                self.get_base_mut().file.basename = new_filename;
+            })
     }
 
     pub fn save(&mut self, objects: &FileObjectStore) -> Result<(), CheeseError> {
