@@ -97,6 +97,8 @@ pub struct Theme {
 
     selection_fg_stroke_color: Option<Color32>,
 
+    cursor_color: Option<Color32>,
+
     active_widget: Option<WidgetTheme>,
     inactive_widget: Option<WidgetTheme>,
     noninteractive_widget: Option<WidgetTheme>,
@@ -181,6 +183,7 @@ impl Theme {
             window_stroke_color: Some(random_color32(&mut rng)),
             selection_bg_color: Some(random_color32(&mut rng)),
             selection_fg_stroke_color: Some(random_color32(&mut rng)),
+            cursor_color: Some(random_color32(&mut rng)),
             active_widget: Some(WidgetTheme::new_random(&mut rng)),
             inactive_widget: Some(WidgetTheme::new_random(&mut rng)),
             noninteractive_widget: Some(WidgetTheme::new_random(&mut rng)),
@@ -208,6 +211,7 @@ impl Theme {
         let selection_bg_color = read_color32(theme_table, "selection_bg_color");
         let selection_fg_stroke_color = read_color32(theme_table, "selection_fg_stroke_color");
         let window_stroke_color = read_color32(theme_table, "window_stroke_color");
+        let cursor_color = read_color32(theme_table, "cursor_color");
 
         let active_widget = read_widget_theme(theme_table, "active_widget");
         let inactive_widget = read_widget_theme(theme_table, "inactive_widget");
@@ -230,6 +234,7 @@ impl Theme {
             selection_bg_color,
             selection_fg_stroke_color,
             window_stroke_color,
+            cursor_color,
             active_widget,
             inactive_widget,
             noninteractive_widget,
@@ -258,6 +263,7 @@ impl Theme {
             self.selection_fg_stroke_color,
         );
         write_color32(theme_table, "window_stroke_color", self.window_stroke_color);
+        write_color32(theme_table, "cursor_color", self.cursor_color);
 
         write_widget_theme(theme_table, "active_widget", &self.active_widget);
         write_widget_theme(theme_table, "inactive_widget", &self.inactive_widget);
@@ -337,6 +343,11 @@ impl Theme {
         };
 
         style.visuals.selection.stroke.color = match self.selection_fg_stroke_color {
+            Some(color) => color,
+            None => default_style.visuals.selection.stroke.color,
+        };
+
+        style.visuals.text_cursor.stroke.color = match self.cursor_color {
             Some(color) => color,
             None => default_style.visuals.selection.stroke.color,
         };
