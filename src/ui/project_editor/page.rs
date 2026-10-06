@@ -4,7 +4,7 @@ mod help;
 mod project_metadata_editor;
 mod statistics;
 
-use crate::ui::prelude::*;
+use crate::ui::{prelude::*, project_editor::page::project_metadata_editor::ProjectMetadataPage};
 
 use crate::ui::settings::settings_page::SettingsPage;
 pub use file_object_editor::FileObjectEditor;
@@ -114,6 +114,7 @@ pub struct PageData {
     search: Search,
     last_selected_id: Option<Id>,
 
+    project_metadata_page: ProjectMetadataPage,
     settings_page: SettingsPage,
     help_page: HelpPage,
 }
@@ -185,7 +186,9 @@ impl OpenPage {
             modified,
             tabable_ids: page_tabable_ids,
         } = match &self.page {
-            Page::ProjectMetadata => project.metadata_ui(ui, ctx),
+            Page::ProjectMetadata => {
+                project.metadata_ui(ui, ctx, &mut page_data.project_metadata_page)
+            }
             Page::FileObject(file_object_id) => {
                 if let Some(file_object) = project.objects.get(file_object_id) {
                     file_object.borrow_mut().as_editor_mut().ui(ui, ctx)

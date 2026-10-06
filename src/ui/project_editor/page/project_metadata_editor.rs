@@ -2,10 +2,20 @@ use crate::ui::{prelude::*, project_editor::update_title};
 
 use egui::ScrollArea;
 
+#[derive(Debug, Default)]
+pub struct ProjectMetadataPage {
+    name_box: NameBox,
+}
+
 impl Project {
-    pub fn metadata_ui(&mut self, ui: &mut egui::Ui, ctx: &mut EditorContext) -> CheeseResponse {
+    pub fn metadata_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &mut EditorContext,
+        page: &mut ProjectMetadataPage,
+    ) -> CheeseResponse {
         let cheese_response = egui::CentralPanel::default()
-            .show(ui, |ui| self.show_project_metadata_editor(ui, ctx))
+            .show(ui, |ui| self.show_project_metadata_editor(ui, ctx, page))
             .inner;
         if cheese_response.modified {
             self.file.modified = true;
@@ -17,24 +27,20 @@ impl Project {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut EditorContext,
+        page: &mut ProjectMetadataPage,
     ) -> CheeseResponse {
         let mut cheese_response = CheeseResponse::default();
         ScrollArea::vertical().id_salt("metadata").show(ui, |ui| {
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut self.base_metadata.name)
-                    .id_salt("name")
-                    .hint_text("Story Title")
-                    .desired_width(f32::INFINITY),
-            );
-            cheese_response.process_response(&response, true);
-            response.widget_info(|| {
-                WidgetInfo::labeled(egui::WidgetType::TextEdit, ui.is_enabled(), "story title")
-            });
+            let response = page
+                .name_box
+                .ui(&mut self.base_metadata.name, "Story Title", ui, ctx);
 
             // Special case: update the title if we've changed it:
-            if response.changed() {
+            if response.modified {
                 update_title(&self.base_metadata.name, ui.ctx());
             }
+
+            response.append_to(&mut cheese_response);
 
             let response = ui.add(
                 egui::TextEdit::singleline(&mut self.metadata.genre)
